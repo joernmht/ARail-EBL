@@ -560,13 +560,13 @@ export class HumpSimulation {
   /**
    * Where a cut set into a classification track by locomotive comes to stand: behind the wagons
    * standing there (at the track's end if it is empty); null when it does not fit, or while a cut
-   * still rolls in the track.
+   * still rolls towards the track (in it, or still in the switch zone on its way there).
    * @param {object} leaf the track's segment
    * @param {number} length_m the cut's length
    * @param {object} [but] a cut not counted (the one that is moved)
    */
   _place(leaf, length_m, but = null) {
-    if (this.bodies.some((b) => b !== but && b.v > 0 && b.route[b.route.length - 1] === leaf.id)) return null;
+    if (this.bodies.some((b) => b !== but && b.v > 0 && (b.track === leaf.track.name || b.route[b.route.length - 1] === leaf.id))) return null;
     const here = this._standing(leaf).filter((b) => b !== but);
     const edge = here.length ? Math.min(...here.map((b) => b.s - b.body.length_m)) : leaf.s1;
     return edge - length_m < leaf.track.s0 - 1e-6 ? null : edge;
@@ -580,7 +580,7 @@ export class HumpSimulation {
    * @param {string} id the cut
    * @param {string} name the track
    * @returns {boolean} whether it was moved: not a cut that rolls, is pushed or has left, not into a
-   *   track without room for it or with a cut still rolling in it
+   *   track without room for it or with a cut still rolling towards it (in it or on its way there)
    */
   moveCut(id, name) {
     const c = this.bodies.find((b) => b.id === id), leaf = this.yard.trackSegment(name);
@@ -599,8 +599,8 @@ export class HumpSimulation {
    * that must not be humped, RID label 15): one cut, behind the wagons standing there. Instant.
    * @param {{id?: string, train?: string, wagons: object[]}} cut wagon specs (see makeWagon; `noHump` is not asked again)
    * @param {string} name the track
-   * @returns {object | null} the cut, or null when the track has no room for it or a cut still rolls in it (nothing
-   *   changes then: no cut, no random number drawn)
+   * @returns {object | null} the cut, or null when the track has no room for it or a cut still rolls towards it, in
+   *   it or on its way there (nothing changes then: no cut, no random number drawn)
    */
   setOut({ id, train = "", wagons }, name) {
     const leaf = this.yard.trackSegment(name);

@@ -178,7 +178,8 @@ drives it from outside:
 
 Both are instant in the simulation, like pushing up and pulling out; the game gives them their
 time (the locomotive is busy, and no train is pushed meanwhile). Neither puts a cut into a track
-without room for it, or into one a cut still rolls in. The game reads what the simulation notes
+without room for it, or into one a cut still rolls towards (in it, or through the switches on its
+way there: the wagons would stand at the entrance as it arrives). The game reads what the simulation notes
 (`log`: a cut in the wrong track, an impact too hard, a cut stopped, the yard backed up to the
 crest) and makes of it what the people of the yard say.
 

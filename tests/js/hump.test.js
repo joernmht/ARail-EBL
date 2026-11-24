@@ -605,13 +605,23 @@ test("the shunting locomotive: a standing cut taken to another track, wagons set
   const two = small.setOut({ train: "S", wagons: five.slice(0, 2) }, "2");
   assert.equal(small.moveCut(two.id, "1"), false);
   assert.equal(two.track, "2");
-  // while a cut rolls into a track, nothing is put there; a rolling cut is not moved
+  // while a cut rolls towards a track, nothing is put there; a rolling cut is not moved
   const busy = new HumpSimulation(yard, { seed: 3, dt: 0.1 });
   busy.hump({ id: "B", wagons: [{ type: "eanos", loaded: 1, track: "4" }] });
+  const four = yard.trackSegment("4");
+  // (still in the switch zone, before the last switch to its track: the wagons would stand at the track's entrance as it arrives)
+  while (!busy.bodies.some((x) => x.v > 0 && x.route.length > 1)) busy.step();
+  assert.ok(busy.bodies[0].route.at(-1) !== four.id, "the cut is on its way, not yet in the track's segment");
+  assert.equal(busy.setOut({ train: "B", wagons: [{ type: "eanos", loaded: 1 }] }, "4"), null);
+  const parked = new HumpSimulation(yard, { seed: 3, dt: 0.1 });
+  parked.setOut({ id: "P", train: "P", wagons: [{ type: "eanos", loaded: 1 }] }, "1");
+  parked.hump({ id: "B", wagons: [{ type: "eanos", loaded: 1, track: "4" }] });
+  while (!parked.bodies.some((x) => x.v > 0 && x.route.length > 1)) parked.step();
+  assert.equal(parked.moveCut("P", "4"), false);
+  assert.equal(busy.bodies.length, 1);
   while (!busy.bodies.some((x) => x.v > 0 && x.route.length > 3)) busy.step();
   assert.equal(busy.moveCut(busy.bodies[0].id, "1"), false);
   // (until the cut is in its track and still rolls there)
-  const four = yard.trackSegment("4");
   while (!(busy.bodies[0].route.at(-1) === four.id && busy.bodies[0].s > four.track.s0) && busy.t < 600) busy.step();
   assert.ok(busy.bodies[0].v > 0 && busy.bodies[0].route.at(-1) === four.id, "the cut rolls in track 4");
   assert.equal(busy.setOut({ train: "B", wagons: [{ type: "eanos", loaded: 1 }] }, "4"), null);
