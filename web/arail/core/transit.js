@@ -248,6 +248,33 @@ export function leaderAhead(self, front, dir, users, lookMM, laneMM, skip = null
   return { gap: best, user: who };
 }
 
+/**
+ * The speed (m/s) at which a vehicle can follow the road user ahead and still stop behind it should
+ * it brake to a stand: with a reaction time `tau`, both braking at `brake`,
+ * v = −b·τ + √(b²τ² + v_leader² + 2·b·gap) (Krauß 1998, after Gipps 1981). Behind a standing vehicle it
+ * is the speed to stop within the gap; behind one that drives, the gap may be as short as the way
+ * driven in the reaction time, so a queue starts off together and a lane carries about 1800 to 2000
+ * vehicles an hour.
+ * @param {number} gapM the free way to the road user ahead (m), without the distance kept at a stand
+ * @param {number} leaderMps the speed of the road user ahead in the vehicle's direction (m/s)
+ * @param {number} brake comfortable braking (m/s²)
+ * @param {number} [tau] reaction time (s)
+ */
+export function followSpeed(gapM, leaderMps, brake, tau = FOLLOW_TAU_S) {
+  const g = Math.max(0, gapM), vl = Math.max(0, leaderMps || 0), bt = brake * tau;
+  return Math.max(0, -bt + Math.sqrt(bt * bt + vl * vl + 2 * brake * g));
+}
+
+/** The reaction time of drivers and riders following a vehicle (s). */
+export const FOLLOW_TAU_S = 1;
+
+/** The speed of a road user (`leaderAhead`'s `user`) in the direction `dir` (m/s), 0 without one. */
+export function speedAlong(user, dir) {
+  if (!user) return 0;
+  const v = user.speed ?? user.vehicle?.v ?? 0;
+  return v > 0 ? v * Math.max(0, user.dir[0] * dir[0] + user.dir[1] * dir[1]) : 0;
+}
+
 /** Where the last search of a list of junctions ended: list -> {s, i} (see `junctionAhead`). */
 const junctionSearch = new WeakMap();
 
@@ -280,15 +307,19 @@ const SQUEEZE_S = 4;
  * turned into each other's way in a junction, a car and a tram nose to nose) squeeze past each
  * other after GRIDLOCK_S, so that the traffic never stops for good. Call it each step with the
  * road user ahead (`leaderAhead`, or null while the vehicle squeezes past, see `squeezing`).
- * @param {{v: number, leader?: object | null, circled?: number, squeeze?: number}} self the vehicle (car, bike, bus, tram)
- * @param {{vehicle: object} | null} user the road user ahead
+ * @param {{v: number, leader?: object | null, circled?: number, squeeze?: number, enter?: number}} self the vehicle (car, bike, bus, tram)
+ * @param {{vehicle: object} | null} user the road user ahead, or the one that leaves no room behind the junction ahead
  * @param {number} dt simulated seconds
+ * @param {boolean} [room] `user` is not in the way, it only leaves no room behind a junction (StVO § 11):
+ *   out of a ring of such waits (the queues round a block, each reaching back to the junction before)
+ *   the vehicle drives into the junction after GRIDLOCK_S (`entering`), still behind the vehicle ahead
  */
-export function waitFor(self, user, dt) {
+export function waitFor(self, user, dt, room = false) {
   if (self.squeeze > 0) self.squeeze -= dt;
+  if (self.enter > 0) self.enter -= dt;
   self.leader = user && self.v < 0.2 ? user.vehicle : null;
   let x = self.leader, circle = false;
-  for (let k = 0; k < 16 && x; k++) {
+  for (let k = 0; k < RING_MAX && x; k++) {
     if (x === self) {
       circle = true;
       break;
@@ -297,11 +328,15 @@ export function waitFor(self, user, dt) {
   }
   self.circled = circle ? (self.circled || 0) + dt : 0;
   if (self.circled > GRIDLOCK_S) {
-    self.squeeze = SQUEEZE_S;
+    if (room) self.enter = SQUEEZE_S;
+    else self.squeeze = SQUEEZE_S;
     self.circled = 0;
     self.leader = null;
   }
 }
+
+/** The longest ring of vehicles waiting for each other that `waitFor` finds (the queues round a block). */
+const RING_MAX = 64;
 
 /**
  * Is there room behind a junction for a vehicle of `lengthMM` (StVO § 11: nobody drives into a
@@ -310,13 +345,26 @@ export function waitFor(self, user, dt) {
  * plus the gap leaves no room.
  */
 export function roomAfter(self, exit, dir, users, lengthMM, laneMM) {
+  return !blockerAfter(self, exit, dir, users, lengthMM, laneMM);
+}
+
+/**
+ * The road user that leaves no room behind a junction (see `roomAfter`), or null when there is room:
+ * who a vehicle held before the junction waits for (`waitFor` finds the rings of such waits too).
+ */
+export function blockerAfter(self, exit, dir, users, lengthMM, laneMM) {
   const { gap, user } = leaderAhead(self, exit, dir, users, lengthMM, laneMM);
-  return !user || gap >= lengthMM || (user.speed ?? user.vehicle?.v ?? 0) > 1;
+  return !user || gap >= lengthMM || (user.speed ?? user.vehicle?.v ?? 0) > 1 ? null : user;
 }
 
 /** Does a vehicle squeeze past the others now (see waitFor)? */
 export function squeezing(self) {
   return self.squeeze > 0;
+}
+
+/** Does a vehicle drive into a junction now although there is no room behind it (out of a ring of such waits, see waitFor)? */
+export function entering(self) {
+  return self.enter > 0;
 }
 
 /**
@@ -333,19 +381,53 @@ export function mustYield(self, j, d, users, prio = 1) {
   const jx = j.pos[0], jy = j.pos[1], r = j.r;
   for (const u of around(users, j.pos, Math.max(j.r, APPROACH_MM_MAX))) {
     if (u.vehicle === self) continue;
+    // its way through this junction, where it says so: ways that do not touch need no waiting
+    const theirs = u.move && u.move.key === j.key ? u.move : null;
     if (within(u.front[0] - jx, u.front[1] - jy, r) || within(u.rear[0] - jx, u.rear[1] - jy, r)
       || within((u.front[0] + u.rear[0]) / 2 - jx, (u.front[1] + u.rear[1]) / 2 - jy, r)) {
       if (u.vehicle.phase === "block") continue;
+      if (theirs && !movesConflict(j, theirs)) continue;
       return true;
     }
     const a = u.approach;
     if (!a || a.key !== j.key) continue;
+    if (theirs && !movesConflict(j, theirs)) continue;
     const p = a.prio ?? 1;
     if (p > prio) return true;
-    if (p === prio && (a.d < d || (a.d === d && firstOf(u.vehicle, self)))) return true;
+    if (p !== prio) continue;
+    // the same priority: who turns left waits for who comes the other way (StVO § 9), else the one closer goes first
+    const left = (j.turn === "left" ? 1 : 0) - (theirs?.turn === "left" ? 1 : 0);
+    if (left > 0 || (left === 0 && (a.d < d || (a.d === d && firstOf(u.vehicle, self))))) return true;
   }
   return false;
 }
+
+/** How far (radians) the lane into a junction lies to the right of its arm's axis, and the lane out of it to the left (seen from the junction). */
+const LANE_ANGLE = 0.08;
+
+/**
+ * Do two ways through a junction touch? Each is {inEdge, outEdge, a0, a1}: the arms it comes in and
+ * goes out by (their edges, and their directions from the junction, `RoadNetwork.armAngle`). Two
+ * vehicles from the same arm follow each other (the one behind keeps its distance); two that go out
+ * by the same arm merge, so they touch; else each way is a chord from its lane in (on the right of
+ * its arm) to its lane out, and they touch where the chords cross: turning left across the oncoming
+ * traffic, crossing the other street, but not two going straight past each other, nor a right turn
+ * beside the traffic from the left that turns off. Where a direction is not known, they touch.
+ * @param {{inEdge?: number, outEdge?: number | null, a0?: number | null, a1?: number | null}} a
+ * @param {{inEdge?: number, outEdge?: number | null, a0?: number | null, a1?: number | null}} b
+ */
+export function movesConflict(a, b) {
+  if (a.a0 == null || a.a1 == null || b.a0 == null || b.a1 == null) return true;
+  if (a.inEdge === b.inEdge) return false;
+  if (a.outEdge === b.outEdge) return true;
+  const turn = (x) => ((x % TAU) + TAU) % TAU;
+  // the lane in is on the right of its arm seen from outside: counterclockwise of it seen from the junction
+  const from = turn(a.a0 + LANE_ANGLE), span = turn(a.a1 - LANE_ANGLE - from);
+  const inside = (x) => turn(x - from) < span;
+  return inside(b.a0 + LANE_ANGLE) !== inside(b.a1 - LANE_ANGLE);
+}
+
+const TAU = 2 * Math.PI;
 
 /**
  * Is the point (dx, dy) from a centre closer to it than r: `dist2 < r`, with the same Math.hypot.
@@ -1038,7 +1120,7 @@ export class Transit {
     const approach = j && j.d > j.r && j.d < this.mm(APPROACH_M) ? { key: j.key, d: j.d, prio: approachPrio(j, this.world.time) } : null;
     // (unit2(d), with the length worked out once)
     const l = Math.hypot(d[0], d[1]);
-    const pose = { vehicle: bus, front, rear, dir: l > 1e-6 ? [d[0] / l, d[1] / l] : [1, 0], speed: bus.v, approach };
+    const pose = { vehicle: bus, front, rear, dir: l > 1e-6 ? [d[0] / l, d[1] / l] : [1, 0], speed: bus.v, approach, move: j };
     bus._pose = pose;
     return pose;
   }
@@ -1300,13 +1382,13 @@ export class Transit {
     const look = this.mm(bus.v * bus.v / (2 * BRAKE) + GAP_M + 15);
     const lead = squeezing(bus) ? { gap: Infinity, user: null } : leaderAhead(bus, me.front, me.dir, users, look, this.mm(1.5));
     const gap = lead.gap;
-    waitFor(bus, lead.user, dt);
-    if (gap < Infinity) vT = Math.min(vT, Math.sqrt(2 * BRAKE * Math.max(0, this.meters(gap) - GAP_M)));
+    if (gap < Infinity) vT = Math.min(vT, followSpeed(this.meters(gap) - GAP_M, speedAlong(lead.user, me.dir), BRAKE));
     // where it has to stand: before a junction, a zebra crossing with people on it, a closed level
     // crossing, a single track with a tram coming the other way
-    let stopAt = Infinity;
-    const hold = (mm) => {
+    let stopAt = Infinity, why = null, heldBy = null;
+    const hold = (mm, reason) => {
       vT = Math.min(vT, Math.sqrt(2 * BRAKE * Math.max(0, this.meters(mm))));
+      if (mm < stopAt) why = reason;
       stopAt = Math.min(stopAt, Math.max(0, mm));
     };
     const j = this._nextJunction(bus, line), now = this.world.time;
@@ -1316,32 +1398,37 @@ export class Transit {
       if (dStop < -1) {
         bus.junctionWait = 0;
         bus.stopped = null;
-      } else if (light === "red" || light === "red-amber" || (light === "amber" && dStop > (bus.v * bus.v) / (2 * BRAKE))) hold(line0);
+      } else if (light === "red" || light === "red-amber" || (light === "amber" && dStop > (bus.v * bus.v) / (2 * BRAKE))) hold(line0, "light");
       else if (j.rule?.stop && bus.stopped !== j.key) {
         // Stop: stand at the line once, then give way
-        hold(line0);
+        hold(line0, "stop");
         if (bus.v < 0.2 && dStop < 2) bus.stopped = j.key;
       } else if (dStop < (bus.v * bus.v) / (2 * BRAKE) + 3 && (bus.junctionWait || 0) < junctionPatience(prio) && mustYield(bus, j, j.d, users, prio)) {
-        hold(line0);
+        hold(line0, "yield");
         if (bus.v < 0.3) bus.junctionWait = (bus.junctionWait || 0) + dt;
       }
-      // keep the junction clear: not into it while the way out is blocked
-      if (dStop >= 0 && dStop < (bus.v * bus.v) / (2 * BRAKE) + 3) {
+      // keep the junction clear: not into it while the way out is blocked (in a ring of vehicles
+      // that wait for each other's room, one goes in after a while: see waitFor)
+      if (!entering(bus) && dStop >= 0 && dStop < (bus.v * bus.v) / (2 * BRAKE) + 3) {
         const out = polylineAt(c.points, (bus.s + j.d + j.r) % L, c.lengths);
-        if (!roomAfter(bus, out.point, out.dir, users, this.mm(line.length + GAP_M), this.mm(1.5))) hold(line0);
+        const blocker = blockerAfter(bus, out.point, out.dir, users, this.mm(line.length + GAP_M), this.mm(1.5));
+        if (blocker) {
+          hold(line0, "room");
+          heldBy = blocker;
+        }
       }
     }
     for (const x of line.crossings) {
       const e = this._ahead(line, bus.s, x.s - x.half - this.mm(1));
       if (e > look + this.mm(10)) continue;
-      if (x.kind === "zebra" ? x.obj.busy() : x.obj.closed(now)) hold(e - this.mm(x.kind === "rail" ? 3 : 0.5));
+      if (x.kind === "zebra" ? x.obj.busy() : x.obj.closed(now)) hold(e - this.mm(x.kind === "rail" ? 3 : 0.5), x.kind);
     }
     if (line.single.length && this._occupied) {
       const len = this.mm(line.length);
       for (const iv of line.single) {
         if (this._ahead(line, iv.s0, bus.s) <= iv.s1 - iv.s0 + len) continue; // on it already
         const e = this._ahead(line, bus.s, iv.s0);
-        if (e < look + this.mm(10) && !this._singleFree(bus, iv, this._occupied)) hold(e - this.mm(2));
+        if (e < look + this.mm(10) && !this._singleFree(bus, iv, this._occupied)) hold(e - this.mm(2), "single");
       }
     }
     // the end of a stub track: the tram stops there, the driver changes ends, and the other end
@@ -1361,8 +1448,12 @@ export class Transit {
           return;
         }
       }
-      hold(e);
+      hold(e, "end");
     }
+    // who it waits for: the vehicle ahead, or the one that leaves no room behind the junction
+    waitFor(bus, lead.user || heldBy, dt, !lead.user);
+    /** Why the bus or tram is held now ("light", "stop", "yield", "room", "zebra", "rail", "single", "end"), or null. */
+    bus.hold = stopAt < this.mm(1.5) ? why : null;
     bus.v = vT > bus.v ? Math.min(vT, bus.v + ACCEL * dt) : Math.max(vT, bus.v - HARD * dt, 0);
     let move = Math.min(this.mm(bus.v * dt), d, stopAt);
     // never into the vehicle ahead

@@ -252,6 +252,18 @@ export class TrafficLight extends LayoutObject {
   }
 
   /**
+   * How long a vehicle that comes at any time waits at the light of an approach group on average
+   * (s): red for the share r of the cycle C makes r² × C / 2 (drivers plan with it, sims/traffic.js).
+   */
+  expectedWait(group) {
+    const C = clamp(+this.spec.cycle_s || 60, 20, 180), split = clamp((+this.spec.split || 50) / 100, 0.2, 0.8);
+    // green and amber are driven through: all red, and the other street's share
+    const go = (group === 0 ? C * split : C * (1 - split)) - 2;
+    const red = clamp(1 - go / C, 0, 1);
+    return (red * red * C) / 2;
+  }
+
+  /**
    * The light of an approach group (0: the main street's axis, 1: across it) at simulated time t:
    * "green", "amber", "red" or "red-amber".
    */

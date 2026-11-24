@@ -789,6 +789,17 @@ export class RoadNetwork {
     return ang > 35 ? "left" : ang < -35 ? "right" : "straight";
   }
 
+  /**
+   * The direction (radians, `Math.atan2`) in which an edge leaves node v: the arm of the junction a
+   * vehicle comes in or goes out by (core/transit.js `movesConflict`). Null for an unknown edge.
+   */
+  armAngle(v, edge) {
+    const e = this.edges[edge];
+    if (!e) return null;
+    const d = e.a === v ? e.dirA : [-e.dirB[0], -e.dirB[1]];
+    return Math.atan2(d[1], d[0]);
+  }
+
   /** May a vehicle (not a tram: it follows its track) turn from one edge onto another at node v? */
   turnAllowed(v, inEdge, outEdge, mode = "car") {
     if (mode === "tram" || mode === "walk") return true;
@@ -1507,7 +1518,8 @@ export class RoadNetwork {
 
   /**
    * The junctions a vehicle crosses on a path, located on its driving line: [{key, pos, r (radius,
-   * mm), s (arc length of the centre on the driving line), node, inEdge, outEdge, turn, rule (Stop or
+   * mm), s (arc length of the centre on the driving line), node, inEdge, outEdge, turn, a0 and a1 (the
+   * directions of the arms it comes in and goes out by, `armAngle`), rule (Stop or
    * give way of the approach, or null), signal ({obj, group}: traffic lights, or null), prio (0 give
    * way, 1 none, 2 priority road)}]. Junctions are nodes with three or more edges for cars or trams.
    * @param {Path} path
@@ -1530,6 +1542,7 @@ export class RoadNetwork {
       out.push({
         key: `${Math.round(n.pos[0])},${Math.round(n.pos[1])}`, pos: n.pos, r: r + this.mm(1), s: drive.lengths[k], node: id,
         inEdge: inEdge.id, outEdge: outEdge?.id ?? null, turn: outEdge ? this.turnOf(id, inEdge.id, outEdge.id) : "straight",
+        a0: this.armAngle(id, inEdge.id), a1: outEdge ? this.armAngle(id, outEdge.id) : null,
         rule, signal: n.signal && group != null ? { obj: n.signal.obj, group } : null, prio: rule ? 0 : inEdge.priority ? 2 : 1,
       });
     });

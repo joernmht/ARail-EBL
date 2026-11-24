@@ -26,7 +26,7 @@
 import { Simulation } from "../core/simulation.js";
 import { createRng, dist2, polylineAt, polylinePoint, rectBetween, sub2 } from "../core/math.js";
 import { CD, OVERLAY, grey, mix, moodColor } from "../core/colors.js";
-import { APPROACH_M, approachPrio, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, squeezing, waitFor } from "../core/transit.js";
+import { APPROACH_M, approachPrio, followSpeed, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, speedAlong, squeezing, waitFor } from "../core/transit.js";
 import { Person, Population } from "../core/people.js";
 import { bikeColour, drawBike } from "../core/vehicles.js";
 
@@ -267,7 +267,7 @@ export class CyclingSimulation extends Simulation {
     const dir = l > 1e-6 ? [d[0] / l, d[1] / l] : polylineAt(L.points, rider.s, L.lengths).dir;
     const j = junctionAhead(rider.junctions, rider.s);
     const approach = j && rider.s < j.s - j.r && j.s - rider.s < this.mm(APPROACH_M) ? { key: j.key, d: j.s - rider.s, prio: approachPrio(j, this.world.time) } : null;
-    const pose = { vehicle: rider, front, rear, dir, speed: rider.v, approach };
+    const pose = { vehicle: rider, front, rear, dir, speed: rider.v, approach, move: j };
     rider._pose = pose;
     return pose;
   }
@@ -362,7 +362,7 @@ export class CyclingSimulation extends Simulation {
     const lead = squeezing(rider) ? { gap: Infinity, user: null } : leaderAhead(rider, me.front, me.dir, users, look, this.mm(0.9));
     const gap = lead.gap;
     waitFor(rider, lead.user, dt);
-    if (gap < Infinity) vT = Math.min(vT, Math.sqrt(2 * BRAKE * Math.max(0, this.meters(gap) - GAP_M)));
+    if (gap < Infinity) vT = Math.min(vT, followSpeed(this.meters(gap) - GAP_M, speedAlong(lead.user, me.dir), BRAKE));
     let stopAt = Infinity;
     const hold = (mm) => {
       vT = Math.min(vT, Math.sqrt(2 * BRAKE * Math.max(0, this.meters(mm))));
