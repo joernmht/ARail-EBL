@@ -244,7 +244,8 @@ passenger information, fault reports to the maintenance dispatcher (the maintena
 team), and closures and reopenings for works. With a train dispatcher seated it takes the
 dispatcher's orders: a train waits for another at most so many minutes (for its passengers, or to
 let it go first: a freight train then no longer waits for a late train planned before it), and a
-train that is still to come takes another platform track. In the career mode the role is open after the
+train that is still to come takes another platform track, unless its entry route is set already (then
+it comes where that route leads, and the dispatcher is told). In the career mode the role is open after the
 apprenticeship in railway operations or, for career changers, after the signaller's function training
 (in a lab like the EBL); from it, among other ways, the dispatcher of an operations centre, the
 instructor or the emergency manager become possible.
