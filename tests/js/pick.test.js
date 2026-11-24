@@ -4,7 +4,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { Camera, FlyCamera, View, createWorld, findPickable, movingPickables, toRad } from "../../web/arail/index.js";
+import {
+  Camera, FlyCamera, Registry, SimpleView, View, World, createWorld, findPickable, movingPickables, rectFootprint, registerBuiltins, toRad,
+} from "../../web/arail/index.js";
 import { readJSON } from "./helpers.js";
 
 const W = 1280, H = 720;
@@ -173,4 +175,46 @@ test("the container terminal: containers and wagons can be pointed at, with wher
   assert.ok(card.rows.some(([k]) => k === "Size") && card.rows.some(([k]) => k === "On"));
   const wagon = all.find((p) => p.key.startsWith("carrier:"));
   if (wagon) assert.ok(world.card(wagon).rows.some(([k]) => k === "Load"));
+});
+
+test("an object of a plugin that does not extend LayoutObject (no shown()) is drawn and picked, as one that does", () => {
+  /** A plugin's object written as a class of its own: the methods the world uses, but not shown(). */
+  class Plain {
+    static type = "plain-box";
+    constructor(world, spec) {
+      Object.assign(this, { world, spec, id: spec.id, type: spec.type, drawn: 0 });
+      this.geometry = { footprint: rectFootprint([0, 0], 400, 400) };
+    }
+    footprint() {
+      return this.geometry.footprint;
+    }
+    contains(p) {
+      return Math.abs(p[0]) <= 200 && Math.abs(p[1]) <= 200;
+    }
+    stopAreas() {
+      return [];
+    }
+    draw() {
+      this.drawn++;
+    }
+  }
+  const registry = registerBuiltins(new Registry());
+  registry.registerObject(Plain);
+  const world = new World({ registry, layout: { objects: [{ id: "plain", type: "plain-box" }] }, seed: 1 });
+  const fly = new FlyCamera({ target: [0, 0], distance: 1500, yaw: toRad(20), pitch: toRad(60) });
+  // a canvas that draws nothing
+  const ctx = new Proxy({ canvas: { width: W, height: H } }, {
+    get: (t, k) => (k in t ? t[k] : () => ({ addColorStop() {}, width: 10 })),
+    set: (t, k, v) => ((t[k] = v), true),
+  });
+  for (const Kind of [View, SimpleView]) {
+    const camera = new Camera(W, H);
+    const { H: hom, focal, pose } = fly.homography(W, H);
+    camera.setManualFocal(focal);
+    world.draw(new Kind({ ctx, camera, H: hom, pose, scale: 87, virtual: true }));
+  }
+  const plain = world.getObject("plain");
+  assert.equal(plain.drawn, 1, "drawn in the full view (the simple view draws its outline)");
+  const view = flyView(fly);
+  assert.equal(world.pick(view, view.project(0, 0, 0))?.ref, plain);
 });

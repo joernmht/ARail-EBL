@@ -23,10 +23,13 @@ const params = new URLSearchParams(location.search);
  * - `defaultCase`: the case Interaction shows until another one is chosen (the app: the Introduction),
  *   else the list of examples;
  * - `start`: the chapter shown when the link names none (the app: Interaction), else the Overview;
- * - `examples`: example layouts `{id, label, layout, image?, video?, tab?, layers?, home?}` (`home`: the
- *   layout it is a module of; `image` or `video`: opened with this photo or clip; `tab`: the case or
- *   chapter shown; `layers`: the modules switched on), the first one opened when nothing else was;
- * - `exampleLayers`: examples that are a module (layer) of another example, opened with it on;
+ * - `examples`: example layouts `{id, label, layout, image?, video?, tab?, layers?, switchOn?, home?}`
+ *   (`home`: the layout it is a module of; `image` or `video`: opened with this photo or clip; `tab`: the
+ *   case or chapter shown; `layers`: exactly the modules switched on; `switchOn`: the modules it needs,
+ *   switched on with those chosen last, so that a module switched off by hand stays off), the first one
+ *   opened when nothing else was;
+ * - `exampleLayers`: examples that are a module (layer) of another example, opened with it switched on
+ *   (with the modules chosen last);
  * - `tour`: the photo tour of the lab ({data: the photo map's data.json}): its buttons on the stage
  *   choose what is shown, and the examples are listed in Settings → View; a page without it has the
  *   list of layouts (Layouts…) in its bar;
@@ -727,10 +730,11 @@ export class App {
   /**
    * Open a layout from the list of layouts (or a panel) with its own image; the live camera stops.
    * @param {string[] | null} [layers] the layers to switch on (default: as last time, else as in the file)
+   * @param {string[] | null} [switchOn] layers switched on with those (an example's modules)
    */
-  async openLayout(url, layers = null) {
+  async openLayout(url, layers = null, switchOn = null) {
     this.stopLive();
-    await this.loadLayoutFromUrl(url, { withImage: true, layers });
+    await this.loadLayoutFromUrl(url, { withImage: true, layers, switchOn });
   }
 
   /**
@@ -743,16 +747,16 @@ export class App {
       this.stopLive();
       // the photo or clip shown until now belongs to the previous layout
       if (this.source) this.source.stale = true;
-      await this.loadLayoutFromUrl(x.layout, { withImage: false, layers: x.layers ?? null });
+      await this.loadLayoutFromUrl(x.layout, { withImage: false, layers: x.layers ?? null, switchOn: x.switchOn ?? null });
       this._loadExampleMedia(x);
-    } else if (x) await this.openLayout(x.layout, x.layers ?? null);
+    } else if (x) await this.openLayout(x.layout, x.layers ?? null, x.switchOn ?? null);
     if (x?.tab) this.selectTab(x.tab);
     if (x) return this._openedFor(x);
     const l = this.page.exampleLayers[id];
     if (!l) return;
-    // the layout is open already: switch the module on
+    // the layout is open already: switch the module on; else open it with the module switched on
     if (this.world.layers().some((y) => y.id === l.layer)) return this.switchOnModule(l.layer);
-    return this.openLayout(l.layout, [l.layer]);
+    return this.openLayout(l.layout, null, [l.layer]);
   }
 
   /**
@@ -766,11 +770,12 @@ export class App {
     if (c && own && new URL(own.layout, location.href).href === this.layoutUrl) c.opened = true;
   }
 
-  /** Is this example (its id) open: its layout, with the modules it names on and no others? */
+  /** Is this example (its id) open: its layout, with the modules it names on and no others (those it switches on: with any others)? */
   exampleOpen(id) {
     const x = this.page.examples.find((e) => e.id === id);
     if (!x || !this.layoutUrl || new URL(x.layout, location.href).href !== this.layoutUrl) return false;
     const on = this.layersOn();
+    if (x.switchOn && !x.switchOn.every((l) => on.includes(l))) return false;
     return !x.layers || (x.layers.length === on.length && x.layers.every((l) => on.includes(l)));
   }
 
@@ -894,8 +899,7 @@ export class App {
 
   /** Switch a module of the layout on (Settings, an example), with the others that go with it: an exclusive one alone, or without the exclusive ones. */
   switchOnModule(id) {
-    const on = this.layersOn();
-    return this.chooseModules(on.includes(id) ? on : ARail.toggleLayer(this.world.layers(), on, id));
+    return this.chooseModules(ARail.switchOnLayers(this.world.layers(), this.layersOn(), [id]));
   }
 
   /** Exactly these modules on (exclusive ones alone); a module that is a layout of its own opens it. */
@@ -917,11 +921,17 @@ export class App {
     return this.loadLayoutFromUrl(url, { withImage: true });
   }
 
-  /** Switch the layout's layers: exactly these are on. Edits are kept; the simulations start again. */
+  /**
+   * Switch the layout's layers: exactly these are on, but for the modules on by default that the layout
+   * has got since its choice was kept, which come when an exclusive module chosen alone is left
+   * (ARail.layersKnown). Edits are kept; the simulations start again.
+   */
   async setLayers(ids) {
-    const json = ARail.withLayers(this.world.toJSON(), ids);
-    storage.set(this._layersKey(), [...ids]);
-    storage.set(this._layersKnownKey(), this.world.layers().map((l) => l.id));
+    const file = ARail.normalizeLayers(this.originalLayout?.layers), known = storage.get(this._layersKnownKey());
+    const on = ARail.layerChoice(this.world.layers(), [...ids, ...(known ? ARail.withNewLayers(file, ids, known) : [])]);
+    const json = ARail.withLayers(this.world.toJSON(), on);
+    storage.set(this._layersKey(), on);
+    storage.set(this._layersKnownKey(), ARail.layersKnown(file, on, known ?? file.map((l) => l.id)));
     const edited = this._pendingSave != null || storage.get(this._layoutKey()) != null;
     try {
       await this._applyLayout(json);
@@ -932,7 +942,13 @@ export class App {
     if (edited) this.saveLayout();
   }
 
-  async loadLayoutFromUrl(url, { withImage = !this.source || this.source.kind === "image", layers = null } = {}) {
+  /**
+   * Open a layout file. Its layers: `layers` if given, else the choice kept for it, else as the file has
+   * them; with `switchOn` switched on as well (an example's modules, as Examples → Sandbox switches them on).
+   * @param {string} url
+   * @param {{withImage?: boolean, layers?: string[] | null, switchOn?: string[] | null}} [opts]
+   */
+  async loadLayoutFromUrl(url, { withImage = !this.source || this.source.kind === "image", layers = null, switchOn = null } = {}) {
     const legacy = Object.keys(LEGACY).find((f) => url.endsWith(f));
     if (legacy) {
       // a former example file: the lab example with that layer on
@@ -951,9 +967,13 @@ export class App {
       json = {};
     }
     const absolute = new URL(url, location.href).href;
-    // a module that is a layout of its own (asked for, or chosen last time): that layout, with this one as its home
     const fileLayers = ARail.normalizeLayers(json.layers);
-    const wanted = ARail.layerChoice(fileLayers, layers || storage.get(`arail.layers:${absolute}`) || []);
+    // layers: as asked for, else as last time, else as the file has them; an example's modules switched on with them
+    const saved = layers ? null : storage.get(this._layersKey(absolute));
+    let asked = layers || (Array.isArray(saved) ? saved : null);
+    if (switchOn?.length) asked = ARail.switchOnLayers(fileLayers, asked ?? ARail.layersOn(json), switchOn);
+    // a module that is a layout of its own (asked for, or chosen last time): that layout, with this one as its home
+    const wanted = ARail.layerChoice(fileLayers, asked || []);
     const own = fileLayers.find((l) => l.layout && wanted.includes(l.id));
     if (own) return this._openModuleLayout(own, { url: absolute, name: json.name || "Layout", layers: fileLayers });
     // its modules that are layouts of their own know their home (for the way back)
@@ -965,13 +985,14 @@ export class App {
     this.originalLayout = json;
     storage.set(this.key("lastLayout"), url);
     this.moduleHome = await this._moduleHome(absolute);
-    // layers: as asked for, else as last time, else as the file has them
-    // a saved choice gains the modules on by default that the layout has got since (ARail.withNewLayers)
-    const saved = layers ? null : storage.get(this._layersKey());
-    const chosen = layers || (Array.isArray(saved) ? ARail.withNewLayers(fileLayers, saved, storage.get(this._layersKnownKey())) : null);
+    // a kept choice gains the modules on by default that the layout has got since (ARail.withNewLayers);
+    // an exclusive module chosen alone keeps them for when it is left (ARail.layersKnown). Without the
+    // ids kept, a choice saved before they were kept gains those with `since`; any other knows them all.
+    const known = storage.get(this._layersKnownKey()) ?? (Array.isArray(saved) ? null : fileLayers.map((l) => l.id));
+    const chosen = asked && (layers ? asked : ARail.withNewLayers(fileLayers, asked, known));
     if (chosen) {
       storage.set(this._layersKey(), chosen);
-      storage.set(this._layersKnownKey(), fileLayers.map((l) => l.id));
+      storage.set(this._layersKnownKey(), ARail.layersKnown(fileLayers, chosen, known));
     }
     // (an exclusive module alone)
     const pick = (j) => (chosen && Array.isArray(j.layers) ? ARail.withLayers(j, ARail.layerChoice(ARail.normalizeLayers(j.layers), chosen)) : j);
@@ -1043,9 +1064,9 @@ export class App {
     }
   }
 
-  /** Where the choice of layers of this layout is kept (it is no change of the layout). */
-  _layersKey() {
-    return `arail.layers:${this.layoutUrl}`;
+  /** Where the choice of layers of this layout (or of the one at `url`) is kept (it is no change of the layout). */
+  _layersKey(url = this.layoutUrl) {
+    return `arail.layers:${url}`;
   }
 
   /** The layer ids the layout had when its choice of layers was saved (to add those it gains later). */

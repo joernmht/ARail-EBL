@@ -130,9 +130,44 @@ export function layerChoice(layers, ids) {
  * @returns {string[]} a valid choice (see {@link layerChoice})
  */
 export function withNewLayers(layers, chosen, known) {
+  const ids = [...chosen];
+  return layerChoice(layers, [...ids, ...newLayers(layers, ids, known)]);
+}
+
+/** The layers a saved choice gains (see {@link withNewLayers}), also those an exclusive one chosen keeps out. */
+function newLayers(layers, chosen, known) {
   const had = known ? new Set(known) : null, ids = new Set(chosen);
-  const added = layers.filter((l) => l.enabled && !l.exclusive && !ids.has(l.id) && (had ? !had.has(l.id) : !!l.since)).map((l) => l.id);
-  return layerChoice(layers, [...ids, ...added]);
+  return layers.filter((l) => l.enabled && !l.exclusive && !ids.has(l.id) && (had ? !had.has(l.id) : !!l.since)).map((l) => l.id);
+}
+
+/**
+ * The layer ids to keep with a choice as those the layout had (`known` of {@link withNewLayers}): all
+ * of its layers, but those the choice would gain that an exclusive layer chosen alone keeps out. They
+ * stay new, and come when it is left: a returning user whose last choice was an exclusive module gets
+ * them as anybody else.
+ * @param {Array<{id: string, enabled?: boolean, exclusive?: boolean, since?: string | null}>} layers the layout's layers
+ * @param {Iterable<string>} chosen the choice as saved or made
+ * @param {Iterable<string> | null} known the ids kept before (null: see withNewLayers)
+ * @returns {string[]}
+ */
+export function layersKnown(layers, chosen, known) {
+  const ids = [...chosen], on = new Set(withNewLayers(layers, ids, known)), added = new Set(newLayers(layers, ids, known));
+  return layers.map((l) => l.id).filter((id) => on.has(id) || !added.has(id));
+}
+
+/**
+ * A choice of layers with these switched on as well, each as switching it on does ({@link toggleLayer}):
+ * an exclusive one alone, any other without the exclusive ones (an example that needs a module, with
+ * the modules chosen before).
+ * @param {Array<{id: string, exclusive?: boolean}>} layers
+ * @param {Iterable<string>} on ids of the layers that are on
+ * @param {Iterable<string>} ids the layers to switch on
+ * @returns {string[]}
+ */
+export function switchOnLayers(layers, on, ids) {
+  let now = layerChoice(layers, on);
+  for (const id of ids) if (!now.includes(id)) now = toggleLayer(layers, now, id);
+  return now;
 }
 
 /** All plugins of a layout, of the base and of every layer (on or off), each once. */
