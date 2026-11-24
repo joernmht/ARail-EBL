@@ -290,7 +290,9 @@ const APP_DE = {
   "Key {n}": "Taste {n}",
   "Its trains run to the timetable of the rail operations": "Seine Züge fahren nach dem Fahrplan des Bahnbetriebs",
   "Taken": "Belegt",
-  "All start again; the clock is set back to {time}.": "Alle beginnen von vorn; die Uhr ist auf {time} zurückgestellt.",
+  "All start again.": "Alle beginnen von vorn.",
+  "All start again; the clock is set back to {time}, and with it the rest of the simulation: the other people are placed as at that time.":
+    "Alle beginnen von vorn; die Uhr ist auf {time} zurückgestellt und mit ihr der Rest der Simulation: Die anderen Menschen sind verteilt wie zu dieser Zeit.",
   "Only the trains of its rail line stop at this track": "An diesem Gleis halten nur die Züge seiner Bahnlinie",
   "This track is kept for a story's train": "Dieses Gleis ist für den Zug einer Geschichte freigehalten",
   "This track is closed": "Dieses Gleis ist gesperrt",
