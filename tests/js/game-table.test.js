@@ -370,10 +370,18 @@ test("the table in the live picture: leaving it gives the backdrop its modules a
   world.step(0.05);
   assert.ok(docks().length && docks().every((m) => m !== "plan"));
   for (let round = 0; round < 2; round++) {
-    // the table: the modules whose trains run into the station off, the board the planner of the platform tracks
-    assert.equal(scene.setTable(new SignallerGame({ level: "training" }), { active: true }), true);
+    // the table: the modules whose trains run into the station off, the board the planner of the platform tracks; the
+    // world is made anew for it (the backdrop's ran with the layout's own modules)
+    const backdrop = world.objects, game = new SignallerGame({ level: "training" });
+    assert.equal(scene.setTable(game, { active: true }), true);
+    assert.notEqual(world.objects, backdrop);
     world.step(0.05);
     assert.deepEqual(on(), ["sbahn"]);
+    // asked again with the same modules (the page asks with every frame drawn): the world runs on, with the same board
+    const running = world.objects, board = scene.board;
+    assert.equal(scene.setTable(game, { active: true }), true);
+    assert.equal(world.objects, running);
+    assert.equal(scene.board, board);
     assert.equal(world.services.planner, scene.board);
     assert.ok(docks().every((m) => m === "plan"));
     scene.draw(1e9);

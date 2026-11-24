@@ -531,7 +531,12 @@ export class LiveScene {
       this.loadOrtho();
     }
     if (game) {
-      // the modules of the layout that are on with the game's board (at the station: those whose trains do not run into it)
+      // the modules of the layout that are on with the game's board (at the station: those whose trains do not run into it).
+      // The world is made anew only when they change, and a running world is meant: coming from the backdrop they always
+      // change (it runs with the layout's own modules, never only a board's), so a table begins on a world made for it;
+      // between boards of the same modules (another seat of the shift shown) the world runs on, as their games share it,
+      // and the page asks with every frame drawn. A board takes what it needs from a world that has run (the signaller's
+      // its platforms: TableBoard.step).
       const want = BOARDS[idOf(game)].layers ?? TABLE_VIEW.layers, now = this.world.layers().filter((l) => l.enabled).map((l) => l.id);
       const ids = this.world.layers().filter((l) => want.includes(l.id)).map((l) => l.id);
       if (ids.join() !== now.join()) {
