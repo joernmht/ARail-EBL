@@ -371,7 +371,7 @@ export const EVENTS = [
   { name: "story.step", from: ["web/arail/core/story.js"], payload: "story, index, step", meaning: "A story went to a step (Next, Back, a jump, Play)." },
   { name: "story.play", from: ["web/arail/core/story.js"], payload: "story, playing", meaning: "A story goes on by itself, or stops." },
   { name: "plan.finished", from: ["web/arail/ops/plan.js"], payload: "plan, result", meaning: "A run of the operations plan ended: its trains on time, late and cancelled, the people left behind." },
-  { name: "scenario.message", from: ["web/arail/core/scenarios.js", "web/arail/terminal/operations.js"], payload: "scenario, text", meaning: "A message for the stage (also a refused terminal request)." },
+  { name: "scenario.message", from: ["web/arail/core/scenarios.js", "web/arail/sims/market.js", "web/arail/terminal/operations.js"], payload: "scenario, text", meaning: "A message for the stage (also a refused terminal request, and the market visitors' notice that there is no market to go to)." },
   { name: "vehicle.arriving", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "A train or bus comes in." },
   { name: "vehicle.arrived", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "It stands at its dock: doors open." },
   { name: "vehicle.departing", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "Doors close." },
