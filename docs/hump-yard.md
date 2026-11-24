@@ -59,8 +59,11 @@ way roll on into it. So train after train can be humped (`sim.departures` lists 
 `results().pushed_up_m` the room gained by pushing up). A train pulled out, by hand or by
 itself, takes the cuts standing in the track (`trackContents`), also one that stopped across its
 entrance, coupled to the last wagons with its rear still outside: it fills the track, which is then
-pulled out with it. A cut stopped wholly in front of the track stays there, and an empty track is
-never pulled out. `run()` stops at `max_s` (4 h) at the
+pulled out with it, and it ended in that track. A cut stopped across the entrance and pushed up
+wholly into the track stands in it (its stop moves with it): neither counts as stopped short any more.
+A cut stopped wholly in front of the track stays there, and an empty track is
+never pulled out. `run()` goes on until the trains are humped and nothing moves or would start
+again (a retarder still opening, a standing cut that gravity starts again); it stops at `max_s` (4 h) at the
 latest: `results()` then says `limit_reached`, with the trains humped (`trains`) and those not
 (`waiting`). Wagons without an id are numbered by their train (`T2.14`).
 
@@ -246,7 +249,9 @@ N/kN), and when the cut enters a retarder computes the speed it needs at every m
 - the **group retarder** brings it to where it should meet the wagons in its track: the rear of the
   last one standing there, less the length of the cuts on their way there before it
   (`targetPoint`), at the coupling speed of 1.0 m/s (DB allows impacts up to 1.25 m/s), never slower
-  than that. If a cut is still rolling ahead of it in the track, both runs are predicted over time
+  than that. It is worked out when the cut enters the retarder, and again if the wagons of its track
+  are pushed up or pulled out while it is in it: it aims at where they stand now, not at the rear of
+  wagons that have left. If a cut is still rolling ahead of it in the track, both runs are predicted over time
   and the exit speed is lowered until it would meet that one gently (`safeExit`): a gap to push up
   is better than a damaged wagon. Into a track with speed-holding units it lets a cut go at their
   speed, or faster where a bad runner needs it to get far enough, but never faster than meets a cut
