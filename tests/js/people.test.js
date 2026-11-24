@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { LANGUAGES, OPS_DEFAULTS, Person, Population, createRng, makeStaff, normalizeOps, pickHome } from "../../web/arail/index.js";
+import { LANGUAGES, OPS_DEFAULTS, Person, Population, createRng, hashKey, makeStaff, normalizeOps, pickHome } from "../../web/arail/index.js";
 import { ROOT } from "./helpers.js";
 
 test("people: names are two birds of one language (shown as S. Fink), stable for a seed and key, unique in a population", () => {
@@ -28,6 +28,51 @@ test("people: names are two birds of one language (shown as S. Fink), stable for
   const again = new Population(7, "test").add(["p", 3]);
   assert.equal(again.name, people[3].name, "same seed and key, same name");
   assert.equal(again.id, "p-3");
+});
+
+test("people: a name is the one hashKey gives for its key (Population.name goes on from the key's hash, it does not hash anew)", () => {
+  // the name as hashKey gives it: the language by hashKey(...k, "lang"), try i by hashKey(...k, i, "f"), "l" and "p"
+  const weight = LANGUAGES.reduce((s, l) => s + l.weight, 0);
+  const language = (h) => {
+    let r = h % weight;
+    for (const l of LANGUAGES) {
+      if (r < l.weight) return l;
+      r -= l.weight;
+    }
+    return LANGUAGES[0];
+  };
+  const particle = (lang, h) => {
+    let r = h % 100;
+    for (const [word, share] of Object.entries(lang.particles ?? {})) {
+      if (r < share) return `${word} `;
+      r -= share;
+    }
+    return "";
+  };
+  let retried = 0;
+  const plain = (seed, scope, key, taken) => {
+    const k = [seed, scope, ...[key].flat()];
+    const lang = language(hashKey(...k, "lang")), birds = lang.birds;
+    let name;
+    for (let i = 0; i < 50; i++) {
+      const f = hashKey(...k, i, "f") % birds.length;
+      const l = (f + 1 + (hashKey(...k, i, "l") % (birds.length - 1))) % birds.length;
+      name = `${birds[f][0]}. ${particle(lang, hashKey(...k, i, "p"))}${birds[l]}`;
+      if (!taken.has(name)) break;
+      retried++;
+    }
+    return { name, lang: lang.lang };
+  };
+  for (const [seed, scope] of [[7, "test"], [3, "person"], ["lab", "crew"]]) {
+    const pop = new Population(seed, scope), taken = new Set();
+    for (let i = 0; i < 300; i++) {
+      const key = i % 3 ? ["p", i] : `k${i}`;
+      const want = plain(seed, scope, key, taken), got = pop.add(key);
+      assert.deepEqual({ name: got.name, lang: got.lang }, want, `seed ${seed}, ${scope}, key ${key}`);
+      taken.add(want.name);
+    }
+  }
+  assert.ok(retried > 0, "names taken already: the next try");
 });
 
 test("people: simulations extend Person; people made before keep their names", () => {

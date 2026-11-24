@@ -67,3 +67,39 @@ test("Bf Neustadt: the Striezelmarkt is on by default, also where a choice of mo
   expect(await on()).not.toContain("striezelmarkt");
   expect(errors).toEqual([]);
 });
+
+test("Bf Neustadt: an example brings back no module switched off by hand; a choice of Breakdown alone gets the Striezelmarkt when it is left", async ({ page }) => {
+  test.setTimeout(150_000);
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const url = "/app/?layout=../layouts/ebl-neustadt.json";
+  const on = () => page.evaluate(() => window.__arail.layersOn());
+  const loaded = () => page.waitForFunction(() => window.__arail?.world?.objects?.length, null, { timeout: 30_000 });
+  await page.goto(url);
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(url);
+  await loaded();
+  // the market switched off by hand, then Examples → Hump yard: the hump yard on, the market still off
+  await page.evaluate(() => window.__arail.setLayers(window.__arail.layersOn().filter((id) => id !== "striezelmarkt" && id !== "market-visitors")));
+  await page.evaluate(() => window.__arail.openExample("hump"));
+  await expect.poll(on).toEqual(["sbahn", "waldhof", "hump"]);
+  // and so for Bf Neustadt from then on
+  await page.goto(url);
+  await loaded();
+  expect(await on()).toEqual(["sbahn", "waldhof", "hump"]);
+  // Breakdown (an exclusive module) alone, chosen before the market came and before the ids were kept:
+  // alone, also on the next visit
+  await page.evaluate((key) => {
+    localStorage.clear();
+    localStorage.setItem(key, JSON.stringify(["operations"]));
+  }, `arail.layers:${new URL("/layouts/ebl-neustadt.json", page.url()).href}`);
+  for (let i = 0; i < 2; i++) {
+    await page.reload();
+    await loaded();
+    expect(await on()).toEqual(["operations"]);
+  }
+  // left for S-Bahn: the market comes with it
+  await page.evaluate(() => window.__arail.toggleModule("sbahn"));
+  await expect.poll(on).toEqual(["sbahn", "striezelmarkt", "market-visitors"]);
+  expect(errors).toEqual([]);
+});
