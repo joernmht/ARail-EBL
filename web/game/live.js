@@ -337,6 +337,7 @@ export class LiveScene {
     const request = (this.request = (this.request || 0) + 1), stale = () => request !== this.request || !this.table;
     if (kind !== "photo" && kind !== "camera") {
       this.closeFeed();
+      this.stopSearch();
       this.source = "table";
       return { source: "table" };
     }
@@ -397,21 +398,31 @@ export class LiveScene {
     this.searching = false;
   }
 
-  /** The worker that finds the table's markers in a picture (the live page's, web/live/detect-worker.js), started once. */
+  /**
+   * The worker that finds the table's markers in a picture (the live page's, web/live/detect-worker.js): started when a
+   * photo or the camera is chosen, kept while the table is seen through one of them (`stopSearch` lets it go).
+   */
   startSearch() {
-    if (this.worker || this.searchProblem) return;
-    // the markers cannot be searched: said once (the event livetracking), the picture is shown without the game
+    if (this.worker) return;
+    this.searchProblem = null;
+    let worker = null;
+    // the markers cannot be searched: said (the event livetracking), the picture is shown without the game; the worker
+    // is let go of, and the next photo or camera chosen tries again (a slow start may have been all)
     const fail = () => {
+      if (worker && this.worker !== worker) return;
       this.searching = false;
       if (this.ready || this.searchProblem) return;
+      this.stopSearch();
       this.searchProblem = "The table's markers cannot be searched in this browser: the game cannot be placed on the picture.";
       this.canvas.dispatchEvent(new CustomEvent("livetracking", { detail: { tracking: false, problem: this.searchProblem } }));
     };
     if (typeof Worker !== "function") return fail();
     const m = this.world.layout.markers;
     try {
-      const worker = new Worker(new URL("../live/detect-worker.js", import.meta.url), { type: "module" });
+      worker = this.worker = new Worker(new URL("../live/detect-worker.js", import.meta.url), { type: "module" });
       worker.onmessage = ({ data: msg }) => {
+        // (one let go of says nothing more)
+        if (this.worker !== worker) return;
         if (msg.type === "ready") this.ready = true;
         else if (msg.type === "error" && !this.ready) fail();
         else if (msg.type === "markers" || msg.type === "error") {
@@ -421,11 +432,17 @@ export class LiveScene {
       };
       worker.onerror = fail;
       worker.postMessage({ type: "init", dictionary: m.dictionary || "ARUCO", codes: this.world.map.detectionCodes(m.codes) });
-      this.worker = worker;
     } catch {
-      this.worker = null;
       fail();
     }
+  }
+
+  /** Let the worker that searches for markers go (the table seen from above again, or left): a photo or the camera chosen later starts another. */
+  stopSearch() {
+    this.worker?.terminate();
+    this.worker = null;
+    this.ready = false;
+    this.searching = false;
   }
 
   /** Search the picture for markers: a photo once (until they are found), the camera every few frames. */
@@ -555,6 +572,7 @@ export class LiveScene {
         // the backdrop again: the camera goes back to the shot asked for next, the world to its own pace, with its
         // modules and its own timetable at the platforms (the boards have left the world)
         this.closeFeed();
+        this.stopSearch();
         this.source = "table";
         if (this.layersBefore) this.world.setLayers(this.layersBefore);
         this.layersBefore = null;

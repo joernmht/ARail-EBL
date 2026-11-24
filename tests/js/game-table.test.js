@@ -186,6 +186,42 @@ test("the board: a train that stands at a platform is there for the world's peop
   assert.ok([...world.services.docks.values()].every((st) => !st.vehicle || st.vehicle.phase === "departing" || st.vehicle.kind !== TABLE_TRAIN.kind));
 });
 
+test("the board: a train of the world's timetable still at a platform when the board takes over leaves it to the game's train", () => {
+  const world = createWorld(NEUSTADT, { seed: 1 });
+  world.step(0.05);
+  const services = world.services, platforms = [...services.docks.values()].filter((st) => ["G1", "G2", "G3"].includes(String(st.dock.track ?? "")));
+  // the world's own trains stand at the three platform tracks, sent by its timetable before the table was taken
+  const before = new Map(platforms.map((st) => {
+    const v = st.vehicle ?? services.call(st.dock.id, { source: st.mode === "line" ? "rail-line" : "timetable" });
+    Object.assign(v, { phase: "dwelling", progress: 1, dwellLeft: 3600 });
+    return [String(st.dock.track), v];
+  }));
+  assert.equal(before.size, 3);
+  const board = new TableBoard(world), g = new SignallerGame({ seed: 3, level: "training" });
+  board.show(g);
+  const gone = [];
+  world.events.on("vehicle.departed", (e) => gone.push(e.vehicle));
+  // they stay until a train of the game needs their platform
+  board.step();
+  assert.ok(platforms.every((st) => before.get(String(st.dock.track)) === st.vehicle));
+  const used = new Set();
+  playTo(g, 300, () => {
+    board.step();
+    for (const tr of g.trains) {
+      const here = board.standing.get(tr.id);
+      assert.equal(!!here, tr.state === "dwelling", `${tr.id} at ${g.t}: the platform is the game's train's`);
+      if (!here) continue;
+      used.add(tr.track);
+      assert.equal(services.docks.get(here.dock.id).vehicle, here.vehicle);
+      assert.equal(here.vehicle.kind, TABLE_TRAIN.kind);
+      assert.equal(services.doors(here.vehicle).length, 2, `${tr.id}: its doors are open`);
+    }
+  });
+  assert.ok(used.size > 0, "trains of the game stood at a platform");
+  // the world's train is gone from each platform a train of the game stood at, and only from those
+  for (const [track, v] of before) assert.equal(gone.includes(v), used.has(track), `${track}: the world's train ${used.has(track) ? "taken away" : "left alone"}`);
+});
+
 test("the board: it draws the game on the table, and a signal, a track and where a route goes can be chosen there", () => {
   const world = createWorld(NEUSTADT, { seed: 1 });
   world.step(0.05);

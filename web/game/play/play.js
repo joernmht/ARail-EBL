@@ -1477,6 +1477,8 @@ class PlayPage {
       toast.textContent = last.text;
       toast.className = `play-toast k-${safe(last.kind)}`;
       toast.setAttribute("aria-label", `${last.text} (all messages)`);
+      // (cut off where it is longer than the line: the whole of it is its tooltip)
+      toast.title = last.text;
       toast.hidden = false;
       this.toastUntil = now + TOAST_MS;
     }
@@ -1645,7 +1647,7 @@ class PlayPage {
     const picks = sk.items.filter((it) => it.id && ((can && it.menu?.length) || about.has(it.id) || alertOf(it)));
     if (!p.board) {
       p.sketchTitle = h("h4", {});
-      p.shapes = s("g", { "aria-hidden": "true" });
+      p.shapes = s("g", { class: "shapes", "aria-hidden": "true" });
       p.picks = s("g", {});
       p.svg = s("svg", { focusable: "false" }, p.shapes, p.picks);
       p.board = h("div", { class: "play-board", "data-scroll": `sketch|${seat.id}` }, p.svg);

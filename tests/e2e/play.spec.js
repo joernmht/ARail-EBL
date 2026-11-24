@@ -700,6 +700,9 @@ test("messages: one pops up at a time, a newer one takes its place and it goes b
   await say("Second of two.");
   await expect(toast(page)).toHaveText("Second of two.");
   await expect(page.locator(".play-toast")).toHaveCount(1);
+  // cut off where it is longer than the line: the whole of it is its tooltip (and its name, with what a click does)
+  await expect(toast(page)).toHaveAttribute("title", "Second of two.");
+  await expect(toast(page)).toHaveAccessibleName("Second of two. (all messages)");
   const fresh = await page.evaluate(() => window.__play.session.seat("signaller-relay").game.logs.length);
   await expect(badge).toHaveText(String(fresh));
   await expect(bell).toHaveAccessibleName(`Messages, ${fresh} new`);
@@ -2447,6 +2450,17 @@ test("no information box on the picture: in every state of a mission, text is on
   await expect(page.locator(`${SIGNALLER} .play-board .pick.alert`).first()).toBeVisible();
   await page.locator(`${SIGNALLER} .play-board .pick.alert`).first().click();
   await check("an asset chosen in the game's picture");
+  // the game's own picture may hold only what it draws itself: a box added to the panel, or a callout drawn into its
+  // picture, is text in the picture
+  await page.locator(`${SIGNALLER} .play-sketch`).evaluate((el) => {
+    el.append(Object.assign(document.createElement("p"), { id: "box", textContent: "Signal N2 has failed." }));
+    const ns = "http://www.w3.org/2000/svg", callout = el.querySelector(".play-board svg").appendChild(document.createElementNS(ns, "g"));
+    callout.id = "callout";
+    callout.append(document.createElementNS(ns, "rect"), Object.assign(document.createElementNS(ns, "text"), { textContent: "Look here" }));
+    callout.lastChild.setAttribute("y", "40");
+  });
+  expect(await inPicture(page)).toEqual(["Look here (in text.)", "Signal N2 has failed. (in p#box.)"]);
+  await page.evaluate(() => ["#box", "#callout"].forEach((sel) => document.querySelector(sel).remove()));
   await page.locator("#bellBtn").click();
   await check("the messages at the side");
   await page.keyboard.press("Escape");
