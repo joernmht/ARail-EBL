@@ -439,16 +439,24 @@ test("Bf Neustadt: two tram lines from loop to loop, line 2 through the pedestri
   // the rails run round: two rails a line, no crossovers
   for (const l of lines) assert.equal(tramRails(l, 1435 / 87, 230).length, 2);
   // no tram runs through a building: its track, a tram's half width (1.3 m) to each side, stays outside
-  // every footprint (the loops and their necks included)
+  // every footprint (the loops and their necks included), checked every 10 mm along the line
   const open = new Set(["road", "area", "tabletop", "market-square", "label", "tree", "forest", "track", "platform", "tram-stop", "bus-stop", "traffic-light", "traffic-sign", "zebra-crossing", "rail-crossing", "underpass"]);
-  const solid = w.objects.filter((o) => !open.has(o.type) && o.footprint?.()?.length >= 3);
   const halfTram = 1300 / 87;
+  const solid = w.objects.filter((o) => !open.has(o.type) && o.footprint?.()?.length >= 3).map((o) => {
+    const fp = o.footprint(), xs = fp.map((p) => p[0]), ys = fp.map((p) => p[1]);
+    return { o, fp, box: [Math.min(...xs) - halfTram, Math.min(...ys) - halfTram, Math.max(...xs) + halfTram, Math.max(...ys) + halfTram] };
+  });
   for (const l of lines) {
-    for (const p of l.circuit.points) {
-      for (const o of solid) {
-        const fp = o.footprint();
-        const near = fp.some((a, i) => pointSegment(p, a, fp[(i + 1) % fp.length]).distance < halfTram);
-        assert.ok(!pointInPolygon(p, fp) && !near, `${l.id} at ${p.map(Math.round)} runs through ${o.id}`);
+    const P = l.circuit.points;
+    for (let i = 1; i < P.length; i++) {
+      const [a, b] = [P[i - 1], P[i]], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 10));
+      for (let k = 0; k <= n; k++) {
+        const p = [a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n];
+        for (const { o, fp, box } of solid) {
+          if (p[0] < box[0] || p[0] > box[2] || p[1] < box[1] || p[1] > box[3]) continue;
+          const near = fp.some((c, j) => pointSegment(p, c, fp[(j + 1) % fp.length]).distance < halfTram);
+          assert.ok(!pointInPolygon(p, fp) && !near, `${l.id} at ${p.map(Math.round)} runs through ${o.id}`);
+        }
       }
     }
   }
