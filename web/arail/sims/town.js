@@ -1820,7 +1820,7 @@ export class TownSimulation extends Simulation {
    */
   _dissolve(leader, id, open = "other") {
     const party = leader.party, r = leader.record;
-    const end = r ? open : leader.trips[leader.trips.length - 1]?.end ?? "other";
+    const last = r ? null : leader.trips[leader.trips.length - 1] ?? null, end = last?.end ?? (r ? open : "other");
     const along = this._along(leader);
     this._alone(leader);
     if (!party) return;
@@ -1829,6 +1829,8 @@ export class TownSimulation extends Simulation {
     for (const m of along) {
       this._alone(m);
       if (m.record && r) Object.assign(m.record, { mode: r.mode, way: null });
+      // (how the trip went is the leader's to say, `_learn`: a jam was a jam for everybody in the car)
+      if (m.record && last?.bad != null) m.record.bad = last.bad;
       if (m.record) this._closeRecord(m, end);
       m.person = null;
       m.vehicle = null;
@@ -2209,7 +2211,7 @@ export class TownSimulation extends Simulation {
    * when it began (clock minutes since day 0) and its parts (clock minutes) so far.
    */
   _newRecord(purpose, from, to, fromKind = null) {
-    return { purpose, from: from ?? null, to: to ?? null, fromTrain: fromKind === "train", start: this._clockNow(), parts: { walk: 0, wait: 0, doors: 0, ride: 0, car: 0, bike: 0 }, mode: null };
+    return { purpose, from: from ?? null, to: to ?? null, fromTrain: fromKind === "train", start: this._clockNow(), weekend: !!this.world.clock.weekend(), parts: { walk: 0, wait: 0, doors: 0, ride: 0, car: 0, bike: 0 }, mode: null };
   }
 
   /**
@@ -2259,7 +2261,8 @@ export class TownSimulation extends Simulation {
     r.bad = bad;
     if (r.way) a.memory?.learn(r.way, r.mode, took / Math.max(0.2, r.expected || r.planned), bad, T.everybody.learn);
     a.mood = Math.min(1, Math.max(0, (a.mood ?? 0.85) + (bad ? -BAD_TRIP_MOOD : GOOD_TRIP_MOOD)));
-    const began = ((r.start % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES, weekend = clock.weekend(), X = this.world.experience;
+    // (the hour and the kind of day the trip began in: one over midnight is of the evening it set out in)
+    const began = ((r.start % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES, weekend = r.weekend ?? clock.weekend(), X = this.world.experience;
     if (r.mode === "transit" && P.wait + P.ride > 0) X.learn("transit", began, weekend, (sim("wait") + sim("doors") + sim("ride")) / (P.wait + P.ride));
     else if (r.mode === "walk" && P.walk > 0.5) X.learn("walk", began, weekend, sim("walk") / P.walk);
     else if (r.mode === "bike" && P.bike > 0.2 && sim("bike") > 0) X.learn("bike", began, weekend, sim("bike") / (P.bike + (P.fixed || 0) / 2));

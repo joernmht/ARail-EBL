@@ -202,6 +202,40 @@ test("a group's trip that is broken off ends for those who came along as it does
   }
 });
 
+test("a trip that went badly went badly for those who came along too; a trip is of the day it began on", () => {
+  const world = createWorld(layout({ car_share: 0, bus_share: 0 }, { traffic: false, cycling: false, bus: false }), { seed: 11 });
+  world.step(0.1);
+  const t = townOf(world);
+  let lead = null;
+  world.speed = 2.5;
+  for (let i = 0; i < 4e5 && !lead && world.clock.minutes < 12 * 60; i++) {
+    world.step(0.1);
+    lead = t.agents.find((a) => a.party?.leader === a && a.record && a.trip && a.party.members.some((m) => m !== a && m.state === "with" && m.record)) ?? null;
+  }
+  const along = lead.party.members.filter((m) => m !== lead);
+  // the leader arrives after a trip that went badly (a jam, soaked)
+  t._closeRecord(lead, "arrived");
+  lead.trips[lead.trips.length - 1].bad = true;
+  t._setInside(lead, lead.house.building);
+  for (const m of along) {
+    const trip = m.trips[m.trips.length - 1];
+    assert.deepEqual([trip.end, trip.bad, trip.along], ["arrived", true, true]);
+    assert.equal(t.tripLog.findLast((r) => r.id === m.id).bad, true, "in the log the Overview counts");
+  }
+  // a trip that sets out on a working day's evening and arrives on Saturday is a working day's trip
+  const record = t._newRecord("work", null, null);
+  assert.equal(record.weekend, world.clock.weekend());
+  assert.equal(record.weekend, false);
+  const x = world.experience, before = x.trips.walk;
+  Object.assign(record, { mode: "walk", planned: 10, plannedParts: { walk: 10 }, minutes: 10 * world.clock.factor, parts: { ...record.parts, walk: 10 * world.clock.factor }, start: 23 * 60 + 40 });
+  const weekend = world.clock.weekend;
+  world.clock.weekend = () => true;
+  t._learn(lead, record);
+  world.clock.weekend = weekend;
+  assert.equal(x.trips.walk, before + 1);
+  assert.ok(x.open.has("walk|weekday|23") && !x.open.has("walk|weekend|23"), [...x.open.keys()].join(" "));
+});
+
 test("the choice of the mode: nobody drives or rides where it is switched off; where a line fits and it must, everybody rides", () => {
   const off = createWorld(layout({ car_share: 0, bus_share: 0 }, { cycling: false }), { seed: 5 });
   off.step(0.1);
