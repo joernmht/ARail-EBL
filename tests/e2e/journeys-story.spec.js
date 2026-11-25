@@ -77,7 +77,7 @@ test("the journeys story: Next and Back, the bar of the steps, a clicker; her tr
   await step(page, "Bus 270 leaves with Ada").click();
   await expect(title(page)).toHaveText("Bus 270 leaves with Ada");
   await expect(step(page, "Bus 270 leaves with Ada")).toHaveClass(/\bnow\b/);
-  expect(await storyDisruptions(page)).toEqual(["story-train@bus-terminal-1:bay1", "story-train@bus-terminal-1:bay2", "story-train@platform-1:right"]);
+  expect(await storyDisruptions(page)).toEqual(["story-train@bus-terminal-1:bay1", "story-train@bus-terminal-1:bay2", "story-train@bus-terminal-1:bay3", "story-train@platform-1:right"]);
   await expect(page.locator("#hud")).toContainText("1 disruption");
   // a presenter's clicker: Page Down and Page Up
   await page.keyboard.press("PageDown");
@@ -101,7 +101,7 @@ test("the journeys story: Next and Back, the bar of the steps, a clicker; her tr
 
   // the module switched off in the middle of the story: nothing of it is left on the layout
   await step(page, "To the bus station").click();
-  expect(await storyDisruptions(page)).toHaveLength(3);
+  expect(await storyDisruptions(page)).toHaveLength(4);
   await openModules(page);
   await page.locator(".modules").getByRole("button", { name: "Journeys", exact: true }).click();
   await page.waitForFunction(() => !window.__arail.world.simulations.some((s) => s.constructor.type === "journeys-story"), null, { timeout: 30_000 });
@@ -117,8 +117,8 @@ test("the camera follows: the flyover goes with Ada through the town and with he
   await page.waitForFunction(() => window.__arail.mode === "flyover");
   /** Where the camera looks from above (degrees). */
   const yaw = () => page.evaluate(() => Math.round((window.__arail.flyover.cam.yaw * 180) / Math.PI));
-  // her walk from home is seen from the street, facing her front door; the station from its front
-  await expect.poll(yaw, { timeout: 15_000 }).toBe(-90);
+  // her walk from home is seen from Lange Straße, facing her front door; the station from its front
+  await expect.poll(yaw, { timeout: 15_000 }).toBe(90);
   await step(page, "The departure board").click();
   await expect.poll(yaw, { timeout: 15_000 }).toBe(90);
   /** How far (mm) the camera's target is from where the story happens. */

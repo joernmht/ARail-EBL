@@ -8,14 +8,14 @@ For a railway lab the visitors matter beyond the market: about a third of them c
 
 Both examples have it:
 
-- **Bf Neustadt** (the app's own layout, `app/`): on the Festplatz am Wall, a module of its own behind St. Marien, with its gates on the Wallanlagen. The two modules are **on by default**; in the flyover it is north of the Altstadt, behind the Kirchplatz.
+- **Bf Neustadt** (the app's own layout, `app/`): on the Bahnhofsplatz, the square between the station and Bahnhofstraße: two rows of stalls along the station's front, the tree, the ferris wheel, the carousel and the locomotive stall beside the station, its gates on Bahnhofstraße and to the station's doors. The two modules are **on by default**; out of season the square is empty and people cross it to the trains.
 - **The lab example** (`app/?layout=../layouts/ebl-lab.json`): on the Marktplatz, a module of its own west of the town; switch the two modules on in **Examples → Sandbox**, or with the address `app/?layout=../layouts/ebl-lab.json&layers=striezelmarkt,market-visitors`.
 
 Switch them on or off in **Examples → Sandbox**; the situation *Christmas market* (Settings → Simulation) switches them on and sets a snowy Saturday evening in December.
 
 | Module | What it adds |
 | --- | --- |
-| *(the base)* | the market's table module with the paved square: on Bf Neustadt the Festplatz am Wall (module Am Wall), on the lab example the Marktplatz with Lindenallee leading to it and the Altbau Am Markt on its south side (module M) |
+| *(the base)* | the market's table module with the paved square: on Bf Neustadt the Bahnhofsplatz in front of the station, on the lab example the Marktplatz with Lindenallee leading to it and the Altbau Am Markt on its south side (module M) |
 | **Striezelmarkt** (`striezelmarkt`) | 22 stalls with their signs, two arches over the entrances reading *Striezelmarkt*, the Christmas tree, the ferris wheel (Riesenrad), the carousel (Kinderkarussell) and the mini train (Kindereisenbahn); the scenario *Evening at the Striezelmarkt* |
 | **Market visitors** (`market-visitors`) | the visitor simulation `market`; the scenario *Closing time at the Striezelmarkt*. Needs the Striezelmarkt: without stalls and rides nobody comes, and while the market is open the visitors say so once (*Market visitors: no market square has stalls or rides, so nobody comes.*) |
 

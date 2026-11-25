@@ -34,14 +34,14 @@ import { TABLE, TableStation } from "./table.js";
 export const DISTRICT_TABLE = {
   base: { at: [4780, -480], yard: [[4640, -345], [4760, -345], [4880, -345], [5000, -345]], gate: [4780, -217] },
   places: {
-    "Bf Neustadt": { at: [3300, 150], park: [2930, -217], stand: [3300, 60] },
+    "Bf Neustadt": { at: [3300, 150], park: [2930, -555], stand: [3300, 60] },
     Bergheim: { at: [7450, 262], park: [5500, -217], stand: [7300, 150] },
     Talsee: { at: [-1500, 436], park: [-1500, 235], stand: [-1500, 330] },
     Waldau: { at: [-150, 812], park: [-558, 800], stand: [-470, 760], z: 56 },
   },
   spots: {
     // (exit signal N2 stands where the signaller's table has it: `DistrictBoard#spot`)
-    lift: { at: [2930, 268], park: [2930, -217], stand: [2890, -150] },
+    lift: { at: [2930, 268], park: [2930, -555], stand: [2890, -240] },
     bue: { at: [-560, 404], park: [-560, 250], stand: [-520, 290] },
     azs: { at: [-1200, 414], park: [-1200, 235], stand: [-1200, 320], track: "ae" },
     rail: { at: [-1750, 485], park: [-1700, 235], stand: [-1760, 380], track: "be" },

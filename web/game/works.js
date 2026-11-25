@@ -40,11 +40,11 @@ export const WORKS_TABLE = {
   homes: {
     p1: { at: [7650, -120], park: [5500, -217] },
     p2: { at: [-2250, 120], park: [-1700, 235] },
-    p3: { at: [1900, -330], park: [1900, -217] },
+    p3: { at: [2985, 1160], park: [2985, 1050] },
     p4: { at: [-1250, 140], park: [-1500, 235] },
     p5: { at: [-660, 900], park: [-558, 871], z: 56 },
   },
-  pins: { ops: [3250, 330], council: [5060, -470], staff: [4780, -392], town: [1500, -420], safety: [2930, -107] },
+  pins: { ops: [3250, 330], council: [5060, -470], staff: [4780, -392], town: [1500, -420], safety: [2930, -141] },
 };
 
 /** The colours of the board: a work as planned, one that misses something, a possession, a closed and a slowed track, a danger, what is done, what is chosen or asked, a note at a door. */

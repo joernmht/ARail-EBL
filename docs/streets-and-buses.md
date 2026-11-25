@@ -457,7 +457,10 @@ conflicts of the last hour and the bikes at its lamps.
 ## The example: Bf Neustadt
 
 The layout **EBL Bf Neustadt** (`web/layouts/ebl-neustadt.json`) shows most of it. In front of the
-table lies the town: Bahnhofstraße with the station, the bus station and the P+R; the **Altstadt**
+table lies the town: the station with the **Bahnhofsplatz** in front of it, between the station and
+Bahnhofstraße: the square of the Christmas market, the bus station (ZOB) with flat shops behind its
+bays, the P+R, a Fahrradstation and bike stands, all of them low so that the tracks stay in view;
+Bahnhofstraße swings away from the tracks in an S-curve to make room for it. The **Altstadt**
 with its pedestrian zones (Marktstraße, Lange Straße and the Markt itself), the Rathaus, the church
 St. Marien and houses with shops on the ground floor; Gründerzeit blocks, the Stadtpark and the Wall
 round it; a garden town of single-family houses in the east. Behind the curve lies the high-rise
@@ -466,14 +469,13 @@ estate **Am Plattenring**, with the Passage, a pedestrian zone between slabs of 
 Two tram lines start at *Lindenstraße* and run along Ringstraße and Bahnhofstraße: line 1 to
 *Neustadt Bf* and the *Busbahnhof*, line 2 through the pedestrian zone Marktstraße to the *Markt*:
 two tracks through the curve from Bahnhofstraße, one past the Markt (Bahnhofstraße is the passing
-loop), where it stops at a curb extension before it goes round the church. All three loops lie
-beyond a short single track; their tracks bend in curves of 25 m and more. The Markt's loop reaches
-the Wall: Wallstraße ends on both sides of it as a dead end with a turning circle, and the
-Wallanlagen, a footpath, lead round it. Behind the station **Brückenstraße** crosses the main line
+loop), where it stops at a curb extension past St. Marien, which stands beside the track on its
+Kirchplatz; the track crosses Wallstraße to a loop on a green of its own, on the module Am Wall. All
+three loops lie beyond a short single track; their tracks bend in curves of 25 m and more. Behind the station **Brückenstraße** crosses the main line
 at a level crossing with half barriers to Am Plattenring: no tram goes over it (BOStrab § 15), and
 everything lies at the track level. So **buses** take the estate and the garden town: line 261 from
 Neustadt Bf over the level crossing round the estate to its turning circle *Am Wendekreis*, line 262
-from the tram's Busbahnhof through the garden town to its turning circle in *Drosselweg*; line 7
+from the ZOB through the garden town to its turning circle in *Drosselweg*; line 7
 goes round Am Bogen. Both tram lines share the car lanes of Ringstraße with traffic lights at
 Brückenstraße and a zebra crossing at Am Park, and have their own lanes in the middle of
 Bahnhofstraße, where people cross the car lane to the trams at the lights of the stops. The stops

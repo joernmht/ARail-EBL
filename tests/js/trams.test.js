@@ -421,7 +421,7 @@ test("Bf Neustadt: two tram lines from loop to loop, line 2 through the pedestri
     assert.equal(l.vehicle, "tram");
     assert.deepEqual(l.problems, []);
   }
-  // both turn in loops at both ends (Lindenstraße; Busbahnhof and Markt), never on stub tracks;
+  // both turn in loops at both ends (Lindenstraße; Busbahnhof and Am Wall), never on stub tracks;
   // single track only on the necks before the loops; no curve is tighter than 25 m
   assert.ok(lines.every((l) => l.reversals.length === 0));
   assert.ok(lines.every((l) => l.single.length === 4));
@@ -430,12 +430,12 @@ test("Bf Neustadt: two tram lines from loop to loop, line 2 through the pedestri
   assert.ok(loops.every((o) => o.roadInfo().tramTracks === "single-oneway"));
   const xs1 = lines[0].circuit.points.map((p) => p[0]), ys2 = lines[1].circuit.points.map((p) => p[1]);
   assert.ok(Math.min(...xs1) < -3300 && Math.max(...xs1) > 4600, "line 1 from loop to loop");
-  assert.ok(Math.min(...ys2) < -1900, "line 2 round the Markt's loop, down to the Wall");
+  assert.ok(Math.min(...ys2) < -2800, "line 2 over Wallstraße round its loop Am Wall");
   // line 2 runs through the pedestrian zone Marktstraße: two tracks through the curve from
   // Bahnhofstraße, one past the Markt; no car drives there
   const zone = ["road-marktstrasse", "road-marktstrasse-sued"].map((id) => w.getObject(id).roadInfo());
   assert.deepEqual(zone.map((z) => [z.kind, z.car, z.tram, z.tramTracks]), [["pedestrian", false, "street", "double"], ["pedestrian", false, "street", "single"]]);
-  assert.ok(lines[1].circuit.points.some((p) => Math.abs(p[0] - 2550) < 1 && p[1] < -700 && p[1] > -1100), "line 2 along Marktstraße");
+  assert.ok(lines[1].circuit.points.some((p) => Math.abs(p[0] - 2550) < 1 && p[1] < -1200 && p[1] > -1800), "line 2 along Marktstraße, past St. Marien");
   // the rails run round: two rails a line, no crossovers
   for (const l of lines) assert.equal(tramRails(l, 1435 / 87, 230).length, 2);
   // Brückenstraße crosses the main line at street level (half barriers): no tram tracks over it
