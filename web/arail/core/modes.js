@@ -392,6 +392,8 @@ export class Experience {
     this.days = Number.isFinite(+s.days) && +s.days > 0 ? +s.days : 0;
     /** Was it taken from a layout (worked out ahead)? */
     this.given = !!(s.modes && typeof s.modes === "object");
+    /** What the layout's experience was learned for (sims/learning.js `experienceKey`), or null. */
+    this.for = typeof s.for === "string" ? s.for : null;
     /** @type {Record<string, Record<string, Float64Array>>} mode → kind of day → 24 ratios */
     this.table = {};
     /** The trips of the hours not yet over: mode → kind of day → hour → {sum, n}. */
@@ -493,6 +495,7 @@ export function experienceProblems(saved) {
   if (typeof saved !== "object" || Array.isArray(saved)) return ["experience must be an object: {days, modes}"];
   const out = [];
   if (saved.days != null && !(Number.isFinite(+saved.days) && +saved.days >= 0)) out.push("experience.days must be a number of days");
+  if (saved.for != null && typeof saved.for !== "string") out.push("experience.for must be the key the tool wrote (tools/mobility-learn.mjs)");
   if (saved.modes != null && (typeof saved.modes !== "object" || Array.isArray(saved.modes))) out.push("experience.modes must be an object of modes");
   for (const [mode, kinds] of Object.entries(saved.modes && typeof saved.modes === "object" ? saved.modes : {})) {
     if (!MODES[mode]) {

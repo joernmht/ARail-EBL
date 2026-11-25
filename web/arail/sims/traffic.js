@@ -668,6 +668,11 @@ export class TrafficSimulation extends Simulation {
     const len = this.mm(LENGTH_M);
     const ends = net.boundaryNodes();
     for (const car of this.cars) {
+      // one of the town's own people: they get out where they are and walk on
+      if (car.owner) {
+        this._arrived(car, null, null);
+        continue;
+      }
       const pose = this._pose(car);
       const oldDest = car.destPos;
       const ahead = [pose.front[0] + pose.dir[0] * this.mm(6), pose.front[1] + pose.dir[1] * this.mm(6)];
@@ -978,6 +983,15 @@ export class TrafficSimulation extends Simulation {
       const e = x.s - x.half - this.mm(1) - car.s;
       if (e < -this.mm(0.5) || e > look + this.mm(10)) continue;
       if (x.kind === "zebra" ? x.obj.busy() : x.obj.closed(now)) hold(e - this.mm(x.kind === "rail" ? 3 : 0.5), x.kind);
+      else if (e >= 0 && e < look && !entering(car) && x.s + x.half < p.length - this.mm(LENGTH_M)) {
+        // not onto a crossing while there is no room behind it: nobody stands on a zebra or on the rails (StVO § 11, § 19)
+        const out = polylineAt(p.points, x.s + x.half, p.lengths);
+        const blocker = blockerAfter(car, out.point, out.dir, users, this.mm(LENGTH_M + GAP_M), this.mm(1.3));
+        if (blocker) {
+          hold(e - this.mm(x.kind === "rail" ? 3 : 0.5), "room");
+          heldBy = blocker;
+        }
+      }
     }
     // people on the street ahead (they cross, or a gap was misjudged): stop before them
     const person = this.world.walking.onRoad.length ? peopleAhead(this.world, me.front, me.dir, look, this.mm(WIDTH_M / 2 + 0.6), car.shift ? null : { points: p.points, lengths: p.lengths, length: p.length, s: car.s }) : Infinity;
@@ -991,6 +1005,8 @@ export class TrafficSimulation extends Simulation {
     waitFor(car, lead.user || heldBy, dt, !lead.user);
     /** Why the car is held now ("light", "stop", "yield", "room", "zebra", "rail"), or null. */
     car.hold = stopAt < this.mm(1.5) ? why : null;
+    /** How long it has stood for people crossing (s): after a while those who come to the kerb let it go first (core/walking.js). */
+    car.yielded = car.hold === "people" ? (car.yielded || 0) + dt : 0;
     car.v = vT > car.v ? Math.min(vT, car.v + ACCEL * dt) : Math.max(vT, car.v - HARD * dt, 0);
     let move = Math.min(this.mm(car.v * dt), stopAt);
     // never into the vehicle ahead

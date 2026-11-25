@@ -44,6 +44,7 @@ const DEPARTED_M = 15; // vehicle.departed when the front is this far beyond the
 const DOORS_S = 2.5; // doors closing before the bus moves (s)
 const SPAWN_M = 45; // new buses come in this far before their first stop (m)
 const MIN_DWELL_S = 8;
+const DONE_S = 1.5; // nobody getting on or off for this long (s): the doors close
 const MISALIGNED_S = 300; // route cost of serving a stop against its direction (s)
 const REVERSE_S = 20; // a tram at the end of a stub track: the driver changes ends (s)
 
@@ -1343,6 +1344,10 @@ export class Transit {
       // the doors open once people may cross to the tram (the lights hold the vehicles beside it)
       if (this.signals.holdsDoors(bus.dock?.id)) return;
       bus.dwellLeft -= dt;
+      bus.dwelt = (bus.dwelt || 0) + dt;
+      // everybody is on and off: a bus or tram on the way leaves (a line keeps no times at its stops; at the
+      // first stop it waits for its departure). Only where the stop's people are looked after (sims/passengers.js).
+      if (!v.start && bus.dwellLeft > 0 && bus.dwelt >= MIN_DWELL_S && bus.seenAt === bus.arrivedAt && this.world.time - (bus.busyAt ?? -Infinity) > DONE_S) bus.dwellLeft = 0;
       // the doors stay open while people are getting on and off (sims/passengers.js sets holdUntil)
       if (bus.dwellLeft <= 0 && bus.holdUntil > this.world.time) return;
       if (bus.dwellLeft <= 0 && bus.outOfService) this._drop(bus);
@@ -1423,6 +1428,15 @@ export class Transit {
       const e = this._ahead(line, bus.s, x.s - x.half - this.mm(1));
       if (e > look + this.mm(10)) continue;
       if (x.kind === "zebra" ? x.obj.busy() : x.obj.closed(now)) hold(e - this.mm(x.kind === "rail" ? 3 : 0.5), x.kind);
+      else if (e < look && !entering(bus)) {
+        // not onto a crossing while there is no room behind it: nobody stands on a zebra or on the rails
+        const out = polylineAt(c.points, (x.s + x.half) % L, c.lengths);
+        const blocker = blockerAfter(bus, out.point, out.dir, users, this.mm(line.length + GAP_M), this.mm(1.5));
+        if (blocker) {
+          hold(e - this.mm(x.kind === "rail" ? 3 : 0.5), "room");
+          heldBy = blocker;
+        }
+      }
     }
     if (line.single.length && this._occupied) {
       const len = this.mm(line.length);
@@ -1458,6 +1472,8 @@ export class Transit {
     waitFor(bus, lead.user || heldBy, dt, !lead.user);
     /** Why the bus or tram is held now ("light", "stop", "yield", "room", "zebra", "rail", "single", "end"), or null. */
     bus.hold = stopAt < this.mm(1.5) ? why : null;
+    /** How long it has stood for people crossing (s): after a while those who come to the kerb let it go first (core/walking.js). */
+    bus.yielded = bus.hold === "people" ? (bus.yielded || 0) + dt : 0;
     bus.v = vT > bus.v ? Math.min(vT, bus.v + ACCEL * dt) : Math.max(vT, bus.v - HARD * dt, 0);
     let move = Math.min(this.mm(bus.v * dt), d, stopAt);
     // never into the vehicle ahead
@@ -1518,6 +1534,8 @@ export class Transit {
     bus.area = v.area;
     // boarding takes longer where it is not step-free (a step to climb, a ramp to unfold)
     bus.dwellLeft = Math.max(MIN_DWELL_S, v.dock.dwell) * (v.area?.owner?.dwellFactor?.() ?? 1);
+    bus.dwelt = 0;
+    bus.arrivedAt = this.world.time;
     bus.direction = v.dir;
     if (v.destination) bus.destination = v.destination;
     if (v.start) {

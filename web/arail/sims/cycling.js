@@ -339,7 +339,14 @@ export class CyclingSimulation extends Simulation {
     if (net !== this._net) {
       const first = !this._net || this._net.empty;
       // the streets changed: riders ride on to where they wanted to go, from where they are
-      if (this._net && net.carKey !== this._net.carKey) this.riders = this.riders.filter((r) => this._reroute(r, net));
+      if (this._net && net.carKey !== this._net.carKey) {
+        this.riders = this.riders.filter((r) => {
+          if (this._reroute(r, net)) return true;
+          // one of the town's own people: off the bike where they are
+          if (r.onArrive) r.onArrive({ pos: (r._pose || this._pose(r)).front, spot: null, rider: r });
+          return false;
+        });
+      }
       this._net = net;
       if (first) this._fill(net, this.targetCount(net));
     }

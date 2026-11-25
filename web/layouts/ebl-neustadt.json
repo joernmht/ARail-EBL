@@ -83,7 +83,7 @@
   "simulations": [
     {"type": "passengers", "base_rate": 0.5, "max_per_area": 160},
     {"type": "town", "people_per_100": 25, "max_people": 3000, "walk_max_m": 120, "stretch": 3},
-    {"type": "traffic", "cars_per_km": 8},
+    {"type": "traffic", "cars_per_km": 5},
     {"type": "cycling", "riders_per_km": 4}
   ],
   "objects": [
@@ -665,6 +665,7 @@
         {"id": "track-sb-1", "type": "track", "name": "S-Bahn, track 1", "track_id": "SB 1", "points": [[-450, 937], [300, 935], [1000, 930], [2000, 936], [2400, 938], [2800, 926], [3200, 909], [3600, 897], [4000, 885], [4400, 866], [4800, 860], [5200, 858], [5600, 849], [6100, 845]]},
         {"id": "track-sb-2", "type": "track", "name": "S-Bahn, track 2", "track_id": "SB 2", "points": [[-450, 812], [-200, 803], [300, 803], [500, 812], [700, 838], [900, 866], [1100, 872], [2000, 876], [2400, 873], [2800, 862], [3200, 848], [3600, 836], [4000, 824], [4400, 817], [4800, 808], [5200, 799], [5600, 787], [6100, 776]]},
         {"id": "platform-pirna", "type": "platform", "name": "Pirna", "from": [-245, 870], "to": [375, 868], "width_mm": 70, "sides": "right", "track_right": "SB 2", "lines": "S 10"},
+        {"id": "zebra-pirna", "type": "zebra-crossing", "name": "Zebra crossing Pirna", "road": "road-brueckenstrasse-nord", "position": [-559, 871]},
         {"id": "platform-heidenau", "type": "platform", "name": "Heidenau", "from": [4840, 755], "to": [5460, 748], "width_mm": 60, "sides": "left", "track_left": "SB 2", "lines": "S 10"},
         {"id": "line-s10", "type": "rail-line", "name": "S 10 Pirna – Heidenau", "number": "S 10", "origin": "Pirna", "color": "#00965E", "headway_s": 300, "speed_kmh": 80, "tracks": ["track-sb-2"]}
       ]

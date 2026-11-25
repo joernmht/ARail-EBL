@@ -2386,7 +2386,7 @@ export class TownSimulation extends Simulation {
       const [x, y] = a.pos, dir = a.dir || [1, 0];
       if (!view.inImage(x, y, 0)) continue;
       drawPerson(view, [x, y], {
-        dir, speed: a.held ? 0 : a.speed, phase: a.phase, height: (a.profile?.age === "child" ? 1.2 : 1.6) + (hashKey(a.id) % 30) / 100,
+        dir, speed: a.held ? 0 : a.speed, phase: a.phase, height: a.years != null ? 1.15 + (Math.min(16, a.years) - 6) * 0.055 : (a.profile?.age === "child" ? 1.2 : 1.6) + (hashKey(a.id) % 30) / 100,
         colour: mode === "mood" ? moodColor(a.mood ?? 0.85) : a.colour, ...personLooks(this.world, a.profile),
       });
     }
@@ -2471,32 +2471,60 @@ export class TownSimulation extends Simulation {
       walking: `Walking ${PURPOSE_LABELS[a.purpose] ?? ""}${dest && a.purpose !== "train" ? ` (${dest})` : ""}`.trim(),
       stop: `At a stop ${PURPOSE_LABELS[a.purpose] ?? ""}`.trim(),
       riding: `${a.vehicle?.kind === "tram" ? "On tram" : "On bus"} ${a.vehicle?.line ?? ""}`.trim(),
-      driving: `By car${dest ? ` to ${dest}` : ""}`,
+      driving: `${a.trip?.legs[a.trip.leg]?.type === "bike" ? "By bike" : "By car"}${dest ? ` to ${dest}` : ""}`,
+      with: `With ${a.with?.name ?? "somebody"} ${PURPOSE_LABELS[a.purpose] ?? ""}`.trim(),
       away: "Away from the layout",
     }[a.state] || a.state;
     const rows = [["Lives", home]];
+    const h = a.household;
+    if (h && h.members.length > 1) rows.push(["Household", `with ${h.members.filter((m) => m !== a).map((m) => m.name).join(", ")}`]);
+    if (a.years != null) rows.push(["Age", `${a.years} years`]);
+    const along = this._along(a);
+    if (along.length) rows.push(["Together with", along.map((m) => m.name).join(", ")]);
     if (a.job) rows.push(["Works at", name(a.job)]);
     if (a.school) rows.push(["School", name(a.school)]);
     if (a.shop) rows.push(["Shops at", name(a.shop)]);
     if (a.profile) rows.push(...profileRows(a.profile, a.speed));
-    if (a.mood != null && a.mood < 0.8) rows.push(["Mood", `${Math.round(a.mood * 100)} %: a bike came too close on the sidewalk`]);
+    if (a.profile && a.profile.age !== "child") rows.push(["Car", h ? (h.cars ? `${h.cars} in the household${a.carAt ? ` · this one is at ${a.carAt === "road" ? "on the way" : name(a.carAt) ?? "the station"}` : ""}` : "none in the household") : a.profile.car ? "has one" : "none"]);
+    rows.push(["Bike", a.bike ? (a.bikeAt ? `at ${a.bikeAt === "road" ? "on the way" : name(a.bikeAt) ?? "the station"}` : "has one") : "none"]);
+    if (a.mood != null && a.mood < 0.8) rows.push(["Mood", `${Math.round(a.mood * 100)} %${a.trips?.length && a.trips[a.trips.length - 1].bad ? ": the last trip went badly" : ""}`]);
     const today = (a.plan || []).map((step, i) => {
       const to = step.to.kind === "building" ? ` (${name(step.to.id)})` : step.to.kind === "shop" ? " (the nearest shop)" : "";
-      return `${i < a.next ? "✓ " : ""}${formatTime(step.at)} ${PURPOSE_LABELS[step.purpose] ?? step.purpose}${to}`;
+      const who = step.with?.length ? `, with ${step.with.map((id) => this._byId?.get(id)?.name).filter(Boolean).join(", ")}` : step.led && !step.alone ? ", taken along" : "";
+      return `${i < a.next ? "✓ " : ""}${formatTime(step.at)} ${PURPOSE_LABELS[step.purpose] ?? step.purpose}${to}${who}`;
     });
     const related = [a.house?.building, a.trip?.dest].filter((id) => id && this.world.getObject(id));
     // the trips of today from door to door, in their parts
     const minutes = (m) => `${Math.round(m)} min`;
     const trips = (a.trips || []).map((r) => {
       const parts = Object.entries(TRIP_PARTS).filter(([k]) => r.parts[k] >= 0.5).map(([k, w]) => `${w} ${minutes(r.parts[k])}`);
-      return [`${formatTime(r.start % DAY_MINUTES)} ${PURPOSE_LABELS[r.purpose] ?? r.purpose}: ${minutes(r.minutes)}`, ...parts].join(" · ");
+      return [`${formatTime(r.start % DAY_MINUTES)} ${PURPOSE_LABELS[r.purpose] ?? r.purpose}: ${minutes(r.minutes)}${r.bad ? " (it went badly)" : ""}`, ...parts].join(" · ");
     });
+    // what it weighed for the trip it is on (or the last one), and what it has learned of its ways
+    const perMin = this.world.clock.factor > 0 ? this.world.clock.factor : 12;
+    const weighed = (a.record ?? a.trips?.[a.trips.length - 1])?.weighed;
+    const chose = weighed ? weighed.map((o) => `${MODES[o.mode].label} ${minutes(o.minutes * perMin)}${o.mode === (a.record ?? a.trips[a.trips.length - 1]).mode ? " (taken)" : ""}`) : [];
+    const learned = [];
+    for (const m of MODE_KEYS) {
+      let n = 0, ratio = 0, bad = 0;
+      for (const way of a.memory?.ways.values() || []) {
+        const x = way.modes[m];
+        if (!x) continue;
+        n += x.n;
+        ratio += x.n * x.ratio;
+        bad += x.n * x.bad;
+      }
+      if (n) learned.push(`${MODES[m].label}: ${n} ${n === 1 ? "trip" : "trips"}, ${Math.round((100 * ratio) / n)} % of the time expected${bad / n > 0.3 ? ", often badly" : ""}`);
+    }
     return {
       title: a.name,
       subtitle: `Town · ${this._roleLabel(a)}`,
       status: doing,
       rows,
-      sections: [...(today.length ? [{ title: "Today", lines: today }] : []), ...(trips.length ? [{ title: "Door to door", lines: trips }] : [])],
+      sections: [
+        ...(today.length ? [{ title: "Today", lines: today }] : []), ...(trips.length ? [{ title: "Door to door", lines: trips }] : []),
+        ...(chose.length > 1 ? [{ title: "Weighed for this way", lines: chose }] : []), ...(learned.length ? [{ title: "Learned on its ways", lines: learned }] : []),
+      ],
       related,
     };
   }
@@ -2514,17 +2542,21 @@ export class TownSimulation extends Simulation {
   }
 
   /**
-   * Counts for the panel: where people are and what they are doing (`driving`: by car, not drawn), the
+   * Counts for the panel: where people are and what they are doing (`driving`: by car, `cycling`: by
+   * bike, `together`: of them all, those who go along with another), the
    * captive ones (`captive`: adults and old people without a licence or a car) and how many times one of
    * them gave up waiting at a stop or found it closed (`stranded`).
    */
   townStats() {
-    const out = { total: this.agents.length, home: 0, work: 0, school: 0, shopping: 0, walking: 0, waiting: 0, riding: 0, driving: 0, away: 0, captive: 0, byPurpose: {} };
+    const out = { total: this.agents.length, home: 0, work: 0, school: 0, shopping: 0, walking: 0, waiting: 0, riding: 0, driving: 0, cycling: 0, together: 0, away: 0, captive: 0, byPurpose: {} };
     const use = (id) => {
       const o = id ? this.world.getObject(id) : null;
       return o ? (typeof o.use === "function" ? o.use() : o.constructor.use) : null;
     };
-    for (const a of this.agents) {
+    for (const one of this.agents) {
+      // (one who goes along is counted where its leader is)
+      const a = one.state === "with" && one.with ? one.with : one;
+      if (one !== a) out.together++;
       if (a.state === "inside") {
         if (a.house && a.inside === a.house.building) out.home++;
         else {
@@ -2537,10 +2569,10 @@ export class TownSimulation extends Simulation {
         out.walking++;
         out.byPurpose[a.purpose] = (out.byPurpose[a.purpose] || 0) + 1;
       } else if (a.state === "stop") out.waiting++;
-      else if (a.state === "riding") out.riding++;
-      else if (a.state === "driving") out.driving++;
+      else if (one.state === "riding" || a.state === "riding") out.riding++;
+      else if (a.state === "driving") out[a.trip?.legs[a.trip.leg]?.type === "bike" ? "cycling" : "driving"]++;
       else out.away++;
-      if (a.profile && a.profile.age !== "child" && !canDrive(a.profile)) out.captive++;
+      if (one.profile && one.profile.age !== "child" && !canDrive(one.profile)) out.captive++;
     }
     out.stranded = this.stranded;
     return out;

@@ -58,8 +58,13 @@ export { RoadNetwork, dockPose, driveS, hiddenAt, joinPaths, PLACE_MAX_M, straig
 export { accessProblems, applyFix, carGroups, insideLayout, layoutBounds, nearestStreet, nameOf } from "./core/access.js";
 export {
   Transit, LineBus, RoadUsers, LINE_TYPES, linesServing, boxFaces, gapAhead, leaderAhead, mustYield, lightAt, approachPrio, junctionPatience, ringName, turningNumber,
-  singleTrack, reversals, waitFor, squeezing, roomAfter, GRIDLOCK_S, JUNCTION_WAIT_S,
+  singleTrack, reversals, waitFor, squeezing, entering, roomAfter, blockerAfter, movesConflict, followSpeed, speedAlong, GRIDLOCK_S, JUNCTION_WAIT_S, FOLLOW_TAU_S,
 } from "./core/transit.js";
+export {
+  MODES, MODE_KEYS, MODE_TABLE, DEFAULT_TASTE, EXPOSURE, LEARNING, DAY_KINDS, CAR_SHARE_MIN, Experience, TripMemory, carShare, chooseMode, choiceShares, experienceProblems,
+  exposure, modeProblems, modeSettings, perceived, personFactors, typicalParts, typicalShares,
+} from "./core/modes.js";
+export { Walking, WALKING, NEAR_MISS_BRAKE, peopleAhead } from "./core/walking.js";
 export { ParkingSpaces, PARKED_CAR } from "./core/parking.js";
 export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas, dockOf } from "./core/disruptions.js";
 export { ScenarioPlayer } from "./core/scenarios.js";
