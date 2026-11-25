@@ -399,10 +399,10 @@ test("Bf Neustadt, the app's own layout, has the Striezelmarkt on by default, on
   // at the station's doors, each arch over a gate
   const square = world.getObject("market-square");
   const station = world.getObject("station-1").footprint(), street = world.getObject("road-bahnhofstrasse");
-  const front = Math.min(...station.map((p) => p[1])), curb = street.geometry.points.at(-1)[1] + street.roadInfo().width / 2;
+  const front = Math.min(...station.map((p) => p[1])), curb = street.geometry.points.at(-1)[1] + street.roadInfo().half; // the outer edge of its sidewalk
   const [sx0, sx1] = [Math.min(...station.map((p) => p[0])), Math.max(...station.map((p) => p[0]))];
   for (const [px, py] of square.spec.points) {
-    assert.ok(py >= curb, `${px}, ${py} off Bahnhofstraße`);
+    assert.ok(py >= curb, `${px}, ${py} off Bahnhofstraße and its sidewalk`);
     if (px > sx0 && px < sx1) assert.ok(py <= front, `${px}, ${py} in front of the station`);
   }
   for (const o of world.objects.filter((o) => o.marketInfo)) assert.ok(square.covers(o.anchorPoint()), `${o.id} on the square`);
