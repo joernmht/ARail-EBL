@@ -149,12 +149,15 @@ export class WorksBoard {
     services.refreshModes();
   }
 
-  /** The world's weather while the game's storm blows ("strong", "weak"), and what it was before once it has passed (null). */
+  /**
+   * The world's weather while the game's storm blows ("strong", "weak"), and what it was before once
+   * it has passed (null): its mode, preset and what was set on top of the preset, all of it.
+   */
   _weather(storm) {
     const w = this.world.weather;
     if (!w?.set) return;
     if (storm && this.weatherWas == null) {
-      this.weatherWas = w.mode === "fixed" ? w.preset : w.mode;
+      this.weatherWas = { mode: w.mode, preset: w.preset, state: { ...w.state } };
       w.set(storm === "strong" ? "thunderstorm" : "heavy-rain");
     } else if (!storm && this.weatherWas != null) {
       w.set(this.weatherWas);

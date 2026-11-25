@@ -21,6 +21,8 @@ export class Overview {
     this.el = null;
     this.stateBox = null;
     this.measureBox = null;
+    /** The town's trip statistics as last worked out, with the log they came from (`_tripStats`). */
+    this._trips = null;
   }
 
   render(el) {
@@ -93,7 +95,7 @@ export class Overview {
         const now = (m) => w.experience.ratio(m, c.minutes, c.weekend());
         out.push({ id: "learned", label: "What the town has learned", value: `Car ${now("car").toFixed(1)}×`, note: `how long a drive takes now against empty streets · bus and tram ${now("transit").toFixed(1)}× their timetable${jams != null ? ` · ${jams} % of the drives were a jam` : ""} · ${Math.round(w.experience.days)} days` });
       }
-      const all = town.tripStats()[0];
+      const all = this._tripStats(town)[0];
       out.push({ id: "trips", label: "Door to door", value: all ? `${Math.round(all.minutes)} min` : "–", note: all ? `mean of ${all.trips} trips` : "No trip finished yet",
         action: all ? h("button", { class: "btn small", type: "button", id: "townTripsCsv", onclick: () => download("town-trips.csv", town.tripsCSV(), "text/csv") }, "Download the trips (CSV)") : null });
     }
@@ -113,6 +115,18 @@ export class Overview {
     const rolling = w.layout.markers.rolling ? [...(terminalOf(w)?.rolling?.wagons.values() || [])] : null;
     if (rolling && app.source) out.push({ id: "wagons", label: "Model wagons", value: `${rolling.filter((x) => x.state !== "lost").length} of ${rolling.length}`, note: "seen by their tags" });
     return out;
+  }
+
+  /**
+   * The town's trips from door to door by group (`town.tripStats()`, which goes through its whole
+   * log), worked out again only when a trip has ended: kept by the log's length and its last trip
+   * (the log keeps the latest trips, so once full its length stays while trips come and go).
+   */
+  _tripStats(town) {
+    const log = town.tripLog ?? [], last = log[log.length - 1], c = this._trips;
+    if (c && c.town === town && c.log === log && c.n === log.length && c.last === last) return c.stats;
+    this._trips = { town, log, n: log.length, last, stats: town.tripStats() };
+    return this._trips.stats;
   }
 
   /** No search: the worst and the best kind, or all of them. */

@@ -302,7 +302,10 @@ export class DispatcherGame extends Game {
     else if (msg.flow === "connection-request") this._wished(p);
   }
 
-  /** A delay notice: a forecast, the forecast made exact, a train that stands beyond its time, a train that has left. */
+  /**
+   * A delay notice: a forecast, the forecast made exact, a train that stands beyond its time, a train that has left;
+   * and a train whose entry route was set before an order of another track came, on the track it comes on.
+   */
   _noticed(p) {
     const spec = TIMETABLE.find((x) => x.id === p.train), tr = this.train(p.train) ?? (spec ? this._add(spec) : null);
     if (!tr) return;
@@ -319,6 +322,11 @@ export class DispatcherGame extends Game {
         this.log(`${clockAt(this.t)} ${tr.id} is on its way: ${mins(late)} min late, not ${mins(tr.told_s)}.`, "train");
         if (Math.abs(late - tr.told_s) >= OFF_S) this.irregular("forecast-off", `off:${tr.id}`, { train: tr.id, min: mins(late), told: mins(tr.told_s) });
       }
+      this._conflicts();
+    } else if (p.stage === "routed" && TRACKS_FROM[tr.dir].includes(p.track) && p.track !== tr.plan) {
+      // another track ordered too late: the signaller had set the train's entry route already, and it comes where that leads
+      this.log(`${clockAt(this.t)} The signaller: the route of ${tr.id} into ${p.track} was set before the order came; it comes on ${p.track}, not ${tr.plan}.`, "fault");
+      tr.plan = p.track;
       this._conflicts();
     } else if (p.stage === "waiting") tr.waiting_s = late;
     else if (p.stage === "arrived") tr.arrived_at = p.at_s ?? this.t;

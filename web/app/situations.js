@@ -74,13 +74,36 @@ export function situationReady(app, s) {
 }
 
 /**
- * Set the world to the situation: the modules it needs on first (that starts the simulations
- * again), then the date, the time, the weather and the demand, and an event's crowd (the crowd of
- * the situation set before ends: one crowd at a time, never one on top of another).
+ * What keeps the world from taking the situation, in a few words, or null: the layout lacks what it
+ * needs, or its date, time, weather, demand or crowd is none the world takes.
+ * @param {import("./app.js").App} app
+ * @param {Situation} s
+ * @returns {string | null}
+ */
+export function situationProblem(app, s) {
+  const w = app.world;
+  if (!situationReady(app, s)) return "this layout lacks what it needs";
+  if (!w.clock.isDate(s.date)) return "its date is no date";
+  if (!w.clock.isTime(s.time)) return "its time is no time of day";
+  if (!w.weather.isWeather(s.weather)) return "its weather is no weather";
+  if (!(Number(s.demand) >= 0)) return "its demand is no number of 0 or more";
+  if (s.crowd && !(w.registry.disruptions.has("crowd") && s.crowd.factor > 0 && s.crowd.minutes > 0)) return "its crowd cannot be started";
+  return null;
+}
+
+/**
+ * Set the world to the situation. All of it is checked first ({@link situationProblem}): what does
+ * not fit throws, and nothing is changed. Then the modules it needs are switched on (that loads the
+ * layout again and starts the simulations anew); a switch that fails has said why and throws, and
+ * nothing else is set (the modules are as the switch left them). Then the date, the time, the
+ * weather and the demand, and an event's crowd (the crowd of the situation set before ends: one
+ * crowd at a time, never one on top of another); checked, these do not fail.
  * @param {import("./app.js").App} app
  * @param {Situation} s
  */
 export async function applySituation(app, s) {
+  const problem = situationProblem(app, s);
+  if (problem) throw new Error(problem);
   if (s.layers?.length) {
     const on = app.layersOn();
     if (s.layers.some((id) => !on.includes(id))) await app.chooseModules([...new Set([...on, ...s.layers])]);
@@ -95,4 +118,33 @@ export async function applySituation(app, s) {
   w.setWeather(s.weather);
   w.demand = s.demand;
   if (s.crowd) w.disruptions.start({ id: CROWD_ID, type: "crowd", target: "*", params: { factor: s.crowd.factor, minutes: s.crowd.minutes } });
+}
+
+/** What the weather is set to, not what it does by itself (it starts to snow, ice forms): mode, preset, quantities, course. */
+const weatherSetting = (weather) => JSON.stringify([weather.mode, weather.preset, weather.state, weather.course, weather.seed]);
+
+/**
+ * The situation just set, as a mark to tell later whether it still holds ({@link situationHolds}).
+ * Call `off()` when it is dropped.
+ * @param {import("../arail/core/world.js").World} world
+ * @param {Situation} s
+ * @returns {{id: string, layout: object, weather: string, demand: number, timeSet: boolean, off: () => void}}
+ */
+export function markSituation(world, s) {
+  const mark = { id: s.id, layout: world.layout, weather: weatherSetting(world.weather), demand: world.demand, timeSet: false };
+  // the time or the date set again, by whoever (Settings, a scenario, a story, a plugin)
+  mark.off = world.events.once("clock.set", () => (mark.timeSet = true));
+  return mark;
+}
+
+/**
+ * Does the situation set still hold: nothing has set the time or the date since, the weather and the
+ * demand are as it set them, and the layout is the one it was set on (the world loads another
+ * layout, or the same one with other modules, into the same object: its layout is new then)? The
+ * clock running on (past midnight too), the fast clock and the weather changing by itself leave it.
+ * @param {import("../arail/core/world.js").World} world
+ * @param {ReturnType<typeof markSituation> | null} mark
+ */
+export function situationHolds(world, mark) {
+  return !!mark && !mark.timeSet && mark.layout === world.layout && mark.weather === weatherSetting(world.weather) && mark.demand === world.demand;
 }

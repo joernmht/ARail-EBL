@@ -71,7 +71,7 @@ export { ScenarioPlayer } from "./core/scenarios.js";
 export { Story, storyOf, STORY_PAUSE_S, STORY_DISRUPTIONS } from "./core/story.js";
 export { introScenes, sceneSeconds, boundsOf, SCENE_SECONDS } from "./core/intro.js";
 export {
-  Clock, DEFAULT_CLOCK, PROFILES, WEEKEND_PROFILES, SUN, MONTHS, MONTH_NAMES, DAYS, DAY_NAMES, YEAR_DAYS, DEFAULT_YEAR, parseTime, formatTime, parseDate, parseDay, dayOfYear, dayOfWeek, commonDay, dateFits,
+  Clock, DEFAULT_CLOCK, PROFILES, WEEKEND_PROFILES, SUN, MONTHS, MONTH_NAMES, DAYS, DAY_NAMES, YEAR_DAYS, DEFAULT_YEAR, parseTime, formatTime, parseDate, parseDay, dayOfYear, dayOfWeek, commonDay, dateFits, dateProblem,
   isLeapYear, yearDays, formatDate, monthDay, seasonOf, summerTime, sunTimes, profileAt, daylightAt, DAY_MINUTES,
 } from "./core/clock.js";
 export {
@@ -79,7 +79,7 @@ export {
   leafTone, drawWeather, PRECIPITATION_LAYERS, layerParticles, lightningAt,
 } from "./core/weather.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
-export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, toggleLayer, layerChoice, withNewLayers, layoutPlugins, layerProblems } from "./core/layers.js";
+export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, toggleLayer, layerChoice, withNewLayers, layersKnown, switchOnLayers, layoutPlugins, layerProblems } from "./core/layers.js";
 export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normalizeGrid, validateLayout, isLayout, orthoOf, extendBelowOf, EXTEND_BELOW_MAX, markerIds, DEFAULT_ROLLING, normalizeRollingMarkers } from "./core/layout.js";
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo, markersUsed } from "./core/anchors.js";
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";

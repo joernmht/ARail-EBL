@@ -60,15 +60,19 @@ function pixelsOf(bitmap, width, height) {
  * `rolling`, as MarkerDetector takes them) and answers whether bitmaps can be sent; `frame` searches a
  * frame's pixels and answers with its markers, the wagons' tags and the dictionary chosen (or voted for
  * so far); `bitmap` does so for a bitmap of the frame, read here at the processing size, and sends the
- * bitmap back with them (it is the picture shown with its markers).
+ * bitmap back with them (it is the picture shown with its markers). What fails is answered with an
+ * `error` naming the message (`of`, and the frame's `id`); an `init` that fails leaves no detector, so
+ * that no frame is searched with the settings of before (it errs until an `init` succeeds).
  */
 async function handle(m) {
   try {
     if (m.type === "init") {
+      detector = null;
       await loadVendor(m.dictionary, m.rolling ? m.rolling.dictionary || ROLLING_DICTIONARY : null);
       detector = new MarkerDetector({ dictionary: m.dictionary === "auto" ? null : m.dictionary, codes: m.codes, rolling: m.rolling || null });
       self.postMessage({ type: "ready", bitmaps: drawsBitmaps() });
     } else if (m.type === "frame" || m.type === "bitmap") {
+      if (!detector) throw new Error("not set up");
       const image = m.type === "bitmap" ? pixelsOf(m.bitmap, m.width, m.height) : { width: m.width, height: m.height, data: new Uint8ClampedArray(m.buffer) };
       const t0 = performance.now();
       const found = detector.detectAll(image, m.scale);
@@ -83,7 +87,7 @@ async function handle(m) {
     }
   } catch (err) {
     m.bitmap?.close();
-    self.postMessage({ type: "error", id: m.id, message: err.message });
+    self.postMessage({ type: "error", of: m.type, id: m.id, message: err.message });
   }
 }
 

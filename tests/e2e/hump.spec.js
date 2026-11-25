@@ -1,7 +1,8 @@
 // The app's example Hump a train (app/cases.js HumpCase, app/hump.js): Start switches Bf Neustadt's module
 // Hump yard on and shows the yard in the flyover; the hump master pushes the train slower, faster,
 // stops it and pushes on; its cuts are followed into their tracks and chosen in the list or on the
-// stage; leaving it switches the module off again. The example layout Hump yard in Settings → View.
+// stage; leaving it switches the module off again; the hump blocked, nothing can be pushed on. The example layout
+// Hump yard in Settings → View.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { expectCase, openList, startExample } from "./ui.js";
@@ -80,11 +81,14 @@ test("a cut chosen on the stage: a tap on its wagon in the flyover", async ({ pa
   await page.locator("#caseStart").click();
   await page.waitForFunction(() => window.__arail.caseById("hump").started);
   await expect.poll(() => page.evaluate(() => window.__arail.mode)).toBe("flyover");
-  // the cuts released, the train stopped: they stand still to be tapped
+  // the cuts released, the world paused and the train stopped: they stand still to be tapped (stopped as Stop does it:
+  // the button is off once every cut is released, which a slow computer may reach before a click)
   await page.evaluate(() => (window.__arail.world.speed = 30));
   await expect.poll(async () => (await state(page)).cuts.filter((c) => c.state === "standing").length, { timeout: 60_000 }).toBeGreaterThan(1);
-  await page.locator("#humpStop").click();
-  await page.evaluate(() => (window.__arail.world.paused = true));
+  await page.evaluate(() => {
+    window.__arail.world.paused = true;
+    window.__arail.world.objects.find((o) => o.type === "hump-yard").setPush({ stopped: true });
+  });
   // a wagon where it is drawn: the centre of its box in canvas pixels, as CSS pixels on the page
   const at = await page.evaluate(() => {
     const app = window.__arail, y = app.world.objects.find((o) => o.type === "hump-yard"), view = app.lastView, c = app.canvas;
@@ -99,6 +103,27 @@ test("a cut chosen on the stage: a tap on its wagon in the flyover", async ({ pa
   await page.mouse.click(at.x, at.y);
   await expect.poll(() => page.evaluate(() => window.__arail.world.objects.find((o) => o.type === "hump-yard").chosen)).not.toBeNull();
   await expect(page.locator('#humpCuts [aria-pressed="true"]')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test("the hump blocked: nothing can be pushed on, so Slower, Faster and Stop are off", async ({ page }) => {
+  const errors = await open(page, "/app/#hump");
+  await page.locator("#caseStart").click();
+  await page.waitForFunction(() => window.__arail.caseById("hump").started);
+  // the first cut derails just beyond the crest (as in a switch thrown under it): held there, the train stops behind it
+  await page.evaluate(() => {
+    const app = window.__arail, sim = app.world.objects.find((o) => o.type === "hump-yard").sim;
+    app.world.paused = true;
+    while (!sim.bodies.length) sim.step();
+    Object.assign(sim.bodies[0], { v: 0, held: true, derailed: true });
+    app.world.speed = 30;
+    app.world.paused = false;
+  });
+  await expect.poll(async () => (await state(page)).finished, { timeout: 60_000 }).toBe(true);
+  expect((await state(page)).notHumped).toBeGreaterThan(0);
+  await expect(page.locator("#humpStatus")).toContainText("Hump blocked");
+  for (const id of ["#humpSlower", "#humpFaster", "#humpStop"]) await expect(page.locator(id)).toBeDisabled();
+  await expect(page.locator("#humpRestart")).toBeEnabled();
   expect(errors).toEqual([]);
 });
 
@@ -123,7 +148,12 @@ for (const scheme of ["light", "dark"]) {
     await page.waitForFunction(() => window.__arail.caseById("hump").started);
     await page.evaluate(() => (window.__arail.world.speed = 30));
     await expect.poll(async () => (await state(page)).cuts.some((c) => c.misrouted || c.state === "standing"), { timeout: 60_000 }).toBe(true);
-    await page.locator("#humpStop").click();
+    // stopped as Stop does it (the button is off once every cut is released, which a slow computer may reach before a click)
+    await page.evaluate(() => {
+      window.__arail.world.paused = true;
+      window.__arail.world.objects.find((o) => o.type === "hump-yard").setPush({ stopped: true });
+    });
+    await expect(page.locator("#humpStop")).toHaveText("Push on");
     await page.locator("#hump-cut-2").click();
     await page.evaluate(() => document.querySelector("#panel")?.scrollTo(0, 0));
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).analyze();

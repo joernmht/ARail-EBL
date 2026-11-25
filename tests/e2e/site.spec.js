@@ -103,7 +103,7 @@ test("the switch below the video shows the page of one group: its question, its 
   expect(await page.locator(".app-card .teach").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => e.dataset.aud))).toEqual(Array(6).fill("educators"));
   // each page: the question, three ways, three steps, a form to file it with, and its board
   const pages = [
-    ["scientists", "Scientists", /Does it survive the whole railway\?/, "Submit a paper", "paper.yml", "Implemented papers"],
+    ["scientists", "Scientists", /Does it survive the whole railway\?/, "Submit a paper", "paper.yml", "Papers"],
     ["practitioners", "Practitioners", /Does your training\?/, "Bring a case from practice", "practice_case.yml", "Cases from practice"],
     ["educators", "Educators", /Do you teach it that way\?/, "Propose a teaching concept", "teaching_concept.yml", "Teaching concepts"],
   ];

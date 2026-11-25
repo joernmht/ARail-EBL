@@ -377,7 +377,11 @@ export class TableBoard {
     return null;
   }
 
-  /** The world's time goes on: a train that has come to a stand at a platform opens its doors there, one that leaves is gone. */
+  /**
+   * The world's time goes on: a train that has come to a stand at a platform opens its doors there, one that leaves is
+   * gone. The platform is the game's train's: a train of the world's own timetable still there from before the board
+   * took the platform tracks is taken away (ServiceManager.free); one of a control system stays, and the game's train waits for it.
+   */
   step() {
     const g = this.game, services = this.world.services;
     if (services.planner !== this) return;
@@ -385,7 +389,7 @@ export class TableBoard {
       const here = tr.state === "dwelling" && tr.stops && !!tr.track, known = this.standing.get(tr.id);
       if (here && !known) {
         const dock = this.dockOf(tr.track);
-        if (!dock || services.docks.get(dock.id)?.vehicle) continue;
+        if (!dock || (services.docks.get(dock.id)?.vehicle && !services.free(dock.id))) continue;
         const vehicle = services.feedArrived(dock.id, { trainId: tr.id, line: tr.id, kind: TABLE_TRAIN.kind });
         if (vehicle) this.standing.set(tr.id, { dock, vehicle });
       } else if (!here && known) {

@@ -6,7 +6,7 @@
  * (`HumpYard#planAt`) at the layout's scale, its heights above the lowest end of a track.
  *
  * It humps one random train after the other, pushes its tracks up and pulls them out when they are full
- * (`pull_below_m`), and draws the raised hump, ballast and rails, the retarders (glowing while they brake),
+ * (`pull_below_m`), has a derailed cut taken away after five minutes (`rerail_s`), and draws the raised hump, ballast and rails, the retarders (glowing while they brake),
  * every wagon (a band in the colour of its rolling class, as in the diagrams), the locomotive
  * pushing, impacts too hard (a red flash) and the track numbers. Deterministic: its random numbers come from
  * the world's seed and its id.
@@ -42,6 +42,8 @@ const LOCO_M = 19;
 const FLASH_S = 4;
 /** Most simulation steps in one `update` (the rest is dropped, so that a slow frame does not pile up work). */
 const MAX_STEPS = 400;
+/** Seconds a derailed cut stands in the yard's own run before it is taken away (`rerail_s`), so that the yard goes on. */
+const RERAIL_S = 300;
 /**
  * What the simulation keeps of what is done (an app runs for hours); the rest goes into its figures
  * (`HumpSimulation#forget`), once a list holds twice as much.
@@ -149,8 +151,8 @@ export class HumpYardObject extends LayoutObject {
     if (key !== this._simKey) {
       this._simKey = key;
       const seed = hash(`${this.world.seed ?? 1}:hump:${this.id}`);
-      // a task fills the tracks once: nothing is pulled out by itself
-      this._sim = new HumpSimulation(yard, { seed, season: s.season, dt: 0.1, pull_below_m: this.task ? null : Number(s.pull_below_m) });
+      // a task fills the tracks once: nothing is pulled out or taken away by itself (a derailed cut stays, the hump blocked)
+      this._sim = new HumpSimulation(yard, { seed, season: s.season, dt: 0.1, pull_below_m: this.task ? null : Number(s.pull_below_m), rerail_s: this.task ? null : RERAIL_S });
       this._rng = createRng(seed ^ 0x9e3779b9);
       this._trains = 0;
       this._acc = 0;

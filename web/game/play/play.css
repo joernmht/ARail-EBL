@@ -502,7 +502,7 @@ body.tabled .vn-talk { cursor: auto; touch-action: auto; }
   .vn-story .btn:active, .vn-term .btn:active, .play-options-row .btn:active { transform: none; }
 }
 
-/* only the picture (H): the game's interface out of the way */
+/* only the picture (H): the game's interface out of the way (the stage's windows, the panel and the timetable, are in the seats) */
 body.bare .play-hud, body.bare .play-seats, body.bare .play-rail, body.bare .play-toast { visibility: hidden; }
 .bare-back { position: fixed; right: 14px; bottom: 14px; z-index: 5; }
 

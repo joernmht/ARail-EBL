@@ -80,4 +80,12 @@ export const TEXTS = {
   "October": "Oktober",
   "November": "November",
   "December": "Dezember",
+
+  // ------------------------------------------------------------ a scenario's step that fails to set the date, the time or the weather (core/scenarios.js)
+  "Scenario step failed: {error}": "Schritt des Szenarios fehlgeschlagen: {error}",
+  "\"{value}\" is no date (MM-DD)": "„{value}“ ist kein Datum (MM-TT)",
+  "\"{value}\" is no date in {year}, which has no 29 February: write it with a leap year (\"2028-02-29\")":
+    "„{value}“ ist im Jahr {year} kein Datum, es hat keinen 29. Februar: Schreiben Sie ein Schaltjahr dazu („2028-02-29“)",
+  "\"{value}\" is no time of day (HH:MM)": "„{value}“ ist keine Uhrzeit (HH:MM)",
+  "{value} is no weather": "{value} ist kein Wetter",
 };

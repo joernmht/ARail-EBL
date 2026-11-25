@@ -4,8 +4,9 @@
 // choices (MAX_CHOICES), the rest in submenus: to go on with the game played last; Games (the big game's
 // missions, the signaller, and free play, a submenu of its own with the game page's cases); Career (the
 // logbook, the career planner, the role catalogue); the options (language, a moving background, full
-// screen); and the way back to the project page. A link of the menu opens its page; free play opens
-// this page again with a layout and a case, which goes straight into the app's shell.
+// screen); and the way back to the project page. A link of the menu opens its page (coming back to the
+// title in the same tab, the submenu it was opened from is open again); free play opens this page again
+// with a layout and a case, which goes straight into the app's shell.
 import { UI_LANGUAGES } from "../arail/index.js";
 import { chooseLanguage, i18n, setLanguage, tr, translateDocument } from "../app/i18n.js";
 import { $, h, mount } from "../app/ui.js";
@@ -33,6 +34,12 @@ export const STUCK_MS = 30000;
 
 /** What the browser keeps: the game played last (Continue) and whether the background moves. */
 const LAST = "arail.game.continue", MOTION = "arail.game.motion";
+
+/**
+ * What this tab keeps while it is open: the submenu a page of the menu was opened from, and its item, so that
+ * coming back to the title opens that submenu again (a new visit opens the main menu, with Continue).
+ */
+const MENU = "arail.game.menu";
 
 /** What the app's shell on this page remembers (App.key): its last layout and the case shown. */
 const SHELL_LAYOUT = "arail.game.lastLayout", SHELL_CASE = "arail.game.case";
@@ -79,10 +86,11 @@ const PARENT = { play: "main", free: "play", career: "main", options: "main" };
 /** A menu offers at most this many choices (Back not counted); what does not fit goes into a submenu. */
 export const MAX_CHOICES = 5;
 
-const store = {
+/** A storage of the browser (`localStorage`, or `sessionStorage` for this tab), read and written as JSON; where it is unavailable, nothing is kept. */
+const kept = (area) => ({
   get(key, fallback) {
     try {
-      const v = JSON.parse(localStorage.getItem(key));
+      const v = JSON.parse(area().getItem(key));
       return v ?? fallback;
     } catch {
       return fallback;
@@ -90,12 +98,13 @@ const store = {
   },
   set(key, value) {
     try {
-      localStorage.setItem(key, JSON.stringify(value));
+      area().setItem(key, JSON.stringify(value));
     } catch {
       /* storage unavailable: for this page only */
     }
   },
-};
+});
+const store = kept(() => localStorage), tab = kept(() => sessionStorage);
 
 /**
  * @typedef {{id?: string, label: string, sub?: string, href?: string, go?: string, back?: boolean, act?: () => void, pressed?: boolean, lang?: string, keep?: boolean}} MenuItem
@@ -161,6 +170,9 @@ export class TitleScreen {
     this.root.addEventListener("focusin", this.track);
     // a click on the photo keeps the cursor where it is (the focus stays in the menu)
     this.root.addEventListener("mousedown", this.hold);
+    // back from a page opened from a submenu: that submenu again (a page this tab left the title for)
+    const left = tab.get(MENU, null);
+    if (Object.hasOwn(PARENT, left?.view)) this.view = left.view;
     this.render();
     this.setMotion(this.motion);
     // the first photo (in the page) gets the same time to load as the others
@@ -174,8 +186,9 @@ export class TitleScreen {
     // back from a page opened from the menu (the browser's back/forward cache keeps this page as it was): Continue anew
     addEventListener("pageshow", this.back);
     document.addEventListener("fullscreenchange", this.fullscreen);
-    // the menu's first item takes the focus, as a game's menu has its cursor on it
-    this.focusFirst();
+    // the menu's first item takes the focus, as a game's menu has its cursor on it; back in a submenu, the item chosen there
+    if (this.view !== "main" && typeof left?.label === "string") this.focusLabel(left.label);
+    else this.focusFirst();
   }
 
   /** Leave it for the app's shell (the page was given a case without loading again). */
@@ -354,7 +367,7 @@ export class TitleScreen {
       };
       if (it.href) {
         // a middle click (a new tab) opens it too
-        return h("a", { class: "title-item", href: withLang(it.href), onclick: () => this.remember(it), onauxclick: (e) => e.button === 1 && this.remember(it), onpointermove: hover }, label);
+        return h("a", { class: "title-item", href: withLang(it.href), onclick: () => this.remember(it, true), onauxclick: (e) => e.button === 1 && this.remember(it), onpointermove: hover }, label);
       }
       const go = !!it.go;
       return h("button", {
@@ -408,8 +421,15 @@ export class TitleScreen {
     this.firstItem()?.focus({ preventScroll: true });
   }
 
-  /** The game opened from the menu, for Continue next time. */
-  remember(it) {
+  /**
+   * The game opened from the menu, for Continue next time. Left for it in this tab (`left`; not a middle click), the tab keeps
+   * the submenu it was opened from when it is a page of the menu (PAGES), to come back to; else (a case of Free play,
+   * Continue, Leave) the main menu.
+   * @param {MenuItem} it
+   * @param {boolean} [left]
+   */
+  remember(it, left = false) {
+    if (left) tab.set(MENU, this.view !== "main" && PAGES.includes(it.href) ? { view: this.view, label: it.label } : null);
     if (it.keep) return;
     // a case of Free play opens the app's shell, which remembers where it is left
     if (this.view === "free") rememberShell();

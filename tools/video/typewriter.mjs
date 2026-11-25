@@ -16,7 +16,7 @@ import { mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
-import { BOX, rowsAt, tooLong } from "./story-box.mjs";
+import { BOX, boxFrames, rowsAt, tooLong } from "./story-box.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const [cueFile, outDir] = process.argv.slice(2);
@@ -28,6 +28,12 @@ const { size: [width], fps, cps, cues, frames } = JSON.parse(readFileSync(resolv
 const out = resolve(outDir);
 mkdirSync(out, { recursive: true });
 for (const f of readdirSync(out)) if (/^f\d+\.png$/.test(f)) rmSync(join(out, f));
+// (the old frames are gone first: none of them is laid over the video)
+const span = boxFrames(cues, frames);
+if (!span) {
+  console.error(`${cueFile}: no lines to type (the plan's shots have no \`say\`): nothing drawn. Give them lines, or leave out the plan's \`overlay\`.`);
+  process.exit(1);
+}
 
 const HEIGHT = Math.round(width * 0.2); // the strip at the top the box is drawn in
 const s = width / 1280;
@@ -81,7 +87,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width, height: HEIGHT }, deviceScaleFactor: 1 });
 await page.setContent(html);
 await page.evaluate(() => document.fonts.ready);
-const first = Math.min(...cues.map((c) => c.start)), last = frames ?? Math.max(...cues.map((c) => c.end));
+const { first, last } = span;
 for (let f = first; f < last; f++) {
   await page.evaluate((r) => window.__draw(r), rows(f));
   await page.screenshot({ path: join(out, `f${String(f).padStart(4, "0")}.png`), omitBackground: true });

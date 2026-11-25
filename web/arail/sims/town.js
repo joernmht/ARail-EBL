@@ -184,9 +184,9 @@ class Agent extends Person {
     // (what the loop over all agents in `TownSimulation.step` reads in every step comes first: next
     // to each other in memory)
     /**
-     * "inside" | "walking" | "stop" (with the passenger simulation) | "riding" | "driving" (by car or
-     * by bike: the car or the bike is drawn, not the person) | "with" (going along with `with`, who
-     * leads the group) | "away"
+     * "inside" | "walking" (set by `TownSimulation._setWalking` only) | "stop" (with the passenger
+     * simulation) | "riding" | "driving" (by car or by bike: the car or the bike is drawn, not the
+     * person) | "with" (going along with `with`, who leads the group) | "away"
      */
     this.state = "inside";
     this.planDay = -1;
@@ -197,7 +197,8 @@ class Agent extends Person {
     this.next = 0;
     /**
      * The step of the plan due next (`plan[next]`) and its time, as they were for this plan and
-     * index (see `TownSimulation._due`): plans are not changed once made, but for a step put in.
+     * index (see `TownSimulation._due`): plans are not changed once made, but for a step put in
+     * (`TownSimulation._insertStep`).
      */
     this._dueFor = null;
     this._dueIndex = -1;
@@ -356,7 +357,7 @@ export class TownSimulation extends Simulation {
     this._lastMinutes = null;
     this._lastDay = null;
     this._check = 0;
-    /** Agents that began a walk (`_beginLeg`): all who walk now are among them (see `_walking`). */
+    /** Agents set walking (`_setWalking`): all who walk now are among them (see `_walking`). */
     this._walkers = new Set();
     this._walkingList = null;
     this._agentIndex = null;
@@ -1618,9 +1619,7 @@ export class TownSimulation extends Simulation {
         if (!dest) return this._finishTrip(a);
         leg.path = this._walkPath(a.pos, dest, null, `building:${leg.toBuilding}:0`);
       }
-      a.state = "walking";
-      this._walkers.add(a);
-      this._walkingList = null;
+      this._setWalking(a);
       a.path = leg.path;
       a.s = 0;
       a.lat = a.form?.lat ?? 0;
@@ -1830,7 +1829,7 @@ export class TownSimulation extends Simulation {
       if (m.record) this._closeRecord(m, leader.trips[leader.trips.length - 1]?.end ?? "other");
       m.person = null;
       m.vehicle = null;
-      m.state = "walking"; // (so that `_setInside` counts it in, not out)
+      this._setWalking(m); // (so that `_setInside` counts it in, not out)
       this._setInside(m, id);
     }
   }
@@ -1979,8 +1978,7 @@ export class TownSimulation extends Simulation {
         const shopId = this._nearestShop(this._accessPoint(dock.area))?.id;
         if (shopId) {
           a.purpose = "shopping";
-          a.plan.splice(a.next, 0, { at: now + 25, purpose: "home", to: { kind: "home" } });
-          a._dueFor = null; // the plan changed (see `_due`)
+          this._insertStep(a, { at: now + 25, purpose: "home", to: { kind: "home" } });
           destId = shopId;
         }
       }
@@ -2093,7 +2091,7 @@ export class TownSimulation extends Simulation {
   /**
    * Keep the step of an agent's plan due next (`plan[next]`) and its time on the agent, for this plan
    * and index: the loop over all agents in `step` then need not look into every plan. A plan's steps
-   * do not change once made; where a step is put into a plan, what is kept is dropped.
+   * do not change once made, but for a step put in (`_insertStep`), which drops what is kept.
    */
   _due(a) {
     const step = a.plan[a.next];
@@ -2101,6 +2099,12 @@ export class TownSimulation extends Simulation {
     a._dueIndex = a.next;
     a._dueStep = step;
     a._dueAt = step ? step.at : undefined;
+  }
+
+  /** Put a step into an agent's plan as the one due next: the only change of a plan once made (see `_due`). */
+  _insertStep(a, step) {
+    a.plan.splice(a.next, 0, step);
+    a._dueFor = null;
   }
 
   /**
@@ -2355,7 +2359,7 @@ export class TownSimulation extends Simulation {
           const to = lead?.trip?.dest ?? a.house?.building ?? null;
           this._removeAgents(new Set([a]));
           this._alone(a);
-          a.state = "walking";
+          this._setWalking(a); // (so that `_setInside` counts it in, not out)
           this._setInside(a, to);
         }
       }
@@ -2418,8 +2422,15 @@ export class TownSimulation extends Simulation {
     return a.state === "with" && !a.apart && !!lead && lead.state === "walking" && !!lead.pos && !hiddenAt(lead.path, lead.s);
   }
 
+  /** Set an agent walking, noted for `_walking`: the only place that sets an agent walking. */
+  _setWalking(a) {
+    a.state = "walking";
+    this._walkers.add(a);
+    this._walkingList = null;
+  }
+
   /**
-   * The agents walking now, in the order of `agents`. Only `_beginLeg` sets an agent walking and
+   * The agents walking now, in the order of `agents`. Only `_setWalking` sets an agent walking and
    * notes it: those who walk now are among the noted ones (no need to look at all agents, most of
    * them are inside); who stopped walking, or is no agent any more, is dropped.
    */

@@ -48,7 +48,7 @@ Where a photo has a **digital layer** (Bf Neustadt and Waldhof, the goods yard w
 | **Hybrid container train** | `ebl-container-train.json` | a frame of a clip of the tagged train | real wagons and a real truck with AprilTag labels carry virtual containers, grey placeholders on their free spots; a crane over the four tracks, a yard, and a harbour in front of the table, shown below the photo (`view.extend_below`); Railway undertaking → Terminal loads and unloads the real train and truck |
 | **Loading task at the hybrid container train** | `ebl-container-train.json` | the same | the same layout with its module *Loading task*: a full yard and train and the crane's work orders, for **Load the hybrid train** in Examples |
 | **Container terminal (virtual)** | `container-terminal.json` | none (flyover) | a terminal of its own, also a module of the lab example |
-| **Hump yard (virtual)** | `ebl-neustadt.json` | none (flyover) | Bf Neustadt with its module *Hump yard*: a hump yard on a virtual table module at the west end of the table, where train after train is broken up into six classification tracks ([Hump yard](hump-yard.md)); **Hump a train** shown in Examples |
+| **Hump yard (virtual)** | `ebl-neustadt.json` | none (flyover) | Bf Neustadt with its module *Hump yard* switched on (the other modules as you chose them): a hump yard on a virtual table module at the west end of the table, where train after train is broken up into six classification tracks ([Hump yard](hump-yard.md)); **Hump a train** shown in Examples |
 | **Beta 0.1 (EBL lab photo, older)** | `ebl-lab.json` | the lab photo of 30 September 2026, the first example | two platforms, the town on table modules in front of the table, and the modules rail operations, infrastructure, journeys and container terminal, whose games are on the game page |
 
 The clips play in a loop; in browsers that cannot play MP4 (H.264) use **Open file** (Settings → View → Image source) with your own video. The original photos and clips are in [`examples/media`](../examples/media) (see [examples/README.md](../examples/README.md)): open them with **Open file** over any of these layouts. The layouts of Bf Neustadt and the hybrid train come from `arail-survey` (see [Lab session](lab-session.md#the-examples-of-9-october-2026)); their marker maps are locked.
@@ -205,7 +205,7 @@ Three views: **View**, **Simulation** and **Control system**. The tab opens the 
 
 Situations: each a characteristic combination of what the simulation can be set to, in one click. What it measures is in the [Overview](#overview).
 
-- *Situations*: days, each with its weekday, time, weather and demand, and events. The situation set is pressed until something is set on its own or another layout opens. An event the layout lacks the modules for is shown, but off (*Not in this layout*).
+- *Situations*: days, each with its weekday, time, weather and demand, and events. The situation set is pressed while it holds: until the time, the date, the weather or the demand is set otherwise (on its own here, or by a scenario, a story or a plugin) or another layout opens; the clock running on and the weather changing by itself leave it pressed. An event the layout lacks the modules for is shown, but off (*Not in this layout*). A situation is checked before anything is set: one that does not fit changes nothing.
 
   | Situation | Day and time | Weather | Demand |
   | --- | --- | --- | --- |
@@ -244,7 +244,7 @@ What you decide is how fast the train is pushed: **Slower** and **Faster** chang
 
 **The train** lists its cuts from the hump end: their number, their track, their wagons, how well they roll (the line at their side has the colour of the band on their wagons: Türkis good, Brillantblau medium, Orange bad runners), and where they are: waiting, on the hump, rolling, in their track, in the wrong track, short of their track, derailed at a switch (it reached the switch while it was being thrown), or met the wagons too hard. Choose a cut in the list, or tap one of its wagons in the flyover (Enter at the cross in the middle), to follow it: the yard outlines it in Orange. **Classification tracks** says for each track how many of its wagons are in it and how much room is left.
 
-The task is done when every cut stands, and its time stops then; the time counts on the yard's clock, beside it the cuts in the wrong track and the impacts too hard. Pushed far too fast, the cuts can stand back up to the crest: the hump is blocked, the rest of the train stays on it, and the task ends with the cuts not humped. Leaving the example switches the module off again, and the yard humps train after train by itself.
+The task is done when every cut stands, and its time stops then; the time counts on the yard's clock, beside it the cuts in the wrong track and the impacts too hard. Pushed far too fast, the cuts can stand back up to the crest: the hump is blocked, the rest of the train stays on it, and the task ends with the cuts not humped (Slower, Faster and Stop are off then). Leaving the example switches the module off again, and the yard humps train after train by itself.
 
 ### Trains on tracks and Units and drivers (the operations plan)
 

@@ -465,6 +465,43 @@ test("where the table's markers cannot be searched, the line at the top says so"
   expect(await page.evaluate(() => window.__play.live.tracking)).toBe(false);
 });
 
+test("a search that failed is tried again with the next choice; the worker goes when the table is seen from above or left", async ({ page }) => {
+  // the first worker fails before it is ready (as a slow start may); the ones after it are the browser's own. Each counts
+  // when it is let go of
+  await page.addInitScript(() => {
+    const Real = window.Worker;
+    window.__workers = { made: 0, ended: 0 };
+    window.Worker = function Worker(url, options) {
+      const w = window.__workers.made++ ? new Real(url, options) : { postMessage: () => setTimeout(() => w.onmessage?.({ data: { type: "error", message: "too slow" } })), terminate() {} };
+      const end = w.terminate.bind(w);
+      w.terminate = () => (window.__workers.ended++, end());
+      return w;
+    };
+  });
+  const errors = await start(page);
+  await run(page, 3);
+  await page.locator(`${SEAT} .vn-story .btn`).click();
+  const choose = async (name) => (await panel(page)).getByRole("button", { name, exact: true }).click();
+  const live = () => page.evaluate(() => ({ ...window.__workers, worker: !!window.__play.live.worker, tracking: window.__play.live.tracking }));
+  await choose("Lab photo");
+  await expect(page.locator("#tableNote")).toHaveText("The table's markers cannot be searched in this browser: the game cannot be placed on the picture.");
+  expect(await live()).toEqual({ made: 1, ended: 1, worker: false, tracking: false });
+  // the photo chosen again: the search is tried again, and the markers are found
+  await choose("Lab photo");
+  await expect.poll(async () => (await live()).tracking, { timeout: 30_000 }).toBe(true);
+  await expect(page.locator("#tableNote")).toBeHidden();
+  // from above: the worker goes; the photo once more: another one
+  await choose("Table");
+  expect(await live()).toEqual({ made: 2, ended: 2, worker: false, tracking: null });
+  await choose("Lab photo");
+  await expect.poll(async () => (await live()).tracking, { timeout: 30_000 }).toBe(true);
+  // the table left: the worker goes with it
+  await page.keyboard.press("t");
+  await expect(page.locator("body")).not.toHaveClass(/\btabled\b/);
+  expect(await live()).toEqual({ made: 3, ended: 3, worker: false, tracking: null });
+  expect(errors).toEqual([]);
+});
+
 test("a camera whose picture has no size is stopped, and what was shown stays", async ({ page }) => {
   // a camera that opens, but whose video never reports a size (some virtual or USB cameras)
   await page.addInitScript(() => {

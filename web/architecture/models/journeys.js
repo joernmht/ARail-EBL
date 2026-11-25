@@ -30,7 +30,7 @@ export const JOURNEYS = [{
     },
     { name: "OperationsRail", file: "web/arail/journeys/rail.js", kind: "class", role: "The rail operations' trips, read as the journeys' trips.", operations: ["trips(day)", "tripOf(vehicle)", "expected(trip, station, kind)"] },
     { name: "journeys", file: "web/arail/journeys/index.js", kind: "module", role: "Registration.", operations: ["journeysOf(world)", "registerJourneys(registry)"] },
-    { name: "JourneysPanel", file: "web/game/journeys.js", kind: "class", role: "The game page's case Railway undertaking → Journeys: make a traveller (with its age, aid and luggage), choose a plan, follow it, results from door to door.", operations: ["render(el)", "update()", "addJourneys()", "_profile() — the characteristics chosen", "downloadCSV() — with the parts, planned and real"] },
+    { name: "JourneysPanel", file: "web/game/journeys.js", kind: "class", role: "The game page's case Railway undertaking → Journeys: make a traveller (with its age, aid and luggage), choose a plan, follow it, results from door to door.", operations: ["render(el)", "update()", "addJourneys()", "_profile() — the characteristics chosen", "downloadCSV() — with the parts, planned and real", "restartAll() — all start again; the clock set back before the first departure, and with it the rest of the simulation (the toast says so)"] },
   ],
   relations: [
     { from: "JourneysSimulation", to: "Traveller", kind: "composes", label: "travellers *" },

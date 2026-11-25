@@ -130,7 +130,7 @@ export const TOOLS = [
     classes: [
       { name: "render", file: "tools/video/render.mjs", kind: "module", role: "Steps the app frame by frame in Chromium (requestAnimationFrame by hand), serving web/ and the clip itself; records raw poses (pass 1) or draws given ones (pass 2); Freeze, simulation moments and a flyover camera path.", operations: ["seekableClip(file)", "usage(msg)"] },
       { name: "stabilize", file: "tools/arail_tools/stabilize.py", kind: "module", role: "arail-stabilize: the markers' poses joined with the picture's motion.", operations: ["main(argv)", "raw_poses(record, key)", "read_frames(clip, start, n, size)", "plane_mask(H, shape, rects, inside_point, step)", "picture_motion(frames, Hraw, rects, inside_point, log)", "agreement(R, G, sigma, window)", "solve(Hraw, G, ref, lam, sigma, iterations)", "causal(Hraw, G, ref, alpha, sigma)", "slip(H, G, pts, Hmarkers, fps)"] },
-      { name: "compose", file: "tools/arail_tools/compose.py", kind: "module", role: "arail-compose: shots joined after a plan.", operations: ["main(argv)", "compose(plan, frames_dir, log)", "encode(frames_dir, out, fps, crf)", "crop(img, box, size)", "blend(a, b, t)"] },
+      { name: "compose", file: "tools/arail_tools/compose.py", kind: "module", role: "arail-compose: shots joined after a plan.", operations: ["main(argv)", "compose(plan, frames_dir, log)", "encode(frames_dir, out, fps, crf)", "soundtrack(plan, out) — the shots' sounds mixed into the video; a failed mix leaves no file beside it", "crop(img, box, size)", "blend(a, b, t)", "check_frames(plan, plans_dir) — --check, before anything is rendered: every shot within the frames its plan renders, no shot's frames rendered by two plans, every clip long enough", "renderers(plans_dir) — the frames the shot plans render, by their out directory: every plan that renders into each", "recorded_frames(plan) — the frames a recording of screen.mjs writes at the least (its steps' times)"] },
       { name: "Part", file: "tools/arail_tools/compose.py", kind: "class", role: "One shot of a plan: its frames, the crop (a slow push), the fade from the shot before, the bare picture under it.", operations: ["frame(i)"] },
     ],
     relations: [{ from: "compose", to: "Part", kind: "creates" }],
@@ -160,6 +160,7 @@ export const TOOLS = [
     ],
     rules: [
       "Every frame is one step of 1/fps s, however long it takes to draw: the video does not depend on the computer.",
+      "page-videos.sh checks both compositions first (arail-compose --check): a shot that uses more frames than its plan renders fails before an hour of rendering, not after.",
       "Corners count for the motion only on the table plane (the layout's rectangles, through the raw pose) and only if Lucas–Kanade brings them back within 0.7 px; RANSAC at 1.5 px leaves passing trains out.",
       "Without enough corners a step takes the markers' own step.",
     ],

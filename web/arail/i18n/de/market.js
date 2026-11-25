@@ -66,6 +66,7 @@ export const TEXTS = {
   // ------------------------------------------------------------ the market's visitors
   "Market visitors": "Marktbesucher",
   "Market visitor": "Marktbesucher",
+  "Market visitors: no market square has stalls or rides, so nobody comes.": "Marktbesucher: Kein Marktplatz hat Buden oder Fahrgeschäfte, also kommt niemand.",
   "Visitors of a market on a market square: they come from the town, the streets and by train, queue at the stalls, stay at standing tables, look at the tree, take rides and go home.":
     "Besucher eines Markts auf einem Marktplatz: Sie kommen aus der Stadt, von den Straßen und mit dem Zug, stehen an den Buden an, bleiben an Stehtischen, schauen den Baum an, fahren Karussell und gehen nach Hause.",
   "Visitors at the busiest time": "Besucher zur vollsten Zeit",

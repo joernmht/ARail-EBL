@@ -46,7 +46,7 @@ In the typical weather a summer shower that pours down (3 mm/h and more) on a wa
 
 A **course** (key frames over the day) lies on top of either: the first frost night, snow from six in the morning. Given on its own (without a mode or a preset) it lies over the typical weather; with `"mode": "off"` it does nothing, and the layout check says so.
 
-The ground goes with the clock: while it is stopped nothing settles, dries or melts, and at a faster clock it all goes faster. What lies stays when a weather follows another or the time is set: frost after snowfall keeps the snow, the cleared streets stay cleared, and a weather that brings rain or snow starts at least as wet or as white as its preset; only `wet` and `snow_cm` given with it (or a weather after *Off*) set the ground anew, once: what falls or melts afterwards stays when the time is set later. The typical weather is gone through again, over the day and a half before the time set.
+The ground goes with the clock: while it is stopped nothing settles, dries or melts, and at a faster clock it all goes faster. What lies stays when a weather follows another or the time is set: frost after snowfall keeps the snow, the cleared streets stay cleared, and a weather that brings rain or snow starts at least as wet or as white as its preset; only `wet` and `snow_cm` given with it (or a weather after *Off*) set the ground anew, once: what falls or melts afterwards stays when the time is set later. The typical weather is gone through again, over the day and a half before the time set, each day with its own traffic clearing the snow (a Saturday's and a Sunday's without rush hours); `wet` and `snow_cm` given with it lie over what that leaves, until it is gone through anew. They are where the ground starts in any weather: the layout's (`weather.state`) or one set by a scenario, with a preset, the typical weather or a course alike; with mode `off` there is no ground to set (the check says so).
 
 The climate is Dresden's: the typical year gives about 10 °C, 600 to 680 mm of rain and snow on about 150 days (the German Weather Service's figures for Dresden-Klotzsche 1991–2020: 9.8 °C, about 640 mm, about 156 days). The split by month, the fair days, the wind and the fog are estimates until the DWD's monthly normals replace them.
 
@@ -92,7 +92,7 @@ These numbers are starting values and estimates (`WEATHER_EFFECTS` in `core/weat
 | `weather` | off | a preset's name (`"snow"`), `"typical"`, `"off"`, or an object: |
 | `weather.mode` | `"off"` | `off`, `typical`, `fixed` |
 | `weather.preset` | | `clear`, `cloudy`, `overcast`, `rain`, `heavy-rain`, `thunderstorm`, `snow`, `frost`, `fog`, `heat` |
-| `weather.state` | | quantities over the preset: `temperature_c`, `cloud` (0…1), `precipitation` (`none`, `rain`, `sleet`, `snow`), `rate_mm_h`, `wind_mps`, `wind_deg`, `fog` (0…1), `thunder` (true, false); `wet` (0…1) and `snow_cm` for where the ground starts |
+| `weather.state` | | quantities over the preset: `temperature_c`, `cloud` (0…1), `precipitation` (`none`, `rain`, `sleet`, `snow`), `rate_mm_h`, `wind_mps`, `wind_deg`, `fog` (0…1), `thunder` (true, false); `wet` (0…1) and `snow_cm` for where the ground starts, with any mode but `off` (in the typical weather they lie over what the day and a half before left) |
 | `weather.course` | | `[["05:00", {…}], ["07:00", {…}]]`: quantities at times of day, in proportion between them |
 | `weather.seed` | `1` | another typical year |
 
@@ -103,7 +103,7 @@ A scenario step sets them too ([Disruptions and scenarios](disruptions-and-scena
 { "at": 60, "set": { "weather": { "preset": "rain", "temperature_c": -2 } } }
 ```
 
-The layout check reports a date, a mode, a preset or a course that is none, a course with mode off, and a step's `"02-29"` when the layout's year (2026 without one) has no 29 February. A step that fails (a date, time or weather that is none) changes none of them.
+The layout check reports a date, a mode, a preset or a course that is none, and a course, `wet` or `snow_cm` with mode off. A step's date written without its year is in the year the clock has when the step runs (the layout's, one set in Settings or by an earlier step, or the next one after New Year), which the check cannot know: it takes `"02-29"`, and in a year without 29 February the step fails and says so (*"02-29" is no date in 2027, which has no 29 February*). Write the year with it (`"2028-02-29"`) to be sure. A step that fails (a date, time or weather that is none) changes nothing.
 
 ## For plugins and simulations
 

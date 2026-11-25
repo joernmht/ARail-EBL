@@ -80,10 +80,12 @@ test("the choices matter: planning the pit ahead beats the book; a reading taken
   const plan = SEEDS.map((seed) => score(play(planner, { seed })));
   assert.ok(mean(plan) > mean(book) + 3, `judgment about the tracks pays (${mean(plan).toFixed(1)} against ${mean(book).toFixed(1)})`);
   assert.ok(Math.min(...book) < 75 && Math.max(...book) > 88, "by the book, nights differ");
+  // (on more nights: a finding left in the release beats the book only rarely, on one night of the first 40)
+  const nights = Array.from({ length: 40 }, (_, i) => i + 1), books = nights.map((seed) => (seed <= SEEDS.length ? book[seed - 1] : score(play(computer, { seed }))));
   for (const [name, policy] of [["the reading taken", always("limit-", "within")], ["repaired unasked", always("finding-", "do")], ["left in the release", always("finding-", "note")]]) {
-    const other = SEEDS.map((seed) => score(play(policy, { seed })));
-    assert.ok(other.some((x, i) => x > book[i]), `${name}: better than the book on some night`);
-    assert.ok(other.some((x, i) => x < book[i]), `${name}: worse on another`);
+    const other = nights.map((seed) => score(play(policy, { seed })));
+    assert.ok(other.some((x, i) => x > books[i]), `${name}: better than the book on some night`);
+    assert.ok(other.some((x, i) => x < books[i]), `${name}: worse on another`);
   }
   // hasty all round (unasked, on one reading, a shallow cut, an early time, the unit handed over, no promise) is worse than the book
   const hasty = (g, d) => (d.id.startsWith("finding-") && has(d, "do") ? "do" : d.id.startsWith("limit-") && has(d, "within") ? "within" : d.id.startsWith("cut-") ? Math.max(LATHE.min, d.scale.value - 1) : d.id === "word" ? Math.max(10, d.scale.value - 10) : d.id.startsWith("door-") ? "go" : d.id.startsWith("call-") ? d.options.at(-1).id : undefined);
@@ -438,6 +440,38 @@ test("the trains of the morning: a unit returned to operation leaves for each, o
   assert.ok(lateNight, "by the book, a train leaves late on some night");
   assert.ok(lateNight.irregulars.some((x) => x.kind === "late"));
   assert.ok(lateNight.objectives().find((o) => o.id === "trains").value < 1);
+});
+
+test("the hourly status: the trains to come against the units that can still take one, not one on its way out to its own train, not one whose brake test nobody authorised signed", () => {
+  /** Play by the book until `until(game)`; then every unit but `keep(game)` is kept in, and the status goes out now: the trains still to come, and those it finds short. */
+  const status = (seed, until, keep) => {
+    const g = new WorkshopGame({ seed }), P = new WorkshopPlayer();
+    while (!g.over && !until(g)) {
+      for (const d of g.open) g.act("decide", d.id, g.advice(d.id));
+      P.hands(g);
+      g.step(0.5);
+    }
+    const u = keep(g);
+    for (const x of g.units) if (x !== u) x.kept = true;
+    for (const p of g.pullouts) p.slipped = false;
+    g._status = 0;
+    g._hourly();
+    return { g, u, open: g.pullouts.filter((p) => p.unit == null && !p.cancelled).map((p) => p.n), short: g.pullouts.filter((p) => p.slipped).map((p) => p.n) };
+  };
+  // the first train's unit is in the throat on its way out: it does not stand in for the next train
+  const out = status(1, (g) => g.pullouts[0].unit != null, (g) => g.unit(g.pullouts[0].unit));
+  assert.ok(out.u.train === 0 && out.u.gone_t == null && (out.g.queued(out.u.id) || out.u.moving?.kind === "out"));
+  assert.ok(out.open[0] === 1 && out.open.length >= 2);
+  assert.deepEqual(out.short, out.open);
+  assert.ok(out.g.logs.some((l) => l.text.endsWith(`"By that, the 04:42 and the 05:00${out.open.length > 2 ? " and the 05:12" : ""} have no unit."`)));
+  // released on a signature without authorisation, a unit will be kept in: it is no unit for the first train
+  const released = (g) => g.units.find((x) => x.released_t != null && x.rto_t == null);
+  const lapsed = status(1, (g) => (g.t * WORKSHOP_PACE) / 3600 >= 3 && released(g), (g) => Object.assign(released(g), { void: true }));
+  assert.ok(lapsed.u.rto_due < lapsed.g.pullouts[0].at && lapsed.open[0] === 0);
+  assert.deepEqual(lapsed.short, lapsed.open);
+  // handed to its driver all the same, it is a unit again
+  const handed = status(1, (g) => (g.t * WORKSHOP_PACE) / 3600 >= 3 && released(g), (g) => Object.assign(released(g), { void: true, handed: true, rto_t: g.t }));
+  assert.deepEqual(handed.short, handed.open.slice(1));
 });
 
 test("the view for a page that does not know the game: figures, tables, the moves as forms, the depot as a picture, the hall for the table", () => {

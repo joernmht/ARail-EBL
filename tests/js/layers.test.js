@@ -8,8 +8,8 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
-  composeLayout, createWorld, decomposeLayout, infraOf, journeysOf, layerChoice, layersOn, layoutPlugins, loadPlugins, normalizeLayers, opsOf, registry,
-  toggleLayer, validateLayout, withLayers, withNewLayers,
+  composeLayout, createWorld, decomposeLayout, infraOf, journeysOf, layerChoice, layersKnown, layersOn, layoutPlugins, loadPlugins, normalizeLayers, opsOf, registry,
+  switchOnLayers, toggleLayer, validateLayout, withLayers, withNewLayers,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
@@ -260,4 +260,43 @@ test("a saved choice of modules gains the modules on by default that the layout 
   assert.ok(validateLayout({ objects: [], layers: [{ id: "x", since: "16.11.2026" }] }, registry).some((p) => /since must be a date/.test(p)));
   // an exclusive module chosen stays alone
   assert.deepEqual(withNewLayers(layers, ["operations"], before), ["operations"]);
+});
+
+test("an exclusive module chosen alone keeps the new modules for when it is left; then they come, once", () => {
+  const layers = normalizeLayers([
+    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "striezelmarkt", enabled: true, since: "2026-11-16" }, { id: "market-visitors", enabled: true, since: "2026-11-16" },
+    { id: "infrastructure" }, { id: "operations", exclusive: true }, { id: "hump" },
+  ]);
+  const all = layers.map((l) => l.id), before = ["sbahn", "waldhof", "infrastructure", "operations", "hump"];
+  // Operations, saved before the market came (with the ids of then, or before they were kept): alone,
+  // and the market's modules are not kept as known
+  for (const known of [before, null]) {
+    assert.deepEqual(withNewLayers(layers, ["operations"], known), ["operations"]);
+    const kept = layersKnown(layers, ["operations"], known);
+    assert.deepEqual(kept, before);
+    // still alone on the next visit, still not known
+    assert.deepEqual(layersKnown(layers, withNewLayers(layers, ["operations"], kept), kept), before);
+    // left for S-Bahn (the app's setLayers): the market comes, and from then on all are known
+    assert.deepEqual(withNewLayers(layers, ["sbahn"], kept), ["sbahn", "striezelmarkt", "market-visitors"]);
+    assert.deepEqual(layersKnown(layers, ["sbahn", "striezelmarkt", "market-visitors"], kept), all);
+  }
+  // switched off by hand afterwards, it stays off
+  assert.deepEqual(withNewLayers(layers, ["sbahn"], all), ["sbahn"]);
+  // a choice that is not an exclusive module alone knows them all (what it gains is in it)
+  assert.deepEqual(layersKnown(layers, ["waldhof"], before), all);
+  assert.deepEqual(layersKnown(layers, ["waldhof"], all), all);
+});
+
+test("an example that needs a module switches it on with the modules chosen before, not with a fixed list", () => {
+  const layers = normalizeLayers([
+    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "striezelmarkt", enabled: true }, { id: "market-visitors", enabled: true },
+    { id: "plan", exclusive: true }, { id: "operations", exclusive: true }, { id: "hump" },
+  ]);
+  // the market switched off by hand: the Hump yard does not bring it back
+  assert.deepEqual(switchOnLayers(layers, ["sbahn", "waldhof"], ["hump"]), ["sbahn", "waldhof", "hump"]);
+  // on already: as it is; an exclusive one alone; another one leaves the exclusive one, as in Examples → Sandbox
+  assert.deepEqual(switchOnLayers(layers, ["waldhof", "hump"], ["hump"]), ["waldhof", "hump"]);
+  assert.deepEqual(switchOnLayers(layers, ["sbahn", "hump"], ["operations"]), ["operations"]);
+  assert.deepEqual(switchOnLayers(layers, ["plan"], ["hump"]), toggleLayer(layers, ["plan"], "hump"));
+  assert.deepEqual(switchOnLayers(layers, ["sbahn"], ["unknown"]), ["sbahn"]);
 });

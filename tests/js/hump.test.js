@@ -471,6 +471,81 @@ test("pulling out takes the cuts of the track's contents, never an empty track; 
   assert.ok(short2.log.some((e) => e.type === "run.limit"));
 });
 
+test("a cut stopped across a track's entrance is in the track once pushed up, and ended in it when pulled out with it: no longer short", () => {
+  const yard = standardYard();
+  /** Two trains in winter: bad runners stop across their tracks' entrances. */
+  const winter = () => {
+    const sim = new HumpSimulation(yard, { seed: 1, season: "winter" });
+    const r = createRng(1001);
+    for (const id of ["T1", "T2"]) sim.hump({ id, push_mps: 1.2, wagons: randomTrain(r, { wagons: 30, tracks: yard.tracks.map((t) => t.name) }) });
+    return [sim, sim.run()];
+  };
+  const across = (sim) => sim.bodies.filter((b) => {
+    const leaf = yard.trackSegment(b.track);
+    return b.rec.stop && b.rec.stop.track == null && !b.derailed && b.route.at(-1) === leaf.id && b.s >= leaf.track.s0;
+  });
+  const [up, res] = winter();
+  const ids = across(up).map((b) => b.id);
+  assert.ok(ids.length >= 1 && res.short >= ids.length, `${ids.length} cuts across an entrance, ${res.short} short`);
+  for (const id of ids) {
+    const c = up.bodies.find((b) => b.id === id);
+    up.pushUp(c.track);
+    assert.ok(c.s - c.body.length_m >= yard.trackSegment(c.track).track.s0, `${id} pushed wholly into its track`);
+    assert.deepEqual([c.rec.stop.track, c.rec.stop.s], [c.track, Math.round(c.s * 100) / 100], "its stop where it stands now");
+  }
+  const after = up.results();
+  assert.equal(after.short, res.short - ids.length, "no longer counted short");
+  assert.ok(after.perCut.filter((c) => ids.includes(c.id)).every((c) => c.ended === up.cuts.find((x) => x.id === c.id).track));
+  // pulled out with the wagons of its track: it ended in that track
+  const [pull] = winter();
+  for (const id of ids) assert.ok(pull.pullOut(pull.bodies.find((b) => b.id === id).track).cuts.includes(id));
+  assert.equal(pull.results().short, res.short - ids.length);
+  assert.ok(pull.results().perCut.filter((c) => ids.includes(c.id)).every((c) => c.ended === pull.cuts.find((x) => x.id === c.id).track));
+});
+
+test("a cut in its group retarder when its track is pulled out aims at the track's end, not at the wagons that left", () => {
+  // target braking alone, the resistance measured exactly: the cut would stop where the rear of the wagons was, a gap beyond it
+  const yard = standardYard({ tracks: 2, track_m: 300, design: "target" });
+  const sim = new HumpSimulation(yard, { seed: 1, dt: 0.1, train_gap_s: 0, control: { estimate_sd: 0 } });
+  sim.hump({ id: "A", wagons: Array.from({ length: 8 }, () => ({ type: "eanos", loaded: 1, track: "1" })) });
+  sim.run();
+  const leaf = yard.trackSegment("1"), g = yard.retardersOn(yard.routeTo("1")).find((r) => r.kind === "group");
+  assert.ok(sim.trackContents("1").free_m < 200, "track 1 half full");
+  sim.hump({ id: "B", wagons: [{ type: "eanos", loaded: 1, track: "1" }] });
+  let b;
+  while (!(b = sim.bodies.find((x) => x.id === "B/1" && x.inRetarder === g.id))) sim.step();
+  const before = b.rec.retarders[g.id].need_mps;
+  sim.pullOut("1");
+  assert.ok(b.rec.retarders[g.id].need_mps > before, `faster out of its retarder: ${b.rec.retarders[g.id].need_mps} after ${before}`);
+  sim.run();
+  assert.ok(leaf.s1 - b.s < 5, `it stands ${(leaf.s1 - b.s).toFixed(1)} m before the end`);
+  assert.equal(sim.trackContents("1").gaps.length, 0);
+});
+
+test("idle only when nothing would move on the next step: a standing cut that gravity starts again, a retarder still opening", () => {
+  const yard = standardYard({ tracks: 2, track_m: 300 });
+  const sim = new HumpSimulation(yard, { seed: 1, dt: 0.1 });
+  sim.hump({ id: "I", wagons: [{ type: "eanos", loaded: 1, track: "2" }] });
+  sim.run();
+  assert.ok(sim.idle);
+  const c = sim.bodies[0], end = yard.trackSegment("2").s1;
+  // standing on the steep ramp, not held (as if braked to a stand there): gravity starts it again
+  Object.assign(c, { s: yard.crest_m + 30, v: 0, held: false, route: [yard.root], state: "stopped" });
+  assert.ok(c.s < yard.segment(yard.root).s1);
+  assert.equal(sim.idle, false, "gravity starts it again");
+  sim.run();
+  assert.ok(sim.idle && c.s === end, "it rolled on to the end of its track");
+  // braked to a stand in the main retarder, the retarder still closed: it starts again once the retarder has opened
+  const main = yard.retarders.find((r) => r.kind === "main");
+  Object.assign(c, { s: main.s1 - 0.1 + c.firstAxle, v: 0, held: false, route: yard.pathTo(main.seg), state: "stopped" });
+  sim.retarderState(main.id).level = 1;
+  assert.ok(!(sim._accelerations().get(c).a > 0), "held by the retarder for now");
+  assert.equal(sim.idle, false, "the retarder still opening");
+  const t0 = sim.t;
+  sim.run();
+  assert.ok(sim.t - t0 > 1 && sim.idle && c.s === end, "it rolled on to the end of its track once the retarder had opened");
+});
+
 test("the command line refuses an option without its value", () => {
   const run = (...args) => spawnSync(process.execPath, [join(ROOT, "tools/hump.mjs"), ...args], { cwd: ROOT, encoding: "utf8" });
   for (const args of [["--json", "--quiet"], ["--quiet", "--svg"], ["--trains"], ["--push", "fast"], ["--tracks", "0"], ["--wagons", "-1"], ["--trains", "1.5"], ["--push", "0"], ["--pull-below", "-5"]]) {
@@ -605,13 +680,23 @@ test("the shunting locomotive: a standing cut taken to another track, wagons set
   const two = small.setOut({ train: "S", wagons: five.slice(0, 2) }, "2");
   assert.equal(small.moveCut(two.id, "1"), false);
   assert.equal(two.track, "2");
-  // while a cut rolls into a track, nothing is put there; a rolling cut is not moved
+  // while a cut rolls towards a track, nothing is put there; a rolling cut is not moved
   const busy = new HumpSimulation(yard, { seed: 3, dt: 0.1 });
   busy.hump({ id: "B", wagons: [{ type: "eanos", loaded: 1, track: "4" }] });
+  const four = yard.trackSegment("4");
+  // (still in the switch zone, before the last switch to its track: the wagons would stand at the track's entrance as it arrives)
+  while (!busy.bodies.some((x) => x.v > 0 && x.route.length > 1)) busy.step();
+  assert.ok(busy.bodies[0].route.at(-1) !== four.id, "the cut is on its way, not yet in the track's segment");
+  assert.equal(busy.setOut({ train: "B", wagons: [{ type: "eanos", loaded: 1 }] }, "4"), null);
+  const parked = new HumpSimulation(yard, { seed: 3, dt: 0.1 });
+  parked.setOut({ id: "P", train: "P", wagons: [{ type: "eanos", loaded: 1 }] }, "1");
+  parked.hump({ id: "B", wagons: [{ type: "eanos", loaded: 1, track: "4" }] });
+  while (!parked.bodies.some((x) => x.v > 0 && x.route.length > 1)) parked.step();
+  assert.equal(parked.moveCut("P", "4"), false);
+  assert.equal(busy.bodies.length, 1);
   while (!busy.bodies.some((x) => x.v > 0 && x.route.length > 3)) busy.step();
   assert.equal(busy.moveCut(busy.bodies[0].id, "1"), false);
   // (until the cut is in its track and still rolls there)
-  const four = yard.trackSegment("4");
   while (!(busy.bodies[0].route.at(-1) === four.id && busy.bodies[0].s > four.track.s0) && busy.t < 600) busy.step();
   assert.ok(busy.bodies[0].v > 0 && busy.bodies[0].route.at(-1) === four.id, "the cut rolls in track 4");
   assert.equal(busy.setOut({ train: "B", wagons: [{ type: "eanos", loaded: 1 }] }, "4"), null);
@@ -619,4 +704,49 @@ test("the shunting locomotive: a standing cut taken to another track, wagons set
   busy.run();
   assert.ok(busy.setOut({ train: "B", wagons: [{ type: "eanos", loaded: 1 }] }, "4"), "once it stands, the wagon is set behind it");
   assert.throws(() => sim.setOut({ train: "T", wagons: [{ type: "no-such-wagon" }] }, "2"), /no wagon type/);
+});
+
+test("a derailed cut taken away (rerail), by hand or after rerail_s; cuts held against wagons that have gone stand free again", () => {
+  const yard = standardYard({ tracks: 4, track_m: 300 });
+  /** A train of single wagons whose first cut derails in the first switch (moving for good until then): the others stand behind it up to the crest. */
+  const derail = (options = {}) => {
+    const sim = new HumpSimulation(yard, { seed: 2, dt: 0.1, ...options });
+    sim.hump({ id: "D", wagons: Array.from({ length: 8 }, (_, i) => ({ type: "eanos", loaded: 1, track: String(1 + (i % 4)) })) });
+    const sw = sim.switchState(yard.root);
+    Object.assign(sw, { moving: true, until: Infinity });
+    while (!sim.bodies.some((b) => b.derailed)) sim.step();
+    sw.until = sim.t;
+    return sim;
+  };
+  const atEnd = (b) => !yard.segment(b.route.at(-1)).children.length && b.s >= yard.segment(b.route.at(-1)).s1 - 1e-9;
+  const sim = derail();
+  sim.run({ until_s: sim.t + 600 });
+  assert.ok(sim.pushing?.blocked, "the train stands behind the cuts held up to the crest");
+  const d = sim.bodies.find((b) => b.derailed);
+  assert.ok(sim.bodies.filter((b) => b.held && !b.derailed).length >= 2, "cuts held behind the derailed one");
+  assert.equal(sim.rerail(sim.bodies.find((b) => !b.derailed).id), false, "only a derailed cut is taken away");
+  assert.equal(sim.rerail(d.id), true);
+  assert.deepEqual([sim.log.at(-1).type, sim.log.at(-1).cut, d.state, sim.bodies.includes(d)], ["cut.rerailed", d.id, "departed", false]);
+  assert.ok(sim.bodies.every((b) => !b.held || atEnd(b)), "nothing held but at the end of a track");
+  const r = sim.run();
+  assert.deepEqual([r.trains, r.waiting, r.limit_reached, r.derailed], [1, 0, false, 1], "humped to its end; the derailed cut still counted");
+  assert.ok(r.perCut.filter((c) => !c.derailed).every((c) => c.ended), "every other cut in a track");
+  // by itself, once it has stood rerail_s
+  const auto = derail({ rerail_s: 120 });
+  const ra = auto.run();
+  const off = auto.log.find((e) => e.type === "cut.derailed"), on = auto.log.find((e) => e.type === "cut.rerailed");
+  assert.ok(on && on.cut === off.cut, "taken away by itself");
+  near(on.t - off.t, 120, 0.2, "after standing 120 s");
+  assert.deepEqual([ra.trains, ra.waiting, ra.derailed], [1, 0, 1]);
+  // a track pulled out: the cuts that stood held against its wagons, wholly in front of it, stand free again
+  const small = standardYard({ tracks: 2, track_m: 60 });
+  const full = new HumpSimulation(small, { seed: 1, dt: 0.1 });
+  full.hump({ id: "S", wagons: Array.from({ length: 12 }, (_, i) => ({ type: "eanos", loaded: 1, track: String(1 + (i % 2)) })) });
+  full.run();
+  const one = small.trackSegment("1");
+  const before = full.bodies.filter((b) => b.track === "1" && b.s < one.track.s0);
+  assert.ok(before.length >= 1 && before.every((b) => b.held), "held in front of track 1");
+  const out = full.pullOut("1");
+  assert.ok(before.every((b) => !out.cuts.includes(b.id) && !b.held), "not pulled out, no longer held");
+  assert.ok(full.bodies.filter((b) => b.track === "2").every((b) => b.held), "track 2 as it was");
 });

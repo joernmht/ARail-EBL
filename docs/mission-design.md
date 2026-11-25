@@ -28,7 +28,7 @@ The instruction this guide was written from, as the maintainer gave it:
 > dynamically. After you're done, PR and watch and show me a walk-through.
 
 "The first one" is *Your first shift*: a place on the lab's table, somebody who talks a beginner
-through the first minutes and afterwards calls only when something does not go to plan, a table
+through the first minutes and otherwise calls only when something does not go to plan, a table
 to keep in view, and work that is done in the picture and not in a form.
 
 ## What every mission has

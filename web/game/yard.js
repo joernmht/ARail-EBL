@@ -9,6 +9,7 @@
 // the choice's colour. A click chooses, as in the picture of the yard beside the table, where the
 // moves are. Nothing is written on the table. Data, geometry and drawing on a View: no DOM.
 import { CD_LIGHT, OVERLAY, rgba } from "../arail/index.js";
+import { HOLD_ASK_S } from "../arail/game/yard.js";
 import { HIT_PX, RING } from "./control.js";
 
 /** The colours of the board: as planned, something to look at, a cut gone wrong, what a question is about or what is chosen. */
@@ -107,7 +108,7 @@ export class YardBoard {
     for (const t of g.sim.yard.tracks) {
       const o = g.outbound.find((x) => x.track === t.name);
       if (o && o.pulled_t != null) continue;
-      const due = o && g.t >= o.pull - 90 && g.missing(o).length > 0;
+      const due = o && g.t >= o.pull - HOLD_ASK_S && g.missing(o).length > 0;
       out.push({ item: `track-${t.name}`, tone: due ? "warn" : "plan", full: !!o?.hold_min, faint: !o });
     }
     for (const id of g.wrong.keys()) out.push({ item: `cut-${id}`, tone: "bad", full: false, pulse: true });

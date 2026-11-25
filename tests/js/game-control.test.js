@@ -13,7 +13,7 @@ import { DispatchBoard, LATE_S } from "../../web/game/dispatch.js";
 import { BOARDS, TABLE_VIEW } from "../../web/game/live.js";
 import { TABLE_LAYOUT, TableBoard } from "../../web/game/table.js";
 import { WorkshopGame, WorkshopPlayer } from "../../web/arail/game/workshop.js";
-import { YardGame } from "../../web/arail/game/yard.js";
+import { HOLD_ASK_S, YardGame } from "../../web/arail/game/yard.js";
 import { WorkshopBoard } from "../../web/game/workshop.js";
 import { FAST_MPS, YardBoard } from "../../web/game/yard.js";
 
@@ -247,6 +247,23 @@ test("the board of the yard master: the layout's hump yard draws the game's run;
   board.show(g);
   board.dispose();
   assert.ok(yard.external === null && !world.simulations.includes(board));
+});
+
+test("the board of the yard master marks a track due when the game does: orange from the game's own time before its cut-off while wagons are missing, as in the picture beside the table", () => {
+  const world = createWorld(structuredClone(NEUSTADT), { seed: 1 });
+  world.setLayers(YardBoard.layers);
+  const board = new YardBoard(world), g = new YardGame({ seed: 3 }), o = g.outbound[0];
+  board.show(g);
+  let due = null;
+  while (g.t < o.pull && !g.over) {
+    for (const d of g.open) g.act("decide", d.id, g.advice(d.id));
+    g.step(0.5);
+    const tags = g.view().sketch.items.filter((it) => it.kind === "tag"), marks = board.marks().filter((m) => m.item.startsWith("track-"));
+    for (const m of marks) assert.equal(m.tone === "warn", tags.find((it) => it.id === m.item)?.tone === "warn", `${m.item} at ${g.t} s`);
+    if (due == null && marks.find((m) => m.item === `track-${o.track}`).tone === "warn") due = g.t;
+  }
+  assert.equal(due, o.pull - HOLD_ASK_S);
+  board.dispose();
 });
 
 test("the workshop manager's board: the layout's hall draws the game's night; a unit and a free track are marked where they are, a click chooses them; nothing is written", () => {

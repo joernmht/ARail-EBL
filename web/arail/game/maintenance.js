@@ -320,6 +320,19 @@ export class MaintenanceGame extends Game {
     return !!fault.safety && !fault.secured && (fault.state === "open" || fault.state === "assigned");
   }
 
+  /**
+   * Whether a team can be sent to a fault now, as the picture offers it: the team is free, the fault is reported and
+   * waits for a team, and the team is not known to be of another trade, or the fault is a danger nobody guards.
+   */
+  sendable(team, fault) {
+    return team.state === "ready" && fault.reported != null && (fault.state === "open" || fault.state === "secured") && (this.can(team, fault) !== false || this.exposed(fault));
+  }
+
+  /** The trades whose technician on call can still be called. */
+  callable() {
+    return TRADES.filter((trade) => this.onCall[trade] === "available");
+  }
+
   /** How long a fault has been out of order so far (s): every time it failed until it was repaired, and since it failed last. */
   outage(fault, now = Math.min(this.t, this.length)) {
     return fault.reported == null ? 0 : fault.out_s + (fault.done == null ? Math.max(0, now - fault.since) : 0);
@@ -734,7 +747,7 @@ export class MaintenanceGame extends Game {
     for (const [name, p] of Object.entries(P)) if (name !== DISTRICT.base) items.push({ kind: "line", x1: base[0], y1: base[1], x2: p.map[0], y2: p.map[1], tone: "free" });
     const ready = this.teams.filter((tm) => tm.state === "ready");
     const waits = (f) => f.state === "open" || f.state === "secured";
-    const calls = TRADES.filter((trade) => this.onCall[trade] === "available").map((trade) => ({ label: `Call ${TECHNICIANS[trade]} (${trade}): ready in ${minutes(ON_CALL.ready_s)} min, ${ON_CALL.hours} h of overtime`, name: "callIn", args: [trade] }));
+    const calls = this.callable().map((trade) => ({ label: `Call ${TECHNICIANS[trade]} (${trade}): ready in ${minutes(ON_CALL.ready_s)} min, ${ON_CALL.hours} h of overtime`, name: "callIn", args: [trade] }));
     for (const [name, p] of Object.entries(P)) {
       const [x, y] = p.map, end = p.list === "end";
       const text = name === DISTRICT.base ? `${name} (base)` : name;
@@ -744,7 +757,7 @@ export class MaintenanceGame extends Game {
       items.push(p.name === "right" ? { kind: "text", x: x + 16, y: y + 5, text } : { kind: "text", x, y: y - 18, text, anchor: "middle" });
       this.faults.filter((f) => f.reported != null && f.place === name).forEach((f, i) => {
         const fy = y + 34 + 24 * i, fx = x + (end ? -4 : 4);
-        const can = ready.filter((tm) => this.can(tm, f) !== false || this.exposed(f));
+        const can = ready.filter((tm) => this.sendable(tm, f));
         items.push({ kind: "text", x: fx + (end ? -14 : 14), y: fy + 5, text: f.asset, anchor: end ? "end" : "start", tone: f.state === "done" ? "muted" : undefined });
         items.push({
           id: `fault-${f.id}`, kind: "dot", x: fx, y: fy, r: 7, tone: f.state === "done" ? "ok" : f.state === "working" ? "route" : this.exposed(f) ? "bad" : f.holds || f.safety ? "warn" : "muted",
@@ -764,7 +777,7 @@ export class MaintenanceGame extends Game {
       const n = road ? 0 : here.get(tm.place) ?? 0;
       if (!road) here.set(tm.place, n + 1);
       // a free team has the faults it can go to as its menu, a team that secures a place can be called off
-      const to = tm.state !== "ready" ? [] : this.faults.filter((f) => f.reported != null && waits(f) && (this.can(tm, f) !== false || this.exposed(f)));
+      const to = this.faults.filter((f) => this.sendable(tm, f));
       items.push({
         id: `team-${tm.id}`, kind: "tag", x: road ? x : x + P[tm.place].teams[0], y: road ? y : y + P[tm.place].teams[1] - 26 * n, text: `${tm.name.replace(/^Team /, "")} (${tm.trade[0].toUpperCase()})`, anchor: "middle",
         tone: tm.state === "driving" ? "train" : tm.state === "ready" ? "idle" : tm.state === "working" || tm.state === "diagnosing" ? "ok" : "warn",
