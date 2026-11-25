@@ -1,7 +1,8 @@
 # arail-tools
 
-Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and six Node.js scripts,
-[`ops-compare.mjs`](#comparing-operations-setups), [`hump.mjs`](#humping-trains), [`roles-md.mjs`](#the-role-catalogues-guide),
+Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and seven Node.js scripts,
+[`ops-compare.mjs`](#comparing-operations-setups), [`mobility-learn.mjs`](#what-a-town-learns),
+[`hump.mjs`](#humping-trains), [`roles-md.mjs`](#the-role-catalogues-guide),
 [`changelog.mjs`](#the-changelog-fragments), [`fetch-fonts.mjs`](#updating-the-fonts) and [`video/render.mjs`](#videos)):
 
 | Command | What it does | Extra |
@@ -88,6 +89,26 @@ node tools/ops-compare.mjs web/layouts/ebl-lab.json --list   # the setups and st
 
 Options: `--days N` (measured days per run, 28), `--seeds N` (runs per setup, 3), `--stress ID`,
 `--setups ID,ID` (default: the layout's setups, else the presets), `--csv FILE`, `--json FILE`.
+
+## What a town learns
+
+`mobility-learn.mjs` (Node.js, no Python) runs a layout's town for some days without the app: its
+people choose between walking, the bike, bus and tram and the car, stand in the jams they make and
+learn from them, until the shares have settled at what the streets, stops and parking can take
+([How people choose their mode](../docs/day-and-night.md#how-people-choose-their-mode-and-what-they-learn)).
+It prints each day's traffic and shares and keeps what the town has learned in the layout
+(`experience`), so that the app starts where the learning ends. Run it after a layout's streets,
+lines, buildings or simulations were changed:
+
+```bash
+node tools/mobility-learn.mjs web/layouts/ebl-neustadt.json --days 14 --write
+node tools/mobility-learn.mjs web/layouts/ebl-neustadt.json --check   # is the experience still the layout's own?
+node tools/mobility-learn.mjs my-layout.json --date 2026-05-04 --weather typical --json learned.json
+```
+
+Options: `--days N` (14), `--seed N`, `--date YYYY-MM-DD` (weekends then have no rush hour),
+`--weather NAME` (a preset, or `typical` for the date), `--layers ID,ID`, `--from-scratch` (forget
+the experience the layout has), `--write`, `--json FILE`, `--check`.
 
 ## Humping trains
 

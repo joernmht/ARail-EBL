@@ -464,7 +464,8 @@ export class Walking {
         const left = lat + block.side - mm(W.pass_m), right = lat + block.side + mm(W.pass_m), edge = mm(W.edge_m);
         want = left >= -edge && left >= lo ? left : right <= edge && right <= hi ? right : want;
       }
-      if (lo <= hi) want = Math.min(hi, Math.max(lo, want));
+      // (between two who walk beside it there is no room to either side: as it is)
+      want = lo <= hi ? Math.min(hi, Math.max(lo, want)) : lat;
       // somebody comes and there is no room to the right beside the one walking there: fall in behind them
       if (coming && want < mm(W.keep_m) - 1e-6 && hi < Infinity) v *= 0.6;
     }

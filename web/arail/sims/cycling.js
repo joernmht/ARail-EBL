@@ -417,9 +417,10 @@ export class CyclingSimulation extends Simulation {
     const gap = lead.gap;
     waitFor(rider, lead.user, dt);
     if (gap < Infinity) vT = Math.min(vT, followSpeed(this.meters(gap) - GAP_M, speedAlong(lead.user, me.dir), BRAKE));
-    let stopAt = Infinity;
-    const hold = (mm) => {
+    let stopAt = Infinity, why = null;
+    const hold = (mm, reason) => {
       vT = Math.min(vT, Math.sqrt(2 * BRAKE * Math.max(0, this.meters(mm))));
+      if (mm < stopAt) why = reason;
       stopAt = Math.min(stopAt, Math.max(0, mm));
     };
     // junctions: lights (rule-breakers now and then ride through red), Stop, give way
@@ -437,27 +438,31 @@ export class CyclingSimulation extends Simulation {
           rider.passed.add(j.key);
           rider.redRun = !rider.compliant && this.rng.chance(0.5);
         }
-        if (!rider.redRun) hold(line);
+        if (!rider.redRun) hold(line, "light");
       } else if (j.rule?.stop && rider.stopped !== j.key) {
-        hold(line);
+        hold(line, "stop");
         if (rider.v < 0.2 && dStop < 1.5) rider.stopped = j.key;
       } else if (dStop < (rider.v * rider.v) / (2 * BRAKE) + 2 && rider.waited < junctionPatience(prio) && mustYield(rider, j, j.s - rider.s, users, prio)) {
-        hold(line);
+        hold(line, "yield");
         if (rider.v < 0.3) rider.waited += dt;
       }
     }
     for (const x of rider.crossings || []) {
       const e = x.s - x.half - this.mm(0.5) - rider.s;
       if (e < -this.mm(0.3) || e > look + this.mm(6)) continue;
-      if (x.kind === "zebra" ? sf.where === "road" && x.obj.busy() : x.obj.closed(now)) hold(e);
+      if (x.kind === "zebra" ? sf.where === "road" && x.obj.busy() : x.obj.closed(now)) hold(e, x.kind === "zebra" ? "zebra" : "rail");
     }
     // people crossing the street ahead: stop before them
     if (sf.where === "road" || sf.where === "lane") {
       const person = this.world.walking.onRoad.length ? peopleAhead(this.world, me.front, me.dir, look, this.mm(0.9), { points: L.points, lengths: L.lengths, length: L.length, s: rider.s }) : Infinity;
-      if (person < Infinity) hold(person - this.mm(1.2));
+      if (person < Infinity) hold(person - this.mm(1.2), "people");
     }
     // people on foot in the way on a sidewalk or a shared path: walking pace behind them, and anger
     if (sf.where !== "road" && sf.edge && people.length) this._meetPeople(rider, me, sf, people, () => (vT = Math.min(vT, BEHIND_PEOPLE_KMH / 3.6)));
+    /** Why the rider is held now ("light", "stop", "yield", "zebra", "rail", "people"), or null. */
+    rider.hold = stopAt < this.mm(1.5) ? why : null;
+    /** How long it has stood for people crossing (s): after a while those who come to the kerb let it go first (core/walking.js). */
+    rider.yielded = rider.hold === "people" || rider.hold === "zebra" ? (rider.yielded || 0) + dt : 0;
     rider.v = vT > rider.v ? Math.min(vT, rider.v + ACCEL * dt) : Math.max(vT, rider.v - 2 * BRAKE * dt, 0);
     let move = Math.min(this.mm(rider.v * dt), stopAt);
     if (gap < Infinity && move > gap - this.mm(0.2)) {

@@ -72,7 +72,7 @@ wider, and the car lanes keep their width.
 
 | Cross-section | Beside the car lanes | Bikes ride |
 | --- | --- | --- |
-| *plain street* | nothing (no sidewalks) | on the road |
+| *plain street* | nothing (no sidewalks); people walk beside it, on the verge | on the road |
 | *with sidewalks* | sidewalks | on the road |
 | *advisory bike lanes* (Schutzstreifen) | a dashed lane for bikes on the road, then sidewalks; cars may cross the line when they must | on the advisory lane |
 | *bike lanes* (Radfahrstreifen, Zeichen 237) | a lane for bikes behind a solid line, then sidewalks | on the bike lane |
@@ -193,7 +193,11 @@ in `web/arail/core/access.js`).
   keep their distance to the vehicle ahead, and obey the junctions (see
   [Signs, lights and zebra crossings](#signs-lights-and-zebra-crossings)). At a stop the front of
   the bus stands 1.5 m before the end of the stop, and the doors open on the stop side; people get
-  off, then the waiting passengers of this line get on, one after the other at each door. The kerb
+  off, then the waiting passengers of this line get on, one after the other at each door. A bus or
+  tram on its way leaves when everybody is on and off (after 8 s at least; a line keeps no times at
+  its stops), so it stands in the lane no longer than it must; at its first stop it waits for its
+  departure. Cars pass a bus that stands at a stop when the other lane is free, at 20 km/h
+  (StVO § 20). The kerb
   of a stop (`kerb_m`, 18 cm: a raised bus kerb) is 14 cm below the floor of a low-floor bus: the
   step slows old people and those with a rollator or a pram, and the driver puts out the ramp at the
   middle door for a wheelchair (60 s; a kerb lower than 7 cm leaves a step too high for the ramp). The
@@ -239,6 +243,11 @@ in the lane, and turns red-amber 2 s after the last of them has left it, then gr
 it changes for the people only: they cross the car lane at the island's end, on a crossing of 4 m,
 towards the island on one half and away from it on the other. Trams pass the lights; at amber only
 those stop who still can; nobody overtakes a bike there. The stop's card shows the lights now.
+The strip the people cross is **kept clear** like a junction: while the traffic stands at its far end
+(a queue from the next junction), nobody drives onto it, at green too. A vehicle that is past the
+stop line (it turned in behind it, out of a bus station beside the stop) drives on and clears the
+strip. Vehicles that stand on it all the same stay where they are after 6 s, and the people walk
+between them: neither a queue nor a vehicle on the strip keeps a tram's doors shut for good.
 Without lights (`lights: false`) the cars wait beside the standing tram while its doors are open.
 
 A stop is **step-free** (barrierefrei, DIN 18040-3) for a low-floor tram (floor about 0.30 m) when
@@ -305,11 +314,28 @@ Nobody parks on it or 5 m before it (StVO § 12). Streets still get the painted 
 to their junctions (`crossings`).
 
 At a **junction** every vehicle has a priority: green or the priority road first, then no sign,
-then give way, Stop or red. The one with the higher priority goes first, at the same priority the
-one closer to the junction; ties go by the kind (tram, bus, car, bike) and then by the order in which
-their simulation made them, so the same layout always runs the same way. Nobody drives into a
-junction without room behind it (StVO § 11). Vehicles that wait for each other in a circle squeeze
-past each other after 8 s, so nothing stays stuck.
+then give way, Stop or red. A vehicle waits only for those whose **way through the junction touches
+its own**: two going straight past each other, a right turn beside the traffic that turns off, two
+from the same arm one behind the other do not wait for each other; turning left across the oncoming
+traffic, crossing the other street and merging into the same street do. Of two whose ways touch, the
+one with the higher priority goes first; at the same priority who turns left waits for who comes
+the other way (StVO § 9), else the one closer to the junction goes; ties go by the kind (tram, bus,
+car, bike) and then by the order in which their simulation made them, so the same layout always runs
+the same way. Nobody drives into a junction, onto a zebra crossing or onto a level crossing without
+room behind it (StVO § 11, § 19). Vehicles that wait for each other's room in a ring (the queues
+round a block, each reaching back to the junction before) do after 8 s: one drives into its junction,
+still behind the vehicle ahead. Vehicles nose to nose squeeze past each other after 8 s, so nothing
+stays stuck.
+
+Vehicles **follow each other** at the leader's speed with the way of a second between them, so that
+they could stop behind it should it brake to a stand (Krauß 1998, after Gipps 1981): a queue starts
+off together at green, and a lane carries about 1800 to 2000 vehicles an hour.
+
+**People on foot** cross the streets where their walk does: at zebra crossings, at the ends of streets
+and across the mouths of side streets. They wait at the kerb for a gap, and vehicles brake for the
+people who are on the street (see [How they travel](day-and-night.md#how-they-travel)). At a zebra
+crossing a vehicle waits for people who cross or stand at the kerb to cross, not for those who walk
+past along the street; where a stream of people would hold the vehicles for good, they take turns.
 
 ## Railway crossings
 
@@ -372,9 +398,24 @@ Add the simulation to the layout (Settings shows nothing to set; edit the layout
 ```
 
 Cars enter where streets end at the edge of the layout (their free ends, not the [dead ends](#dead-ends)) and leave again there. Their
-number is `cars_per_km` per kilometre of street at normal daytime traffic, more in the rush hours
-and few at night (`clock.demand("car")`). Every car has a **driver** and, by the purpose of the
-trip, **passengers** (MiD 2017: about 1.1 people per car to work, 1.5 for shopping and leisure), and
+number is `cars_per_km` per kilometre of street at normal daytime traffic on streets that flow, more
+in the rush hours and few at night (`clock.demand("car")`), and **fewer where the drive takes long**:
+every drive is planned (the way at the speed limits, the junctions and the average wait at the
+lights on it) and timed, and the town learns for each hour of the day how many times its plan a drive
+takes (`world.experience`, see [How people choose their mode](day-and-night.md#how-people-choose-their-mode-and-what-they-learn)).
+The more it takes at an hour, and the worse the traffic news are now (how the cars on the streets
+are doing against their plans), the fewer set out: all of them on empty streets, half where a drive
+takes 2.2 times its plan, a tenth whatever happens (through them the town learns when the streets
+are free again). So the cars settle at what the streets carry, and a street closed or a new tram stop
+changes it over the days. A few more drive in rain and cold, when fewer cycle. The Overview shows
+what the town has learned.
+
+The **town's own people** who chose the car drive on the same streets (with a `town` simulation): the
+car comes out near their door, parks near where they go and waits there for them; these cars come on
+top of `cars_per_km`, and their card says that the driver lives in the town.
+
+Every car has a **driver** and, by the purpose of
+the trip, **passengers** (MiD 2017: about 1.1 people per car to work, 1.5 for shopping and leisure), and
 a **planned route**. The driver has a driving licence and a car; the passengers are anybody (children
 too, see [Passenger mobility](day-and-night.md#passenger-mobility)). They walk to and from the car at
 the slowest one's pace, and loading and unloading take their time: luggage into the boot 20 s, a pram
@@ -393,7 +434,8 @@ folded and the child in its seat 60 s, a wheelchair user into the seat 120 s.
 
 Cars keep to the right lane and the speed limit, keep their distance to the vehicle ahead (cars,
 buses, trams and the bikes they cannot pass), obey signs, lights, zebra crossings and level
-crossings, and give way at junctions as above. On streets without free ends (a ring) cars appear on
+crossings, brake for people on the street, pass a bus that stands at its stop when the other lane is
+free, and give way at junctions as above. On streets without free ends (a ring) cars appear on
 the streets and drive from place to place. When the streets change (a street drawn or moved, a bus
 stop placed, the scale changed) the cars stay where they are on the new streets where they can;
 cars that would end up on top of others leave. A car's card shows its driver and passengers, the
@@ -437,7 +479,9 @@ Add the simulation to the layout:
 
 Riders on bikes (14 to 22 km/h) and e-scooters (15 to 20 km/h, eKFV) come in at the free ends of
 the streets and ride to another end, or to a building, where they lock the bike at a street lamp or bike
-stand nearby for 20 to 240 minutes and ride on. A bike is drawn as a bike: two wheels, the frame,
+stand nearby for 20 to 240 minutes and ride on. The **town's own people** who chose the bike ride
+among them (with a `town` simulation), from their door to where they go, and lock the bike there until
+they come back; they come on top of `riders_per_km`, fewer in rain and cold as the people choose. A bike is drawn as a bike: two wheels, the frame,
 saddle and handlebar, its rider pedalling (children on smaller bikes), with its lamp lit at night;
 an e-scooter with its deck and stem, its rider standing on it. Where they ride:
 
@@ -469,7 +513,8 @@ two tracks through the curve from Bahnhofstraße, one past the Markt (Bahnhofstr
 loop), where it stops at a curb extension before it goes round the church. All three loops lie
 beyond a short single track; their tracks bend in curves of 25 m and more. The Markt's loop reaches
 the Wall: Wallstraße ends on both sides of it as a dead end with a turning circle, and the
-Wallanlagen, a footpath, lead round it. Behind the station **Brückenstraße** crosses the main line
+Wallanlagen, a footpath, lead round it. A zebra crossing leads over Brückenstraße to the S-Bahn stop Pirna, where the
+people of the estate cross in the morning. Behind the station **Brückenstraße** crosses the main line
 at a level crossing with half barriers to Am Plattenring: no tram goes over it (BOStrab § 15), and
 everything lies at the track level. So **buses** take the estate and the garden town: line 261 from
 Neustadt Bf over the level crossing round the estate to its turning circle *Am Wendekreis*, line 262
@@ -522,7 +567,10 @@ The widths, gradients and rules come from these German guidelines and laws:
   rules on it); **eKFV** § 10 (e-scooters).
 - **EBO**: Eisenbahn-Bau- und Betriebsordnung, §§ 7 (gradients), 11 (level crossings); **EKrG** § 2
   (new crossings over or under the track); **RE-ING** (clearances of bridges).
-- **MiD 2017**: Mobilität in Deutschland (people per car by purpose).
+- **MiD 2017**: Mobilität in Deutschland (people per car by purpose; the shares of the modes by the
+  length of the trip).
+- **Krauß 1998**: Microscopic modeling of traffic flow (DLR), after **Gipps 1981**: A behavioural
+  car-following model for computer simulation (Transportation Research B 15): following at a safe speed.
 
 ## For plugins and simulations
 
@@ -603,5 +651,21 @@ The widths, gradients and rules come from these German guidelines and laws:
   timetable vehicle), `dockStatus(world, area)` (its first line) and `boardStatus(world, areas)` (the
   lines of a stop's board over all its areas, at most two).
 - Simulations with vehicles on the streets can expose `roadUsers()` (`[{vehicle, front, rear, dir,
-  approach}]`): buses, trams, the traffic and the cycling simulation keep their distance to them and
-  give way at junctions (`mustYield`, `roomAfter`, `waitFor` in `core/transit.js`).
+  approach, move}]`; `move`: the junction it approaches or is in, with the arms of its way, so that
+  others wait only when their ways touch): buses, trams, the traffic and the cycling simulation keep
+  their distance to them (`leaderAhead`, `followSpeed`) and give way at junctions (`mustYield`,
+  `movesConflict`, `roomAfter`, `blockerAfter`, `waitFor` in `core/transit.js`).
+- **People on foot**: a simulation lists its walkers with `pedestrians()` (`[{pos, dir, agent}]`) and
+  moves each with `world.walking.advance(walker, dt)` (`core/walking.js`; a walker is any object with
+  `path`, a walk of the network, `s` and `speed`): it waits at the kerb for a gap, keeps clear of the
+  others and sets `pos`, `dir`, `held` and `onRoad` on the walker. Vehicles brake for the people on
+  the street with `peopleAhead(world, front, dir, lookMM, laneMM, way)`; `net.carriageway(p)` says
+  whether a point lies on a carriageway.
+- **Trips of other simulations' people by car and by bike**: `traffic.drive({people, from, to,
+  purpose, parked, onArrive})` puts a car with them on the streets, to a parking space near a building
+  (`onArrive({pos, parked, ratio})`; `parked` is given back to fetch the car again), and
+  `cycling.ride({person, from, to, kmh, onArrive})` a rider (`onArrive({pos, spot, rider})`,
+  `cycling.unlock(rider)`); `planSeconds(from, to)` of each says what the trip takes on empty streets.
+- **What the town has learned**: `world.experience` (`core/modes.js`, `Experience`): `ratio(mode,
+  minutes, weekend)`, `learn(mode, minutes, weekend, ratio)`; the tastes and the choice are
+  `modeSettings`, `perceived`, `chooseMode` and `typicalShares` there.

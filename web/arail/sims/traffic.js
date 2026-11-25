@@ -631,7 +631,9 @@ export class TrafficSimulation extends Simulation {
     const home = (+this.config.parked || 0) * (h < 6 || h >= 19 ? 1 : h < 8.5 ? 0.85 : h < 16 ? 0.55 : 0.75);
     for (const f of parking.facilities()) {
       const residents = f.access === "residents";
-      const share = residents ? home : f.access === "public" ? 0.35 * this.world.clock.demand("car") : 0.25;
+      // the others came by car during the day: few stand there early in the morning and at night; fewer
+      // where the town has learned that drives take long
+      const share = residents ? home : (f.access === "public" ? 0.35 : 0.25) * visitorsParked(h) * this.share();
       const n = Math.min(f.spaces, Math.round(f.spaces * Math.min(0.95, share) + this.rng.uniform(-0.5, 0.5)));
       for (let k = 0; k < n; k++) {
         const purpose = residents ? "home" : f.access === "employees" ? "work" : f.access === "customers" ? "shopping" : "visit";
@@ -1164,6 +1166,19 @@ export class TrafficSimulation extends Simulation {
       });
     }
   }
+}
+
+/**
+ * How full the parking of visitors, customers and employees is at an hour of the day, against the
+ * middle of the day (1): nearly empty at night, filling from 6 to 9, emptying from 17 to 21.
+ */
+function visitorsParked(h) {
+  const points = [[0, 0.08], [6, 0.08], [9, 1], [17, 1], [21, 0.25], [24, 0.08]];
+  for (let i = 1; i < points.length; i++) {
+    const [h0, v0] = points[i - 1], [h1, v1] = points[i];
+    if (h <= h1) return v0 + ((v1 - v0) * (h - h0)) / (h1 - h0);
+  }
+  return 0.08;
 }
 
 /** Move a value towards a target by at most `step`. */

@@ -1,6 +1,6 @@
 # Seasons and weather
 
-ARail's clock can carry a **date**, and the world a **weather**. With a date the sun rises and sets as on that day in Dresden and the trees follow the season; the weather is the typical one of the date or one set by hand or by a scenario. The rails, the people on foot, the cyclists and the market read it, and the picture shows it: snow on the roofs, wet streets, rain and flakes falling.
+ARail's clock can carry a **date**, and the world a **weather**. With a date the sun rises and sets as on that day in Dresden and the trees follow the season; the weather is the typical one of the date or one set by hand or by a scenario. The rails, the people on foot, the cyclists, the town's people when they choose their mode and the market read it, and the picture shows it: snow on the roofs, wet streets, rain and flakes falling.
 
 This is the base of the concept in [#254](https://github.com/joernmht/ARail-EBL/issues/254) (part of the seasons, [#239](https://github.com/joernmht/ARail-EBL/issues/239)). What comes later is listed [at the end](#what-is-not-there-yet).
 
@@ -57,10 +57,12 @@ The climate is Dresden's: the typical year gives about 10 °C, 600 to 680 mm of 
 | **Rails** | the condition every track has from the weather: *wet* in rain, in snow and on wet ground, *leaves* in the weeks the leaves fall when it is damp, *ice* on wet rails in frost. A track takes the worse of its own `rail_condition` and the weather's; a *Slippery rails* disruption still overrides both for its track. Adhesion, starting and braking follow as before ([Railway systems and trains](rail-systems.md)) |
 | **People on foot** (the town, the journeys, the market) | × 0.85 on snow, × 0.7 on ice |
 | **Bikes and e-scooters** | how many ride: from 35 % at −5 °C to all at 15 °C; half in rain, a quarter in heavy rain, a fifth on snow |
+| **The town's people, choosing their mode** | a minute on foot or at a stop counts 1.3 in rain (1.6 in heavy rain, 1.3 in snowfall), more in frost, on snow and ice and in the dark; of those who would cycle on a mild dry day only the share of the row above still does; who was soaked on foot or on the bike had a bad trip ([How people choose their mode](day-and-night.md#how-people-choose-their-mode-and-what-they-learn)) |
+| **Cars** | a few more set out when fewer cycle |
 | **The market** | fewer visitors in rain (55 %, 30 % in heavy rain); hot drinks wanted more at 3 °C and below, less at 18 °C and above |
 | **Everybody** | the light: the day's length by the date |
 
-These numbers are starting values and estimates (`WEATHER_EFFECTS` in `core/weather.js`, `MARKET_WEATHER` in `sims/market.js`); #254 collects their sources.
+These numbers are starting values and estimates (`WEATHER_EFFECTS` in `core/weather.js`, `EXPOSURE` in `core/modes.js`, `MARKET_WEATHER` in `sims/market.js`); #254 collects their sources.
 
 ## What it looks like
 
