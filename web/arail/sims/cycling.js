@@ -15,6 +15,9 @@
  *   narrow street without a bike lane, next to an advisory lane that is too narrow, on a bike lane
  *   below the minimum (`obstruct` of the street, objects/street-profile.js). There the riders are
  *   road users for the cars (`roadUsers()`), which follow them or overtake when the other lane is free.
+ * - **Riders among themselves**: on the road and on a bike lane a rider pulls out beside a slower
+ *   one ahead and passes; at a stand (a red light, people crossing) riders wait two abreast, so a
+ *   queue of bikes is half as long and gets away in half the time ({@link ABREAST}).
  * - **Riders and people on foot** get in each other's way on shared paths, on sidewalks and next to
  *   narrow bike paths: the narrower, the more often (`conflict` of the street). A rider then slows
  *   to walking pace, and both get angry (the rider's mood, and that of the town's people:
@@ -45,6 +48,15 @@ const BEHIND_PEOPLE_KMH = 5;
 const ACCEL = 1.2; // m/s²
 const BRAKE = 2.0;
 const GAP_M = 1.5;
+/**
+ * Riders beside each other on the road or a bike lane: how far to the left the second one rides
+ * (`beside_m`), how fast a rider moves across (`shift_mps`), how near the other line counts as
+ * taken (`line_m`), how much slower the one ahead is before a rider pulls out (`slower_mps`) and how
+ * near (`near_m`), the room on the other line a rider needs to move over (`behind_m` behind it and
+ * `ahead_m` ahead), the room ahead on the curb side before a rider goes back to it (`back_m`), and
+ * a car or bus coming from behind beside the rider that keeps it in (`car_behind_m`, within `car_side_m`).
+ */
+export const ABREAST = Object.freeze({ beside_m: 0.75, shift_mps: 1, line_m: 0.3, slower_mps: 0.5, near_m: 6, behind_m: 2.5, ahead_m: 2.5, back_m: 8, car_behind_m: 10, car_side_m: 2.6 });
 /** Two riders and a person closer than this sideways (m, plus the street's `conflict` × 1.5 m) are in each other's way. */
 const NEAR_M = 0.9;
 /** The farthest the town's own people walk from a door to a way for bikes, and from where they lock the bike (m). */
@@ -305,12 +317,18 @@ export class CyclingSimulation extends Simulation {
 
   _pose(rider) {
     const L = rider.line, R = RIDERS[rider.kind];
-    const front = polylinePoint(L.points, rider.s, L.lengths);
-    const rear = polylinePoint(L.points, Math.max(0, rider.s - this.mm(R.length_m)), L.lengths);
+    let front = polylinePoint(L.points, rider.s, L.lengths);
+    let rear = polylinePoint(L.points, Math.max(0, rider.s - this.mm(R.length_m)), L.lengths);
     const d = sub2(front, rear);
     // (unit2(d), with the length worked out once)
     const l = Math.hypot(d[0], d[1]);
     const dir = l > 1e-6 ? [d[0] / l, d[1] / l] : polylineAt(L.points, rider.s, L.lengths).dir;
+    // beside another rider: to the left of its line
+    if (rider.lat) {
+      const nx = -dir[1] * rider.lat, ny = dir[0] * rider.lat;
+      front = [front[0] + nx, front[1] + ny];
+      rear = [rear[0] + nx, rear[1] + ny];
+    }
     const j = junctionAhead(rider.junctions, rider.s);
     const approach = j && rider.s < j.s - j.r && j.s - rider.s < this.mm(APPROACH_M) ? { key: j.key, d: j.s - rider.s, prio: approachPrio(j, this.world.time) } : null;
     const pose = { vehicle: rider, front, rear, dir, speed: rider.v, approach, move: j };
@@ -365,9 +383,14 @@ export class CyclingSimulation extends Simulation {
     this._unlock(net);
     const others = [...(this.world.transit?.roadUsers?.() || [])];
     for (const s of this.world.simulations || []) if (s !== this && s.enabled !== false && typeof s.roadUsers === "function") others.push(...s.roadUsers());
+    this._others = others;
+    this._dt = dt;
     const users = new RoadUsers(this._users.concat(others), this.mm(25));
     const people = [];
     for (const s of this.world.simulations || []) if (s.enabled !== false && typeof s.pedestrians === "function") for (const p of s.pedestrians()) people.push({ ...p, sim: s });
+    // the riders on the curb side and those beside them: a rider follows only those on its own line
+    this._sides = [new Set(), new Set()];
+    for (const r of this.riders) this._sides[r.side ? 1 : 0].add(r);
     const gone = new Set();
     for (const r of this.riders) if (this._ride(r, dt, users, people, net)) gone.add(r);
     if (gone.size) this.riders = this.riders.filter((r) => !gone.has(r));
@@ -413,7 +436,8 @@ export class CyclingSimulation extends Simulation {
     let vT = rider.limits[Math.min(seg, rider.limits.length - 1)] ?? rider.vmax;
     vT = Math.min(vT, Math.sqrt(2 * BRAKE * Math.max(0, this.meters(L.length - rider.s))) + 0.5);
     const look = this.mm((rider.v * rider.v) / (2 * BRAKE) + GAP_M + 6);
-    const lead = squeezing(rider) ? { gap: Infinity, user: null } : leaderAhead(rider, me.front, me.dir, users, look, this.mm(0.9));
+    let lead = squeezing(rider) ? { gap: Infinity, user: null } : this._leader(rider, me, users, look);
+    if (this._besides(rider, me, sf, lead, vT)) lead = this._leader(rider, me, users, look);
     const gap = lead.gap;
     waitFor(rider, lead.user, dt);
     if (gap < Infinity) vT = Math.min(vT, followSpeed(this.meters(gap) - GAP_M, speedAlong(lead.user, me.dir), BRAKE));
@@ -488,6 +512,67 @@ export class CyclingSimulation extends Simulation {
       }
     }
     return true;
+  }
+
+  /** The road user a rider follows: any on its line; of the riders only those on its own side, once it is there. */
+  _leader(rider, me, users, look) {
+    const side = rider.side ? 1 : 0, there = Math.abs((rider.lat || 0) - side * this.mm(ABREAST.beside_m)) < this.mm(ABREAST.line_m);
+    return leaderAhead(rider, me.front, me.dir, users, look, this.mm(0.9), there ? this._sides?.[1 - side] : null);
+  }
+
+  /**
+   * Riders beside each other ({@link ABREAST}): on the road or a bike lane a rider behind a slower
+   * or standing rider pulls out to the left where there is room and no car comes from behind, and
+   * goes back to the curb side when that is free ahead (not at a stand: they wait two abreast).
+   * Moves the rider across towards its side; true when it changed sides (its leader is another now).
+   */
+  _besides(rider, me, sf, lead, vT) {
+    const A = ABREAST, mm = (m) => this.mm(m), side = rider.side ? 1 : 0;
+    const onLane = sf.where === "road" || sf.where === "lane";
+    let to = side;
+    // how far ahead (front to front, mm) the nearest rider of a side is within [-behind, ahead]; null: nobody
+    const taken = (which, behind, ahead) => {
+      let best = null;
+      for (const o of this._sides[which]) {
+        if (o === rider || !o._pose) continue;
+        const dx = o._pose.front[0] - me.front[0], dy = o._pose.front[1] - me.front[1];
+        if (Math.abs(dx) > ahead + behind || Math.abs(dy) > ahead + behind) continue;
+        const along = dx * me.dir[0] + dy * me.dir[1];
+        if (along < -behind || along > ahead || Math.abs(dx * me.dir[1] - dy * me.dir[0]) > mm(1.6)) continue;
+        if (o._pose.dir[0] * me.dir[0] + o._pose.dir[1] * me.dir[1] < 0.5) continue;
+        if (best == null || Math.abs(along) < Math.abs(best)) best = along;
+      }
+      return best;
+    };
+    if (side === 0) {
+      const ahead = lead.user?.vehicle;
+      if (onLane && ahead && this._sides[0].has(ahead) && this.meters(lead.gap) < A.near_m && ahead.v < Math.min(vT, rider.vmax) - A.slower_mps
+        && taken(1, mm(A.behind_m), lead.gap + mm(RIDERS[ahead.kind].length_m + A.ahead_m)) == null && !this._carBehind(rider, me)) to = 1;
+    } else if (!onLane || rider.v > 0.5) {
+      if (taken(0, mm(A.behind_m), mm(onLane ? A.back_m : A.ahead_m)) == null) to = 0;
+    }
+    const target = to * mm(A.beside_m), step = mm(A.shift_mps) * (this._dt || 0.1);
+    if (to !== side) {
+      this._sides[side].delete(rider);
+      this._sides[to].add(rider);
+      rider.side = to;
+    }
+    const lat = rider.lat || 0;
+    rider.lat = Math.abs(target - lat) <= step ? target : lat + Math.sign(target - lat) * step;
+    return to !== side;
+  }
+
+  /** Does a car, a bus or a tram come from behind on the left, where a rider would pull out? */
+  _carBehind(rider, me) {
+    const A = ABREAST, back = this.mm(A.car_behind_m);
+    for (const u of this._others || []) {
+      const dx = u.front[0] - me.front[0], dy = u.front[1] - me.front[1];
+      if (Math.abs(dx) > back || Math.abs(dy) > back) continue;
+      const along = dx * me.dir[0] + dy * me.dir[1], left = -dx * me.dir[1] + dy * me.dir[0];
+      if (along < -back || along > this.mm(1) || left < -this.mm(0.5) || left > this.mm(A.car_side_m)) continue;
+      if (u.dir[0] * me.dir[0] + u.dir[1] * me.dir[1] > 0.5) return true;
+    }
+    return false;
   }
 
   /**

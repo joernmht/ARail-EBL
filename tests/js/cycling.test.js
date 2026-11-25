@@ -1,11 +1,11 @@
 // Bikes and e-scooters (sims/cycling.js): where riders ride by the street's cross-section, the
 // signs and the rules (children, rule-breakers), the riders the cars must follow, bikes locked near
 // buildings and at street lamps, the riders' cards, reproducible runs, and how bikes and e-scooters
-// are drawn (core/vehicles.js, drawBike).
+// are drawn (core/vehicles.js, drawBike), riders passing each other.
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BIKE_COLOURS, CD, Camera, FlyCamera, RIDERS, View, bikeColour, createWorld, drawBike, ridingSurface, toRad } from "../../web/arail/index.js";
+import { ABREAST, BIKE_COLOURS, CD, Camera, FlyCamera, RIDERS, View, bikeColour, createWorld, drawBike, ridingSurface, toRad } from "../../web/arail/index.js";
 
 /** Main street with bike lanes, a plain street across it, a shared path, a house and a shop. */
 function world(cycling = {}, extra = [], seed = 9) {
@@ -183,4 +183,34 @@ test("the riders of the simulation are drawn on their bikes", () => {
   v.view.render();
   assert.ok(v.strokes.filter((x) => x.points === 16).length >= 2, "wheels");
   assert.ok(v.strokes.some((x) => x.style === bikeColour(r)), "its frame");
+});
+
+test("riders among themselves: a faster one pulls out beside a slower one, passes and goes back to the curb side", () => {
+  const w = createWorld({
+    objects: [{ id: "long", type: "road", name: "Long", points: [[0, 0], [9000, 0]] }],
+    simulations: [{ type: "cycling", riders_per_km: 0 }],
+    clock: { start: "08:00", profiles: false },
+  }, { seed: 4 });
+  const sim = cyclingOf(w), mm = (m) => (m * 1000) / w.scale;
+  w.speed = 1;
+  w.step(0.1);
+  const slow = sim.ride({ person: {}, from: [0, 0], to: [9000, 0], kmh: 9, onArrive: () => {} });
+  for (let t = 0; t < 8; t += 0.1) w.step(0.1);
+  const fast = sim.ride({ person: {}, from: [0, 0], to: [9000, 0], kmh: 24, onArrive: () => {} });
+  assert.ok(slow && fast);
+  let beside = false, nearest = Infinity, behindAt = null, widest = 0;
+  for (let t = 0; t < 70 && sim.riders.includes(fast) && sim.riders.includes(slow); t += 0.1) {
+    w.step(0.1);
+    if (fast.side) beside = true;
+    widest = Math.max(widest, fast.lat || 0);
+    nearest = Math.min(nearest, Math.hypot(fast._pose.front[0] - slow._pose.front[0], fast._pose.front[1] - slow._pose.front[1]));
+    if (fast.s > slow.s + mm(ABREAST.back_m) && behindAt == null) behindAt = t;
+  }
+  assert.ok(beside, "it pulled out");
+  assert.ok(Math.abs(widest - mm(ABREAST.beside_m)) < 1e-6, "by the width of a rider and some room");
+  assert.ok(behindAt != null, "and passed");
+  assert.ok(nearest > mm(0.6), `never in each other (${((nearest * w.scale) / 1000).toFixed(2)} m)`);
+  assert.equal(fast.side, 0, "back on the curb side");
+  assert.equal(slow.side || 0, 0, "the slower one stays where it rides");
+  assert.ok(fast.v > slow.v + 2, "at its own speed again");
 });

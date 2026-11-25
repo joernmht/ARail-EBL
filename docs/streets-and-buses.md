@@ -493,6 +493,11 @@ an e-scooter with its deck and stem, its rider standing on it. Where they ride:
   sidewalk (StVO § 2 Abs. 5); rule-breakers (`rule_breakers`) ride on sidewalks where it is not
   allowed and now and then through a red light.
 
+Among themselves, on the road and on a bike lane, a rider behind a slower one pulls out to the left
+where there is room and no car comes from behind, passes, and goes back to the curb side. At a red
+light or before people who cross, riders wait two abreast: a queue of bikes is half as long and gets
+away in half the time.
+
 Behind people on foot riders slow to walking pace, and where they share too little room both may get
 angry (see [Cross-sections](#cross-sections)). A rider's card shows where the rider rides, whether
 the rules are kept, the mood, and whether the cars behind must wait. The street's card shows the
