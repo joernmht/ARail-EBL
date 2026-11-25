@@ -288,9 +288,9 @@ test("released is not returned: fleet management returns a unit to operation; ha
   assert.ok(g4.unit("101").handed && g4.violations.some((v) => v.rule === "return-to-operation"));
 });
 
-test("a finding beyond the order: asked, fleet management extends the order or lets the unit run with a restriction; repaired unasked, it is within the standing order or not; left in the release, it is decided when nothing can be repaired", () => {
+test("a finding beyond the order: asked, fleet management extends the order or lets the unit run with a restriction; repaired unasked, it is within the standing order or not; left in the release, fleet management sends the unit back for the repair (the brakes tested again after a brake hose) or lets it run with a restriction", () => {
   const found = (g) => g.units.flatMap((u) => u.findings).filter((f) => f.type === "extra");
-  let repaired = 0, deferred = 0, within = 0, beyond = 0, sent = 0, back = 0, late = 0, restricted = 0;
+  let repaired = 0, deferred = 0, within = 0, beyond = 0, sent = 0, back = 0, late = 0, brakes = 0, restricted = 0;
   for (const seed of SEEDS) {
     const ask = play(always("finding-", "ask"), { seed });
     for (const f of found(ask)) {
@@ -319,6 +319,12 @@ test("a finding beyond the order: asked, fleet management extends the order or l
         assert.ok(!u.kept && note.irregulars.some((x) => x.kind === "sent-back" && x.unit === u.name), `seed ${seed}: ${u.name} is sent back to the hall, not kept in`);
         const task = u.tasks.find((t) => t.finding === must);
         assert.ok(task?.ordered && task.work === S(must.real_min + WORKSHOP_WORK.reopen_min), `seed ${seed}: the repair is ordered, with the time to set up for it again`);
+        // a repair on the brakes: the brake test is done again, after it
+        const test = u.tasks.find((t) => t.id === "brake-test"), last = (re) => note.logs.findLastIndex((l) => l.text.includes(u.name) && re.test(l.text));
+        if (must.brakes && test) {
+          brakes++;
+          assert.ok(test.state === "open" || last(/brake test done and signed/) > last(/Not returned to operation/), `seed ${seed}: the brakes of ${u.name} are tested again after the repair`);
+        }
         if (u.rto_t != null) {
           back++;
           assert.equal(must.state, "repaired", `seed ${seed}: ${u.name} is returned to operation once it is repaired`);
@@ -333,6 +339,7 @@ test("a finding beyond the order: asked, fleet management extends the order or l
   assert.ok(within > 3 && beyond > 3, `the repair is within the standing order on some nights (${within}) and beyond it on others (${beyond})`);
   assert.ok(sent > 3 && restricted > 3, `left in the release, the unit is sent back for the repair (${sent}) or runs restricted (${restricted})`);
   assert.ok(back > 3 && late > 0, `sent back, the unit is repaired in time for a train on most nights (${back}), not on others (${late})`);
+  assert.ok(brakes > 0, `a brake hose sent back is tested again (${brakes})`);
   // while the answer is awaited nobody works on the unit
   const g = play((game, d) => (d.id.startsWith("finding-") ? OPEN : undefined), { seed: 1, until: S(110) });
   const u = g.unit("105"), done = u.tasks.find((t) => t.id === "pads").done;
@@ -492,6 +499,26 @@ test("the hourly status: the trains to come against the units that can still tak
   // handed to its driver all the same, it is a unit again
   const handed = status(1, (g) => (g.t * WORKSHOP_PACE) / 3600 >= 3 && released(g), (g) => Object.assign(released(g), { void: true, handed: true, rto_t: g.t }));
   assert.deepEqual(handed.short, handed.open.slice(1));
+});
+
+test("a release sent back: a time said to the dispatcher for that unit is judged again, by the release that holds", () => {
+  const g = new WorkshopGame({ seed: 1 }), u = g.unit("105");
+  // 442 105 released by the time said, with a finding written in that fleet management wants repaired
+  for (const t of u.tasks) Object.assign(t, { state: "done", done: t.work });
+  u.findings.push({ ...g._extra(u, "a"), must_have: true, state: "noted" });
+  g.word = { unit: u.id, t: g.t + S(60), kept: null };
+  const before = g.mood("dispatch");
+  assert.ok(g.release(u.id).ok);
+  assert.equal(g.word.kept, true, "released in time: the time said is kept");
+  assert.equal(g.mood("dispatch"), before + WORKSHOP_MOOD.kept_word);
+  run(g, u.rto_due - g.t + 1);
+  assert.equal(u.sent_back, 1, "fleet management sends it back");
+  assert.equal(g.word.kept, null, "the time said rested on that release: it is judged again");
+  assert.equal(g.mood("dispatch"), before, "and what it gave the dispatcher is taken back");
+  // nobody repairs it in time: the time said is not kept
+  run(g, g.word.t - g.t + S(5));
+  assert.equal(g.word.kept, false);
+  assert.ok(g.irregulars.some((x) => x.kind === "promise-broken") && g.violations.some((v) => v.rule === "promise"));
 });
 
 test("the view for a page that does not know the game: figures, tables, the moves as forms, the depot as a picture, the hall for the table", () => {

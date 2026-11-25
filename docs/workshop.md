@@ -117,7 +117,7 @@ repaired, or such a signature); its train is then worth what a cancelled one is.
 | Work | the inspection 170 min, the brake pads 110, the brake test 20, the door's drive 75, a part changed 45, a second measurement 10 |
 | The lathe | 30 min to set up, 12 a millimetre; setting up again after a cut too shallow 15; above 3 mm the other wheelset as long again; a millimetre of diameter is about 30 000 km |
 | On call | fleet management answers in 4 to 12 min, maintenance development in 6 to 14; a return to operation comes 6 to 16 min after the release, 2 after a phone call |
-| A release sent back | the unit goes into the hall again when a track is free (or is repaired where it stands on the pit or the jacks); 30 min to set up for it again, then the repair |
+| A release sent back | the unit goes into the hall again when a track is free (or is repaired where it stands on the pit or the jacks); 20 min to set up for it again, then the repair, and after a brake hose the brake test again; a time said to the dispatcher for it counts by the new release |
 | Score | trains with their unit 35, the night's orders 20, nothing comes back 15, the people 30 |
 
 Played by the computer on 24 seeds of the level *normal*: nobody at the desk 19 points (nothing
@@ -130,13 +130,14 @@ A finding written into the release is a judgment, not a mistake. On 100 seeds:
 
 | Findings written into the release | Mean | Beats the book | Loses to it |
 | --- | --- | --- | --- |
-| none: always phoned in (the book) | 83 | | |
-| where the foreman says "with that it can run" | 83 | on 28 nights | on 7 |
-| also where it "can go either way" | 83 | on 50 nights | on 33 |
-| every one, the chafed brake hose too | 81 | on 34 nights | on 57 |
+| none: always phoned in (the book) | 82.8 | | |
+| where the foreman says "with that it can run" | 83.0 | on 28 nights | on 7 |
+| also where it "can go either way" | 82.5 | on 49 nights | on 34 |
+| every one, the chafed brake hose too | 80.3 | on 33 nights | on 59 |
 
-Of the units sent back for a finding written into every release, four in five are repaired and
-returned to operation before the night is over.
+Of the units sent back for a finding written into every release, seven in eight are repaired and
+returned to operation before the night is over. A send-back costs more where a time was said to the
+dispatcher for that unit: the time counts by the new release, and is often missed.
 
 Levels: *training* (one finding beyond the order, nobody slow on the phone), *normal*, *hard* (a
 fitter short, the phones slower, the foreman's guesses wider).

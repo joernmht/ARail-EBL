@@ -84,7 +84,7 @@ export const MOVE = { shunt_min: 6, in_min: 4, out_min: 4, lift_min: 3 };
  * by the one person authorised for it tonight), the drive of a door (on any hall track), a brake
  * disc or contact strip changed after a reading below its limit, a second measurement.
  */
-export const WORK = { inspection_min: 170, pads_min: 110, brake_test_min: 20, door_min: 75, change_min: 45, measure_min: 10, reopen_min: 30 };
+export const WORK = { inspection_min: 170, pads_min: 110, brake_test_min: 20, door_min: 75, change_min: 45, measure_min: 10, reopen_min: 20 };
 
 /**
  * The wheel lathe: setting up a wheelset (min), each millimetre cut (min), setting up again after
@@ -129,12 +129,12 @@ export const UNITS = [
 /**
  * What a fitter may find beyond the order, by chance: what is seen, how likely fleet management
  * wants it repaired before the unit runs (else it may run with a restriction), the foreman's
- * estimate of the repair (min, from … to; it can take ten more), and the restriction it runs with
- * if it waits.
+ * estimate of the repair (min, from … to; it can take ten more), the restriction it runs with
+ * if it waits, and whether it is on the brakes (repaired after the brake test, the test is due again).
  */
 export const FINDINGS = [
   { id: "damper", what: "a damper on the second bogie is wet with oil", must: 0.45, est: [25, 50], restriction: "the damper watched: checked again within seven days" },
-  { id: "hose", what: "a brake hose under the middle car is chafed, its fabric shows", must: 0.8, est: [20, 40], restriction: "the hose checked at every stabling until it is changed" },
+  { id: "hose", what: "a brake hose under the middle car is chafed, its fabric shows", must: 0.8, est: [20, 40], restriction: "the hose checked at every stabling until it is changed", brakes: true },
   { id: "sander", what: "the sanding pipe at the first axle is bent and blocked", must: 0.5, est: [15, 35], restriction: "no sand on one axle: 120 km/h at most" },
   { id: "step", what: "the weld of the step at door 2 has a crack", must: 0.25, est: [30, 60], restriction: "door 2 locked" },
 ];
@@ -175,13 +175,13 @@ export const LEVELS = {
  */
 export const MOOD = {
   start: 85, call: 70, act: 35,
-  night_call: -7, bypassed: -22, noted: -3, noted_must: -30, handed: -30, released: 3, after_four: -8,
+  night_call: -7, bypassed: -22, noted: -3, noted_must: -24, handed: -30, released: 3, after_four: -8,
   dev_call: -8, excess_mm: -9, scrapped: -12, repeat: -30, fits: 5,
   on_time: 3, restricted: -9, late_min: -4, cancelled: -32, planned: -14, slipping: -7, kept_word: 6,
   promise: 14, compromise: 7, explained: 10, refused: -6, declined: -8, broken: -26,
 };
 /** What a release that fleet management sends back for a finding written into it costs the night's orders. */
-export const SENT_BACK = { orders: 0.2 };
+export const SENT_BACK = { orders: 0.12 };
 /** What a cancelled train is worth in the score: cancelled at the platform, and cancelled in good time. */
 const CANCELLED = { late: -0.4, planned: -0.15 };
 /** Fleet management wants every unit released by this minute of the night (04:00). */
@@ -1226,8 +1226,16 @@ export class WorkshopGame extends Game {
     task.work += S(WORK.reopen_min);
     // (on the lathe's track it is repaired from the lathe's pit: it does not move for it)
     if (HALL.includes(u.track) && !task.where.includes(u.track)) task.where = [...task.where, u.track];
+    // (a repair on the brakes after the brake test: the test is due again, and signed again)
+    const test = f.brakes ? u.tasks.find((t) => t.id === "brake-test" && t.state === "done") : null;
+    if (test) Object.assign(test, { state: "open", done: 0 });
+    // (a time said to the dispatcher for this unit rested on the release that came back: it is judged again)
+    if (this.word?.unit === u.id && this.word.kept === true) {
+      this.word.kept = null;
+      this._mood("dispatch", -MOOD.kept_word);
+    }
     this._mood("fleet", MOOD.noted_must);
-    this.log(`${hm(this.t)} ${p.name}: "${u.name}: ${f.what}, and you write it into the release? Not returned to operation: repair it first. You could have asked me when it was found."`, "fault");
+    this.log(`${hm(this.t)} ${p.name}: "${u.name}: ${f.what}, and you write it into the release? Not returned to operation: repair it first${test ? ", and test the brakes again" : ""}. You could have asked me when it was found."`, "fault");
     this.irregular("sent-back", `sent-back:${u.id}:${f.id}`, { unit: u.name, what: f.what, who: p.name });
     this._patience("fleet");
   }
