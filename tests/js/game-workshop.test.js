@@ -9,7 +9,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  GAMES, LATE_MAX_MIN, LATHE, PULLOUTS, STANDING_MIN, WORKSHOP_HANDS, WORKSHOP_LEVELS, WORKSHOP_MOOD, WORKSHOP_MOVE, WORKSHOP_PACE, WORKSHOP_PEOPLE, WORKSHOP_TRACKS, WORKSHOP_UNITS, WORKSHOP_WORK,
+  GAMES, LATE_MAX_MIN, LATHE, PULLOUTS, STANDING_MIN, WORKSHOP_FINDINGS, WORKSHOP_HANDS, WORKSHOP_LEVELS, WORKSHOP_MOOD, WORKSHOP_MOVE, WORKSHOP_PACE, WORKSHOP_PEOPLE, WORKSHOP_TRACKS, WORKSHOP_UNITS, WORKSHOP_WORK,
   WorkshopGame, WorkshopPlayer, normalizeMission, testRun, validateMission,
 } from "../../web/arail/game/index.js";
 import { ROOT } from "./helpers.js";
@@ -80,13 +80,21 @@ test("the choices matter: planning the pit ahead beats the book; a reading taken
   const plan = SEEDS.map((seed) => score(play(planner, { seed })));
   assert.ok(mean(plan) > mean(book) + 3, `judgment about the tracks pays (${mean(plan).toFixed(1)} against ${mean(book).toFixed(1)})`);
   assert.ok(Math.min(...book) < 75 && Math.max(...book) > 88, "by the book, nights differ");
-  // (on more nights: a finding left in the release beats the book only rarely, on one night of the first 40)
-  const nights = Array.from({ length: 40 }, (_, i) => i + 1), books = nights.map((seed) => (seed <= SEEDS.length ? book[seed - 1] : score(play(computer, { seed }))));
+  const wins = (xs) => xs.filter((x, i) => x > book[i]).length, losses = (xs) => xs.filter((x, i) => x < book[i]).length;
   for (const [name, policy] of [["the reading taken", always("limit-", "within")], ["repaired unasked", always("finding-", "do")], ["left in the release", always("finding-", "note")]]) {
-    const other = nights.map((seed) => score(play(policy, { seed })));
-    assert.ok(other.some((x, i) => x > books[i]), `${name}: better than the book on some night`);
-    assert.ok(other.some((x, i) => x < books[i]), `${name}: worse on another`);
+    const other = SEEDS.map((seed) => score(play(policy, { seed })));
+    assert.ok(wins(other) > 0, `${name}: better than the book on some night`);
+    assert.ok(losses(other) > 0, `${name}: worse on another`);
   }
+  // a finding left in the release on the foreman's word ("with that it can run") wins more nights than it loses;
+  // where it "can go either way" it is a gamble; every finding left there, the brake hose too, does not pay
+  const guess = (d) => WORKSHOP_FINDINGS.find((f) => d.id.endsWith(`-${f.id}`)).must;
+  const noted = (most) => (g, d) => (d.id.startsWith("finding-") && has(d, "note") && guess(d) <= most ? "note" : undefined);
+  const canRun = SEEDS.map((seed) => score(play(noted(0.3), { seed }))), either = SEEDS.map((seed) => score(play(noted(0.69), { seed })));
+  const every = SEEDS.map((seed) => score(play(always("finding-", "note"), { seed })));
+  assert.ok(wins(canRun) > losses(canRun) && losses(canRun) > 0, `on the foreman's word: better on ${wins(canRun)} nights, worse on ${losses(canRun)}`);
+  assert.ok(wins(either) > 2 && losses(either) > 2, `where it can go either way: better on ${wins(either)} nights, worse on ${losses(either)}`);
+  assert.ok(mean(every) < mean(book) - 1, `every finding left in the release does not pay (${mean(every).toFixed(1)} against ${mean(book).toFixed(1)})`);
   // hasty all round (unasked, on one reading, a shallow cut, an early time, the unit handed over, no promise) is worse than the book
   const hasty = (g, d) => (d.id.startsWith("finding-") && has(d, "do") ? "do" : d.id.startsWith("limit-") && has(d, "within") ? "within" : d.id.startsWith("cut-") ? Math.max(LATHE.min, d.scale.value - 1) : d.id === "word" ? Math.max(10, d.scale.value - 10) : d.id.startsWith("door-") ? "go" : d.id.startsWith("call-") ? d.options.at(-1).id : undefined);
   assert.ok(mean(SEEDS.map((seed) => score(play(hasty, { seed })))) < mean(book) - 6, "haste does not pay");
@@ -280,9 +288,9 @@ test("released is not returned: fleet management returns a unit to operation; ha
   assert.ok(g4.unit("101").handed && g4.violations.some((v) => v.rule === "return-to-operation"));
 });
 
-test("a finding beyond the order: asked, fleet management extends the order or lets the unit run with a restriction; repaired unasked, it is within the standing order or not; left in the release, it is decided when nothing can be repaired", () => {
+test("a finding beyond the order: asked, fleet management extends the order or lets the unit run with a restriction; repaired unasked, it is within the standing order or not; left in the release, fleet management sends the unit back for the repair (the brakes tested again after a brake hose) or lets it run with a restriction", () => {
   const found = (g) => g.units.flatMap((u) => u.findings).filter((f) => f.type === "extra");
-  let repaired = 0, deferred = 0, within = 0, beyond = 0, kept = 0, restricted = 0;
+  let repaired = 0, deferred = 0, within = 0, beyond = 0, sent = 0, back = 0, late = 0, brakes = 0, restricted = 0;
   for (const seed of SEEDS) {
     const ask = play(always("finding-", "ask"), { seed });
     for (const f of found(ask)) {
@@ -303,17 +311,35 @@ test("a finding beyond the order: asked, fleet management extends the order or l
     }
     const note = play(always("finding-", "note"), { seed });
     for (const u of note.units) {
-      const must = u.findings.some((f) => f.type === "extra" && f.must_have);
-      if (u.released_t == null || u.rto_due > note.t) continue;
-      if (must && !u.handed) {
-        kept++;
-        assert.ok(u.kept && u.rto_t == null, `seed ${seed}: ${u.name} is not returned to operation`);
-      } else if (u.findings.some((f) => f.type === "extra")) restricted++;
+      const must = u.findings.find((f) => f.type === "extra" && f.must_have);
+      if (u.handed || !u.findings.some((f) => f.type === "extra")) continue;
+      if (must) {
+        if (!u.sent_back) continue; // (not released in time for fleet management to decide)
+        sent++;
+        assert.ok(!u.kept && note.irregulars.some((x) => x.kind === "sent-back" && x.unit === u.name), `seed ${seed}: ${u.name} is sent back to the hall, not kept in`);
+        const task = u.tasks.find((t) => t.finding === must);
+        assert.ok(task?.ordered && task.work === S(must.real_min + WORKSHOP_WORK.reopen_min), `seed ${seed}: the repair is ordered, with the time to set up for it again`);
+        // a repair on the brakes: the brake test is done again, after it
+        const test = u.tasks.find((t) => t.id === "brake-test"), last = (re) => note.logs.findLastIndex((l) => l.text.includes(u.name) && re.test(l.text));
+        if (must.brakes && test) {
+          brakes++;
+          assert.ok(test.state === "open" || last(/brake test done and signed/) > last(/Not returned to operation/), `seed ${seed}: the brakes of ${u.name} are tested again after the repair`);
+        }
+        if (u.rto_t != null) {
+          back++;
+          assert.equal(must.state, "repaired", `seed ${seed}: ${u.name} is returned to operation once it is repaired`);
+        } else late++;
+      } else if (u.rto_t != null) {
+        restricted++;
+        assert.ok(u.restrictions.includes(u.findings.find((f) => f.type === "extra").restriction));
+      }
     }
   }
   assert.ok(repaired > 5 && deferred > 5, `fleet management decides either way (${repaired} repaired, ${deferred} deferred)`);
   assert.ok(within > 3 && beyond > 3, `the repair is within the standing order on some nights (${within}) and beyond it on others (${beyond})`);
-  assert.ok(kept > 3 && restricted > 3, `left in the release, the unit is kept in (${kept}) or runs restricted (${restricted})`);
+  assert.ok(sent > 3 && restricted > 3, `left in the release, the unit is sent back for the repair (${sent}) or runs restricted (${restricted})`);
+  assert.ok(back > 3 && late > 0, `sent back, the unit is repaired in time for a train on most nights (${back}), not on others (${late})`);
+  assert.ok(brakes > 0, `a brake hose sent back is tested again (${brakes})`);
   // while the answer is awaited nobody works on the unit
   const g = play((game, d) => (d.id.startsWith("finding-") ? OPEN : undefined), { seed: 1, until: S(110) });
   const u = g.unit("105"), done = u.tasks.find((t) => t.id === "pads").done;
@@ -413,7 +439,8 @@ test("the three people: below the mark each phones once and asks for a promise; 
   assert.ok(planned.length >= 3);
   for (const x of planned) assert.ok(x.pullouts.some((p) => p.cancelled === "planned"), "said later than the last train can use, a train is cancelled in good time");
   // at the end of their patience: the dispatcher orders buses, the fleet manager reads every release
-  const worn = play(always("finding-", "note"), { seed: 1 });
+  // (here the fleet manager, after work beyond the standing order done unasked, finding after finding)
+  const worn = play(always("finding-", "do"), { seed: 1 });
   assert.ok(worn.acted.size > 0 && worn.violations.some((v) => v.rule === "complaint"));
   assert.ok(worn.irregulars.some((x) => x.kind === "complaint"));
   // the people's patience: the lowest counts most
@@ -472,6 +499,53 @@ test("the hourly status: the trains to come against the units that can still tak
   // handed to its driver all the same, it is a unit again
   const handed = status(1, (g) => (g.t * WORKSHOP_PACE) / 3600 >= 3 && released(g), (g) => Object.assign(released(g), { void: true, handed: true, rto_t: g.t }));
   assert.deepEqual(handed.short, handed.open.slice(1));
+});
+
+test("a release sent back: a time said to the dispatcher for that unit is judged again, by the release that holds", () => {
+  const g = new WorkshopGame({ seed: 1 }), u = g.unit("105");
+  // 442 105 released by the time said, with a finding written in that fleet management wants repaired
+  for (const t of u.tasks) Object.assign(t, { state: "done", done: t.work });
+  u.findings.push({ ...g._extra(u, "a"), must_have: true, state: "noted" });
+  g.word = { unit: u.id, t: g.t + S(60), kept: null };
+  const before = g.mood("dispatch");
+  assert.ok(g.release(u.id).ok);
+  assert.equal(g.word.kept, true, "released in time: the time said is kept");
+  assert.equal(g.mood("dispatch"), before + WORKSHOP_MOOD.kept_word);
+  run(g, u.rto_due - g.t + 1);
+  assert.equal(u.sent_back, 1, "fleet management sends it back");
+  assert.equal(g.word.kept, null, "the time said rested on that release: it is judged again");
+  assert.equal(g.mood("dispatch"), before, "and what it gave the dispatcher is taken back");
+  // nobody repairs it in time: the time said is not kept
+  run(g, g.word.t - g.t + S(5));
+  assert.equal(g.word.kept, false);
+  assert.ok(g.irregulars.some((x) => x.kind === "promise-broken") && g.violations.some((v) => v.rule === "promise"));
+  // near the top of the dispatcher's patience, what is taken back is what was truly given
+  const h = new WorkshopGame({ seed: 1 }), v = h.unit("105");
+  for (const t of v.tasks) Object.assign(t, { state: "done", done: t.work });
+  v.findings.push({ ...h._extra(v, "a"), must_have: true, state: "noted" });
+  h.word = { unit: v.id, t: h.t + S(60), kept: null };
+  h.resources.get("mood-dispatch").value = 97;
+  assert.ok(h.release(v.id).ok);
+  assert.equal(h.mood("dispatch"), 100);
+  run(h, v.rto_due - h.t + 1);
+  assert.equal(v.sent_back, 1);
+  assert.equal(h.mood("dispatch"), 97, "the dispatcher is where it was before the release");
+});
+
+test("a release sent back for a brake hose: the repair first, the unit's brake test right after it, also with work that may wait behind the test; and a track left free before asks about the unit again", () => {
+  const g = new WorkshopGame({ seed: 1 }), u = g.unit("105");
+  for (const t of u.tasks) Object.assign(t, { state: "done", done: t.work });
+  // (work that may wait, behind the brake test: open at the release)
+  u.tasks.push({ id: "door", unit: u.id, name: "the drive of door 3", where: ["1", "2", "3"], work: S(75), done: 0, state: "open", required: false, ordered: true, under: false, lathe: false, tester: false });
+  const hose = WORKSHOP_FINDINGS.find((f) => f.brakes);
+  u.findings.push({ ...hose, kind: hose.id, id: `${u.id}-${hose.id}`, unit: u.id, type: "extra", must_have: true, real_min: 30, state: "noted" });
+  g._left.set("2", new Set([u.id]));
+  assert.ok(g.release(u.id).ok);
+  run(g, u.rto_due - g.t + 1);
+  assert.equal(u.sent_back, 1);
+  const ids = u.tasks.filter((t) => t.state === "open").map((t) => t.id);
+  assert.deepEqual(ids, [`repair-${u.id}-${hose.id}`, "brake-test", "door"], "the repair, then the brake test, then what may wait");
+  assert.ok(!g._left.get("2").has(u.id), "left free before, the track asks about the unit again");
 });
 
 test("the view for a page that does not know the game: figures, tables, the moves as forms, the depot as a picture, the hall for the table", () => {
@@ -546,7 +620,7 @@ test("the mission Fit to run: sound, at the game's pace, a line for everything t
   const said = new Set(m.story.filter((s) => s.on).map((s) => s.on));
   assert.deepEqual([...said].sort(), [...WorkshopGame.irregularities].sort(), "a line for every kind of irregularity");
   // every irregularity names what its line asks for
-  const fields = { finding: ["unit"], limit: ["unit", "what"], "second-pass": ["unit"], bypassed: ["who", "unit"], kept: ["who", "unit", "what"], restricted: ["unit", "what", "who"], late: ["train", "min", "who"], cancelled: ["train", "who"], repeat: ["unit", "what", "who"], "promise-broken": ["who"], complaint: ["who"], "void-release": ["who", "unit"] };
+  const fields = { finding: ["unit"], limit: ["unit", "what"], "second-pass": ["unit"], bypassed: ["who", "unit"], kept: ["who", "unit", "what"], "sent-back": ["who", "unit", "what"], restricted: ["unit", "what", "who"], late: ["train", "min", "who"], cancelled: ["train", "who"], repeat: ["unit", "what", "who"], "promise-broken": ["who"], complaint: ["who"], "void-release": ["who", "unit"] };
   const seen = new Map();
   for (const seed of SEEDS) for (const policy of [computer, always("finding-", "note"), always("limit-", "within"), always("finding-", "do"), always("brake-test", "other"), always("door-", "go")]) for (const x of play(policy, { seed }).irregulars) seen.set(x.kind, x);
   for (const [kind, names] of Object.entries(fields)) {

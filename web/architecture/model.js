@@ -54,8 +54,8 @@ export const GROUPS = [
 export const PACKAGES = [
   {
     id: "core-world", name: "core · world", group: "framework", path: "web/arail/core",
-    summary: "The loaded layout: objects, simulations and stories, the scenes of a layout's introduction, the step, the clock with its date and sun, the weather, layers, people and their mobility, the registry, the event bus, the heights of table modules and streets, and pointing at things.",
-    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/states.js", "web/arail/core/story.js", "web/arail/core/intro.js", "web/arail/core/clock.js", "web/arail/core/weather.js", "web/arail/core/people.js", "web/arail/core/mobility.js", "web/arail/core/pick.js", "web/arail/core/elevation.js"],
+    summary: "The loaded layout: objects, simulations and stories, the scenes of a layout's introduction, the step, the clock with its date and sun, the weather, layers, people, their mobility and their modes of transport (how they choose between them, and what the town has learned from its trips), the registry, the event bus, the heights of table modules and streets, and pointing at things.",
+    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/states.js", "web/arail/core/story.js", "web/arail/core/intro.js", "web/arail/core/clock.js", "web/arail/core/weather.js", "web/arail/core/people.js", "web/arail/core/mobility.js", "web/arail/core/modes.js", "web/arail/core/pick.js", "web/arail/core/elevation.js"],
     uses: ["core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing"],
   },
   {
@@ -71,8 +71,8 @@ export const PACKAGES = [
   },
   {
     id: "core-transport", name: "core · transport", group: "framework", path: "web/arail/core",
-    summary: "Stops and docks, the timetable trains and buses, the road network with its rules (signs, lights, zebra crossings, railway crossings) and the street access of what needs it, bus and tram lines, the parking spaces, the control system's trains.",
-    files: ["web/arail/core/stops.js", "web/arail/core/services.js", "web/arail/core/vehicles.js", "web/arail/core/network.js", "web/arail/core/access.js", "web/arail/core/transit.js", "web/arail/core/curves.js", "web/arail/core/stop-signals.js", "web/arail/core/parking.js", "web/arail/core/trains.js"],
+    summary: "Stops and docks, the timetable trains and buses, the road network with its rules (signs, lights, zebra crossings, railway crossings) and the street access of what needs it, people on foot among each other and the vehicles (gaps at the kerb, passing on the sidewalk), bus and tram lines, the parking spaces, the control system's trains.",
+    files: ["web/arail/core/stops.js", "web/arail/core/services.js", "web/arail/core/vehicles.js", "web/arail/core/network.js", "web/arail/core/access.js", "web/arail/core/transit.js", "web/arail/core/curves.js", "web/arail/core/stop-signals.js", "web/arail/core/walking.js", "web/arail/core/parking.js", "web/arail/core/trains.js"],
     uses: ["core-math", "core-drawing"],
   },
   {
@@ -95,8 +95,8 @@ export const PACKAGES = [
   },
   {
     id: "sims", name: "sims", group: "framework", path: "web/arail/sims",
-    summary: "Passengers at the stops, the town's residents, road traffic with its drivers and parking, bikes and e-scooters, the visitors of a market.",
-    files: ["web/arail/sims/index.js", "web/arail/sims/passengers.js", "web/arail/sims/town.js", "web/arail/sims/traffic.js", "web/arail/sims/cycling.js", "web/arail/sims/market.js"],
+    summary: "Passengers at the stops, the town's residents with their households and their choice of the mode, road traffic with its drivers and parking, bikes and e-scooters, the visitors of a market; working out ahead what a town learns about its modes of transport.",
+    files: ["web/arail/sims/index.js", "web/arail/sims/passengers.js", "web/arail/sims/town.js", "web/arail/sims/traffic.js", "web/arail/sims/cycling.js", "web/arail/sims/market.js", "web/arail/sims/learning.js"],
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects"],
   },
   {
@@ -150,7 +150,7 @@ export const PACKAGES = [
   {
     id: "i18n", name: "i18n", group: "framework", path: "web/arail/i18n",
     summary: "Texts in other languages: the translator (the English text is the key, patterns with placeholders, plural forms, number formats) and the framework's German texts.",
-    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/intro.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/de/hump.js", "web/arail/i18n/de/market.js", "web/arail/i18n/de/weather.js", "web/arail/i18n/en.js"],
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/intro.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/de/hump.js", "web/arail/i18n/de/market.js", "web/arail/i18n/de/weather.js", "web/arail/i18n/de/modes.js", "web/arail/i18n/en.js"],
     uses: [],
   },
   {
@@ -239,9 +239,9 @@ export const PACKAGES = [
   },
   {
     id: "node-tools", name: "Node tools", group: "tools", path: "tools",
-    summary: "The development server, fetching the fonts, comparing operations setups on the command line, humping trains on the command line, writing the role catalogue's guide.",
-    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs", "tools/changelog.mjs", "tools/game-places.mjs", "tools/hump.mjs"],
-    uses: ["core-world", "core-math", "ops", "games", "hump"],
+    summary: "The development server, fetching the fonts, comparing operations setups on the command line, humping trains on the command line, working out ahead what a layout's town learns about its modes of transport, writing the role catalogue's guide.",
+    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs", "tools/changelog.mjs", "tools/game-places.mjs", "tools/hump.mjs", "tools/mobility-learn.mjs"],
+    uses: ["core-world", "core-math", "ops", "games", "hump", "api", "sims"],
   },
 ];
 
@@ -278,6 +278,7 @@ export const DATA_FLOW = {
     { id: "photos", kind: "store", no: "D6", label: "Photo map of the lab" },
     { id: "plan", kind: "process", no: "P15", label: "Draw a plan sheet", files: ["web/plan/plan.js", "web/arail/plan/infra.js", "web/arail/plan/drawing.js", "web/arail/plan/dxf.js"] },
     { id: "twin", kind: "external", label: "EBL digital twin (ebl_twin)" },
+    { id: "learn", kind: "process", no: "P16", label: "Work out what the town learns (mobility-learn)", files: ["tools/mobility-learn.mjs", "web/arail/sims/learning.js", "web/arail/core/modes.js"] },
   ],
   flows: [
     { from: "camera", to: "detect", label: "frames" },
@@ -320,6 +321,8 @@ export const DATA_FLOW = {
     { from: "layouts", to: "plan", label: "layout JSON: infrastructure, modules" },
     { from: "twin", to: "plan", label: "rail-infra/1: track plan, hall plan" },
     { from: "plan", to: "people", label: "plan sheet: print, SVG, DXF, rail-infra data" },
+    { from: "layouts", to: "learn", label: "layout JSON: streets, lines, buildings, simulations" },
+    { from: "learn", to: "layouts", label: "experience: how long trips take against their plan, by mode and hour" },
   ],
 };
 
@@ -329,7 +332,7 @@ export const DATA_FLOW = {
 export const MODEL_GROUPS = [
   { id: "world", name: "The world", intro: "What every layout has: the world and its step, layout files and modules, the clock with its date, the weather, objects, people, drawing." },
   { id: "tracking", name: "Tracking and cameras", intro: "From the camera image to the layout's pose: markers, the marker map, the flyover's virtual camera." },
-  { id: "transport", name: "People and vehicles", intro: "Stops, the timetable's trains and buses, passengers, the town's residents, streets and their cross-sections, traffic signs and crossings, bus and tram lines, cars and parking, bikes and e-scooters." },
+  { id: "transport", name: "People and vehicles", intro: "Stops, the timetable's trains and buses, passengers, the town's residents with their households, their choice of the mode and what they learn from their trips, streets and their cross-sections, traffic signs and crossings, people on foot among the vehicles, bus and tram lines, cars and parking, bikes and e-scooters." },
   { id: "market", name: "Market square", intro: "A market square with its stalls, the Christmas tree and rides, and the visitors who come to it (the lab example's modules Striezelmarkt and Market visitors)." },
   { id: "disruptions", name: "Disruptions, scenarios and stories", intro: "What can go wrong, timelines of it for exercises (the module Disruptions), and stories to click through (the app's module tabs)." },
   { id: "terminal", name: "Module: container terminal" },

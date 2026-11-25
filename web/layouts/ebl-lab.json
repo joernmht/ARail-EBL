@@ -28,7 +28,7 @@
   },
   "simulations": [
     {"type": "passengers", "base_rate": 0.5, "max_per_area": 140},
-    {"type": "town", "people_per_100": 25, "walk_max_m": 80, "bus_share": 0.85},
+    {"type": "town", "people_per_100": 25, "walk_max_m": 80, "stretch": 3},
     {"type": "traffic", "cars_per_km": 20}
   ],
   "objects": [

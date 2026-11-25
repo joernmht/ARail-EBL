@@ -16,7 +16,7 @@ A shortened version of the EBL example ([`web/layouts/ebl-lab.json`](../web/layo
   "clock": { "start": "07:00" },
   "simulations": [
     { "type": "passengers" },
-    { "type": "town", "people_per_100": 25, "walk_max_m": 80, "bus_share": 0.85 },
+    { "type": "town", "people_per_100": 25, "walk_max_m": 80, "stretch": 3 },
     { "type": "traffic", "cars_per_km": 20 }
   ],
   "objects": [
@@ -54,6 +54,7 @@ Positions are in the **layout frame**: millimetres on the layout, origin at the 
 | `markers` | | the markers and the marker map, see below |
 | `services` | | timetable defaults, see below |
 | `clock` | `{"start": "07:00", "factor": 12, "profiles": true}` | the fast clock, see below |
+| `experience` | | what the town has learned about its modes of transport, worked out ahead, see below |
 | `grid` | `{"size_mm": 50, "snap": true}` | grid of the flyover and the editor, see below |
 | `simulations` | `[{"type": "passengers"}]` | simulations to run, with their settings, see below |
 | `objects` | `[]` | the virtual objects |
@@ -174,6 +175,10 @@ The app writes the start time and the start date, not those shown when the layou
 ## `weather`
 
 The weather of the world, off by default (see [Seasons and weather](weather.md#in-a-layout-file) for the keys): a preset's name (`"weather": "snow"`) or `{"mode": "off" | "typical" | "fixed", "preset": …, "state": {…}, "course": [["HH:MM", {…}], …], "seed": 1}`. `typical` is the typical weather of the clock's date.
+
+## `experience`
+
+What the layout's town has learned about its modes of transport, worked out ahead by `node tools/mobility-learn.mjs <layout> --write` (see [Day and night](day-and-night.md#working-it-out-ahead)): `{"days": 14, "for": "…", "modes": {"car": {"weekday": [24 ratios], "weekend": [24 ratios]}, "walk": …, "bike": …, "transit": …}}`. A ratio is the time trips of the mode took to the time planned, for the hour of the day they began in (1: as planned); `for` is a key of the streets, lines and simulations it was learned for. Without it the town starts knowing nothing and learns in the app. It is not written by hand, and the app does not save what it learns on top.
 
 ## `grid`
 
@@ -715,8 +720,8 @@ A list of `{"type": ..., <settings>}`. The built-in simulations also take `"enab
 | Type | Settings (defaults) | |
 | --- | --- | --- |
 | `passengers` | `base_rate` (0.5 people per second per 25 m of platform at normal demand, without a town; with a town the other passengers follow its residents), `max_per_area` (140), `others` (true), `people` (the table of the people of the whole layout: per trait its share, walking speed, boarding, room and time at the car; only the cells a layout changes, e.g. `{"wheelchair": {"share": 0.02}}`), `standing_per_m2` (4), `onboard_share` (0.25; see [Passenger mobility](day-and-night.md#settings-of-the-people)) | random passengers at all stops, their moods, boarding and alighting door by door, the room in the vehicles; it also handles the people of the town and the travellers of the journeys at stops. `others: false`: only those use the stops, nobody else comes to wait or gets off the trains and buses |
-| `town` | `people_per_100` (12 people shown per 100 residents), `max_people` (300), `walk_max_m` (150: longer ways by bus), `bus_share` (0.8), `car_share` (0.3 of those with a licence and a car drive their long ways), `catchment_m` (1500: the local area whose places the residents fill first), `commuters_out` (0.15 of the workers work elsewhere anyway; those without a job in the town too), `commuters_in` (0.6 of the places left empty are taken by people from elsewhere, by train; values above 1, people per 100 jobs in older layouts, are read as hundredths), `shopping` (0.5 of the adults per day) | residents go to work, school and shopping and come home, on foot, by bus, by car and by train, each trip recorded from door to door; the people follow the buildings, and the town sets how often trains, buses and trams run, see [Day and night](day-and-night.md#the-town-simulation) |
-| `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic), `destinations` (0.5 of the cars coming in drive to a building and park there), `parked` (0.7 of the residents' spaces taken at night) | cars with drivers and passengers on the streets, parking near where they go, see [Streets, trams, buses and road traffic](streets-and-buses.md#road-traffic) |
+| `town` | `people_per_100` (12 people shown per 100 residents), `max_people` (300), `walk_max_m` (150: shorter ways are walked, for longer ones people choose their mode), `stretch` (1: how many times as long the ways count in that choice, for a town smaller than a real one), `modes` (the tastes of the choice: a table, only the cells a layout changes, e.g. `{"car": {"constant": 0}}`), `together` (true: households and people going together), `bus_share` and `car_share` (0: nobody takes the bus or tram, or the car; 1: everybody who can; in between, 0.5 by default, people choose), `catchment_m` (1500: the local area whose places the residents fill first), `commuters_out` (0.15 of the workers work elsewhere anyway; those without a job in the town too), `commuters_in` (0.6 of the places left empty are taken by people from elsewhere, by train; values above 1, people per 100 jobs in older layouts, are read as hundredths), `shopping` (0.5 of the adults per day) | residents go to work, school and shopping and come home, on foot, by bike, by bus or tram, by car and by train, as they choose and learn, alone or with their household; each trip recorded from door to door; the people follow the buildings, and the town sets how often trains, buses and trams run, see [Day and night](day-and-night.md#the-town-simulation) |
+| `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic on streets that flow; fewer where the town has learned that drives take long), `destinations` (0.5 of the cars coming in drive to a building and park there), `parked` (0.7 of the residents' spaces taken at night) | cars with drivers and passengers on the streets, parking near where they go, see [Streets, trams, buses and road traffic](streets-and-buses.md#road-traffic) |
 | `cycling` | `riders_per_km` (8 per km of street at normal daytime traffic), `scooters` (0.25 of them e-scooters), `rule_breakers` (0.15), `children` (0.08), `to_buildings` (0.4 lock their bike near a building for a while) | bikes and e-scooters on the streets, bike lanes and paths, see [Bikes and e-scooters](streets-and-buses.md#bikes-and-e-scooters) |
 | `market` | `visitors` (240 people on the market at once at the busiest time), `open` (`10:00`), `close` (`22:00`; both `HH:MM`, the layout check reports anything else), `from` and `until` (`11-26` and `12-23`, `MM-DD`: the season; on a date outside it the stalls, the tree, the arches and the rides are not there and nobody comes; without a date every day is in it), `by_train` (0.3 come by train), `from_homes` (0.45 of the others come from the houses of the town, the rest from the ends of the streets), `children` (0.15), `seed` (1) | the visitors of the market squares: they queue at the stalls, stay at the standing tables, look at the tree, take rides and go home, some by train; see [The market square and the Striezelmarkt](market.md#the-visitors) |
 | `terminal` | `name`, `default_wagon` (`sgns60`), `rolling_stock`, `trains`, `barges`, `trucks`, `containers`, `fill`, `orders` | the container terminal: trains, trucks and barges, cranes and reach stackers moving containers, model wagons with deck cards, work orders; see [Container terminal](container-terminal.md#layout-file) for the keys. One per layout. |

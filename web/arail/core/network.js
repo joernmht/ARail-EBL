@@ -41,7 +41,7 @@
  * walk or drive straight (a straight walk that would cross a track is out of sight).
  * @module arail/core/network
  */
-import { clamp, dist2, dot2, lerp, polylineAt, polylineLengths, polylinePoint, polylineProject, smoothstep, sub2, unit2 } from "./math.js";
+import { clamp, dist2, dot2, lerp, polylineAt, polylineLengths, polylinePoint, polylineProject, pointSegment, smoothstep, sub2, unit2 } from "./math.js";
 
 /**
  * @typedef {object} Edge
@@ -789,6 +789,17 @@ export class RoadNetwork {
     return ang > 35 ? "left" : ang < -35 ? "right" : "straight";
   }
 
+  /**
+   * The direction (radians, `Math.atan2`) in which an edge leaves node v: the arm of the junction a
+   * vehicle comes in or goes out by (core/transit.js `movesConflict`). Null for an unknown edge.
+   */
+  armAngle(v, edge) {
+    const e = this.edges[edge];
+    if (!e) return null;
+    const d = e.a === v ? e.dirA : [-e.dirB[0], -e.dirB[1]];
+    return Math.atan2(d[1], d[0]);
+  }
+
   /** May a vehicle (not a tram: it follows its track) turn from one edge onto another at node v? */
   turnAllowed(v, inEdge, outEdge, mode = "car") {
     if (mode === "tram" || mode === "walk") return true;
@@ -1381,6 +1392,48 @@ export class RoadNetwork {
     };
   }
 
+  /**
+   * The carriageway a point lies on: the edge of a street, bus lane or tram track whose lanes (its
+   * `width`, about its centre line) the point is on, or null (on a sidewalk, a footpath, a square).
+   * For people on foot: where they are in the way of vehicles (core/walking.js). The edges are kept
+   * in a grid, so a lookup looks at the few edges near the point.
+   * @param {number[]} p layout mm
+   * @returns {Edge | null}
+   */
+  carriageway(p) {
+    const grid = (this._lanes ||= this._laneGrid());
+    const list = grid.cells.get(`${Math.floor(p[0] / grid.size)},${Math.floor(p[1] / grid.size)}`);
+    if (!list) return null;
+    for (const { e, a, b, half } of list) if (pointSegment(p, a, b).distance < half) return e;
+    return null;
+  }
+
+  /** The segments of the edges with a carriageway, by the grid cells they touch (see `carriageway`). */
+  _laneGrid() {
+    const size = this.mm(20), cells = new Map();
+    for (const e of this.edges) {
+      if (e.hidden || !(e.car || e.bus || e.tram) || !(e.kind === "road" || e.kind === "lane" || e.kind === "tram")) continue;
+      // (a pedestrian zone with tram tracks is no carriageway: its edges are of kind "path".) Where
+      // people walk along the street (its sidewalk, or the edge of a street without one) is not on it.
+      const lanes = Math.max(this.mm(1.2), (e.width || 0) / 2);
+      const half = e.walkOffset > 0 ? Math.min(lanes, e.walkOffset - this.mm(0.5)) : lanes;
+      if (!(half > 0)) continue;
+      for (let k = 1; k < e.points.length; k++) {
+        const a = e.points[k - 1], b = e.points[k], item = { e, a, b, half };
+        const x0 = Math.floor((Math.min(a[0], b[0]) - half) / size), x1 = Math.floor((Math.max(a[0], b[0]) + half) / size);
+        const y0 = Math.floor((Math.min(a[1], b[1]) - half) / size), y1 = Math.floor((Math.max(a[1], b[1]) + half) / size);
+        for (let x = x0; x <= x1; x++) {
+          for (let y = y0; y <= y1; y++) {
+            const key = `${x},${y}`, list = cells.get(key);
+            if (list) list.push(item);
+            else cells.set(key, [item]);
+          }
+        }
+      }
+    }
+    return { size, cells };
+  }
+
   /** The edge of a path at arc length `s`: {edge, forward, s0, s1}. */
   edgeAt(path, s) {
     const E = path?.edges;
@@ -1507,7 +1560,8 @@ export class RoadNetwork {
 
   /**
    * The junctions a vehicle crosses on a path, located on its driving line: [{key, pos, r (radius,
-   * mm), s (arc length of the centre on the driving line), node, inEdge, outEdge, turn, rule (Stop or
+   * mm), s (arc length of the centre on the driving line), node, inEdge, outEdge, turn, a0 and a1 (the
+   * directions of the arms it comes in and goes out by, `armAngle`), rule (Stop or
    * give way of the approach, or null), signal ({obj, group}: traffic lights, or null), prio (0 give
    * way, 1 none, 2 priority road)}]. Junctions are nodes with three or more edges for cars or trams.
    * @param {Path} path
@@ -1530,6 +1584,7 @@ export class RoadNetwork {
       out.push({
         key: `${Math.round(n.pos[0])},${Math.round(n.pos[1])}`, pos: n.pos, r: r + this.mm(1), s: drive.lengths[k], node: id,
         inEdge: inEdge.id, outEdge: outEdge?.id ?? null, turn: outEdge ? this.turnOf(id, inEdge.id, outEdge.id) : "straight",
+        a0: this.armAngle(id, inEdge.id), a1: outEdge ? this.armAngle(id, outEdge.id) : null,
         rule, signal: n.signal && group != null ? { obj: n.signal.obj, group } : null, prio: rule ? 0 : inEdge.priority ? 2 : 1,
       });
     });

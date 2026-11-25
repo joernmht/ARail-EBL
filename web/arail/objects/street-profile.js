@@ -40,6 +40,8 @@ export const NORMS = {
   carriageway: { carCar: 4.5, tight: 4.1, truckCar: 5.5, busBus: 6.5, busBusOften: 7.0, values: [4.5, 5.5, 6.5, 7.0], source: "RASt 06" },
   /** A car lane: 3.25 m with buses, 3.00 m next to a bike lane; two lanes in one direction 5.00 to 6.50 m (RASt 06). */
   carLane: { default: 3.25, min: 2.5, values: [3.0, 3.25, 3.5], source: "RASt 06" },
+  /** Where people walk beside a street without sidewalks: on the verge, this far from the edge of the carriageway (m; estimate). */
+  verge: 0.6,
   /** A sidewalk (Seitenraum): 0.20 m to the houses + 1.80 m for two people to pass + 0.50 m to the cars (RASt 06); EFA 2002 by the houses along it. */
   sidewalk: { default: 2.5, min: 2.5, walking: 1.8, values: [1.8, 2.1, 2.5, 3.3, 4.0, 5.0], source: "RASt 06, EFA 2002, DIN 18040-3" },
   /** Advisory bike lane (Schutzstreifen, dashed line, cars may cross it when needed); at least 4.50 m of car lanes between two. */
@@ -314,8 +316,9 @@ export function crossSection(spec = {}, kind = { width_m: 7, car: true }) {
     }
     strips.push({ type: "curb", side: -1, from: curb, to: curb + 0.25, width: 0.25, level: "sidewalk" }, { type: "curb", side: 1, from: curb, to: curb + 0.25, width: 0.25, level: "sidewalk" });
   } else {
-    // a plain street: people walk at its edge
-    out.walkOffset = Math.max(0, curb - 0.6);
+    // a plain street: people walk beside it, on the verge (a bus is as wide as its lane: at the edge
+    // of the carriageway they would walk through it)
+    out.walkOffset = curb + NORMS.verge;
   }
   out.sidewalk = x - side0;
   out.half = x;

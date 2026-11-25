@@ -197,7 +197,20 @@
     "role": "ECM manager, on the way home",
     "portrait": "office"
    },
-   "say": "{who} does not return {unit} to operation: {what}. Left in the release, a finding is decided when nothing can be repaired any more."
+   "say": "{who} does not return {unit} to operation: {what}. Without a release that holds, there is nothing to return."
+  },
+  {
+   "phase": "shift",
+   "on": "sent-back",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "{who} sends {unit} back to the hall: {what}. That is repaired before it runs. We set up for it again; whether it still makes a train of the morning, the night will tell."
   },
   {
    "phase": "shift",

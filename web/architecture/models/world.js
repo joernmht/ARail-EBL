@@ -12,8 +12,8 @@ export const WORLD = [
     classes: [
       {
         name: "World", file: "web/arail/core/world.js", kind: "class", role: "The loaded layout; step and draw.",
-        attributes: ["registry: Registry", "events: EventBus", "clock: Clock", "objects: LayoutObject[]", "simulations: Simulation[]", "parking: ParkingSpaces — the parking spaces and who is parked where", "elevation: Elevation — the heights: levels of the table modules, streets on ramps and bridges", "time: number — simulated s since loading", "speed: number — simulated s per real s", "paused: boolean", "demand: number — demand factor of the Settings", "objectsVersion: number — counts changes of objects", "compatibilityTrain — the train whose compatibility the tracks show", "trackAhead — the train whose track ahead the tracks draw (its card is open)"],
-        operations: ["load(json) — compose the layers, defaults, everything anew", "toJSON() — the layout file, layers split again", "layers() — the layers (modules)", "addObject(spec)", "removeObject(id)", "objectChanged(obj)", "stopAreas() — cached", "network() — cached road network", "step(dtReal)", "setTime(value) — sends clock.set; a value that is no time of day changes nothing (null)", "setDate(value) — the date; sends clock.date and clock.set; what is no date changes nothing (undefined)", "setWeather(value) — a preset, typical, off or an object", "draw(view, opts) — each part lifted by what it stands on, then what objects move themselves (drawMoving, the rail lines' trains); opts.objects and opts.moving draw a part of the world (the live page)", "problemsOf(o) — what it says of itself, and whether it stands on the table modules", "pick(view, pixel, options) — what is at an image pixel", "card(hit) — its info card, with what the simulations and the card providers add", "findPickable(view, key) — the same thing now"],
+        attributes: ["registry: Registry", "events: EventBus", "clock: Clock", "objects: LayoutObject[]", "simulations: Simulation[]", "parking: ParkingSpaces — the parking spaces and who is parked where", "experience: Experience — what the town has learned about its modes of transport, by hour (core/modes.js); the layout's experience", "walking: Walking — people on foot among each other and the vehicles (core/walking.js)", "elevation: Elevation — the heights: levels of the table modules, streets on ramps and bridges", "time: number — simulated s since loading", "speed: number — simulated s per real s", "paused: boolean", "demand: number — demand factor of the Settings", "objectsVersion: number — counts changes of objects", "compatibilityTrain — the train whose compatibility the tracks show", "trackAhead — the train whose track ahead the tracks draw (its card is open)"],
+        operations: ["load(json) — compose the layers, defaults, everything anew", "toJSON() — the layout file, layers split again; the experience as the layout had it (what the app learns on top is not saved)", "layers() — the layers (modules)", "addObject(spec)", "removeObject(id)", "objectChanged(obj)", "stopAreas() — cached", "network() — cached road network", "step(dtReal)", "setTime(value) — sends clock.set; a value that is no time of day changes nothing (null)", "setDate(value) — the date; sends clock.date and clock.set; what is no date changes nothing (undefined)", "setWeather(value) — a preset, typical, off or an object", "draw(view, opts) — each part lifted by what it stands on, then what objects move themselves (drawMoving, the rail lines' trains); opts.objects and opts.moving draw a part of the world (the live page)", "problemsOf(o) — what it says of itself, and whether it stands on the table modules", "pick(view, pixel, options) — what is at an image pixel", "card(hit) — its info card, with what the simulations and the card providers add", "findPickable(view, key) — the same thing now"],
       },
       {
         name: "Simulation", file: "web/arail/core/simulation.js", kind: "class", stereotype: "base class", role: "Base of all simulations: one per entry of the layout's simulations.",
@@ -60,6 +60,8 @@ export const WORLD = [
       { from: "World", to: "TrainRegistry", kind: "composes", label: "trains" },
       { from: "World", to: "Registry", kind: "aggregates", label: "registry" },
       { from: "World", to: "Elevation", kind: "composes", label: "elevation" },
+      { from: "World", to: "Experience", kind: "composes", label: "experience" },
+      { from: "World", to: "Walking", kind: "composes", label: "walking" },
       { from: "World", to: "RoadNetwork", kind: "creates", label: "network()" },
       { from: "index", to: "World", kind: "creates", label: "createWorld" },
       { from: "index", to: "Registry", kind: "creates" },
@@ -79,15 +81,18 @@ export const WORLD = [
           ["d3", "decision", "Past midnight?"],
           ["x1", "send", "clock.day"],
           ["m1", "merge"],
+          ["a4b", "action", "The weather moves on", "Weather.step"],
+          ["a4c", "action", "What the town has learned: the trips of the hours that are over move what it expects of them", "Experience.tick"],
           ["a5", "action", "Scenario steps that are due", "ScenarioPlayer.step"],
           ["a6", "action", "Disruptions that expire", "DisruptionManager.step"],
           ["a7", "action", "Timetable trains and buses at the docks", "ServiceManager.step"],
+          ["a7b", "action", "People on foot: what the walkers see of each other (as they were a step ago), who is on a carriageway", "Walking.begin"],
           ["a8", "action", "Line buses: dispatch, drive, stop", "Transit.step"],
           ["a9", "action", "Object animations (the objects with an update of their own)", "LayoutObject.update"],
           ["a10", "action", "The simulations, in the order of the layout (base, then the modules on)", "Simulation.step"],
           ["e", "end"],
         ],
-        edges: [["s", "a1"], ["a1", "a2"], ["a2", "d1"], ["d1", "e", "yes"], ["d1", "a3", "no"], ["a3", "d2"], ["d2", "a4", "yes"], ["d2", "e", "no"], ["a4", "d3"], ["d3", "x1", "yes"], ["d3", "m1", "no"], ["x1", "m1"], ["m1", "a5"], ["a5", "a6"], ["a6", "a7"], ["a7", "a8"], ["a8", "a9"], ["a9", "a10"], ["a10", "d2"]],
+        edges: [["s", "a1"], ["a1", "a2"], ["a2", "d1"], ["d1", "e", "yes"], ["d1", "a3", "no"], ["a3", "d2"], ["d2", "a4", "yes"], ["d2", "e", "no"], ["a4", "d3"], ["d3", "x1", "yes"], ["d3", "m1", "no"], ["x1", "m1"], ["m1", "a4b"], ["a4b", "a4c"], ["a4c", "a5"], ["a5", "a6"], ["a6", "a7"], ["a7", "a7b"], ["a7b", "a8"], ["a8", "a9"], ["a9", "a10"], ["a10", "d2"]],
       },
       {
         id: "load", name: "Loading a layout",
@@ -101,7 +106,7 @@ export const WORLD = [
           ["a3", "action", "Check the layout with every layer on (only warned)", "validateLayout"],
           ["a4", "action", "Merge the layers that are on into the base", "composeLayout"],
           ["a5", "action", "Fill in the defaults", "normalizeLayout"],
-          ["a6", "action", "Marker map and clock; services, disruptions, trains and bus lines reset", "World.load"],
+          ["a6", "action", "Marker map, clock, weather and the town's experience (what was worked out ahead); services, disruptions, trains and bus lines reset", "World.load"],
           ["a7", "action", "Create the objects; dispose the old simulations", "World._create"],
           ["d2", "decision", "Another simulation entry?"],
           ["d3", "decision", "Its type registered?"],
@@ -146,7 +151,7 @@ export const WORLD = [
       {
         name: "layout", file: "web/arail/core/layout.js", kind: "module", role: "Defaults and validation.",
         attributes: ["LAYOUT_FORMAT — \"arail-layout/1\"", "DEFAULT_SERVICES — headways and dwell times", "DEFAULT_GRID — 50 mm, snap", "DEFAULT_ROLLING — the tags of model wagons"],
-        operations: ["normalizeLayout(json) — a copy with defaults", "validateLayout(json, registry) — problems, with every layer on", "isLayout(json)"],
+        operations: ["normalizeLayout(json) — a copy with defaults (weather and experience: null without one)", "validateLayout(json, registry) — problems, with every layer on; those of the weather and of the experience too (experienceProblems)", "isLayout(json)"],
       },
       {
         name: "layers", file: "web/arail/core/layers.js", kind: "module", role: "Switchable parts of one layout: the app's modules.",
@@ -361,7 +366,7 @@ export const WORLD = [
     files: ["web/arail/core/math.js"],
     classes: [{
       name: "math", file: "web/arail/core/math.js", kind: "module", role: "Pure functions, no state.",
-      operations: ["solve(A, b) — a linear system", "homography4(src, dst) — exact from four points", "homographyLS(src, dst) — normalised least squares (DLT)", "applyH(H, p)", "poseApply(pose, p)", "polygonArea(poly)", "pointInPolygon(p, poly)", "polylineAt(pts, s)", "polylinePoint(pts, s) — the point of polylineAt, without the direction", "polylineProject(pts, p)", "createRng(seed) — seeded random numbers: uniform, int, pick, chance, normal, truncNormal, poisson, weighted", "normalCdf(x) — Φ (Abramowitz and Stegun 26.2.17)", "normalQuantile(p) — the inverse of Φ (Acklam)", "hashKey(...parts)"],
+      operations: ["solve(A, b) — a linear system", "homography4(src, dst) — exact from four points", "homographyLS(src, dst) — normalised least squares (DLT)", "applyH(H, p)", "poseApply(pose, p)", "polygonArea(poly)", "pointInPolygon(p, poly)", "polylineAt(pts, s)", "polylinePoint(pts, s) — the point of polylineAt, without the direction", "polylineProject(pts, p)", "pointSegment(p, a, b) — the distance of a point from a segment, and where on it", "segmentDistance(a, b, c, d) — the distance between two segments, 0 where they cross", "createRng(seed) — seeded random numbers: uniform, int, pick, chance, normal, truncNormal, poisson, weighted", "normalCdf(x) — Φ (Abramowitz and Stegun 26.2.17)", "normalQuantile(p) — the inverse of Φ (Acklam)", "hashKey(...parts)"],
     }],
     rules: [
       "Random numbers are seeded (createRng): the same seed gives the same run; simulations take streams of their own (hash of the world's seed and their name).",

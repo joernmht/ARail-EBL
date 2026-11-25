@@ -29,6 +29,7 @@ import { TEXTS as PLAN } from "./de/plan.js";
 import { TEXTS as HUMP } from "./de/hump.js";
 import { TEXTS as MARKET } from "./de/market.js";
 import { TEXTS as WEATHER } from "./de/weather.js";
+import { TEXTS as MODES } from "./de/modes.js";
 
 /** The parts by their file, for the checks of the catalogues. */
 export const DE_PARTS = {
@@ -54,6 +55,7 @@ export const DE_PARTS = {
   "web/arail/i18n/de/hump.js": HUMP,
   "web/arail/i18n/de/market.js": MARKET,
   "web/arail/i18n/de/weather.js": WEATHER,
+  "web/arail/i18n/de/modes.js": MODES,
 };
 
 /** The framework's German texts. */

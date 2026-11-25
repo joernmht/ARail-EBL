@@ -80,7 +80,7 @@ test("town: people leave home in the morning and reach work, school and the trai
   const pupils = t.agents.filter((a) => a.role === "visitor" && a.visit === "school");
   assert.ok(pupils.length > 0 && pupils.filter((a) => a.state === "inside" && a.inside === "school").length >= pupils.length * 0.5, "pupils came by train to school");
   // nobody lost
-  for (const a of t.agents) assert.ok(["inside", "walking", "stop", "riding", "away"].includes(a.state), a.state);
+  for (const a of t.agents) assert.ok(["inside", "walking", "stop", "riding", "driving", "with", "away"].includes(a.state), a.state);
 });
 
 test("town: in the evening people are home again and the homes are lit", () => {

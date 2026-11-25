@@ -39,10 +39,12 @@
 import { Simulation } from "../core/simulation.js";
 import { createRng, dist2, dot2, pointSegment, polylineAt, polylinePoint, polylineProject, rectBetween, sub2 } from "../core/math.js";
 import { CD, grey, mix, shade } from "../core/colors.js";
-import { APPROACH_M, approachPrio, boxFaces, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, roomAfter, squeezing, waitFor } from "../core/transit.js";
+import { APPROACH_M, approachPrio, blockerAfter, boxFaces, entering, followSpeed, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, speedAlong, squeezing, waitFor } from "../core/transit.js";
 import { hiddenAt, joinPaths } from "../core/network.js";
 import { Person, Population } from "../core/people.js";
 import { carLegTime, drawProfile, mobilityOf, walkingSpeed } from "../core/mobility.js";
+import { DEFAULT_TASTE, carShare } from "../core/modes.js";
+import { NEAR_MISS_BRAKE, peopleAhead } from "../core/walking.js";
 import { parkingTerms } from "../objects/parking.js";
 import { hasShops } from "../objects/building-kit.js";
 import { drawPerson, personLooks } from "./passengers.js";
@@ -75,12 +77,33 @@ const ACCEL = 2.0; // m/s²
 const BRAKE = 2.5; // comfortable braking (m/s²)
 const HARD = 7; // hardest braking (m/s²)
 const GAP_M = 2.5; // distance to the vehicle ahead when standing (m)
+const PEOPLE_GAP_M = 2; // distance kept to a person on the street ahead (m)
 const WALK_MPS = 1.3; // walking speed of drivers and passengers (m/s)
 const MAX_WALK_M = 400; // the farthest a driver parks from the goal (m)
+const DOOR_M = 150; // the farthest the town's people walk from a door to where their car comes out (m)
+const OWN_STAY_MIN = 480; // the town's own people plan their parking for a working day (min)
 const EUR_PER_MIN = 0.2; // what a minute is worth to a driver (12 € an hour): weighs fees against time
 const PASS_AFTER_S = 2; // a car behind a bike waits this long before it looks for a chance to overtake
 const ONCOMING_M = 60; // overtaking needs the other lane free this far ahead (m)
+const BIKE_TO_CAR = 0.35; // the bikes are about a third as many as the cars: so much the cyclists who switch add to them
+const PASS_BUS_KMH = 20; // past a bus standing at a stop: slowly, people may step out in front of it (StVO § 20)
+const PASS_BUS_AFTER_S = 3; // a car behind a bus at a stop waits this long before it looks for a chance to pass
 const SHIFT_MS = 1.2; // how fast a car moves over to the other lane and back (m/s)
+
+/**
+ * What a drive takes on empty streets besides the way at the speed limit (s): starting off and
+ * braking at its ends, and at each junction on the way slowing down, giving way or a red light.
+ * (Fitted so that the cars of a quiet night take about what they planned.)
+ */
+const TRIP_ENDS_S = 6;
+const JUNCTION_S = 4;
+/** How much of the speed limit drivers use on average (their `factor` is 0.85 to 1.05). */
+const CRUISE = 0.92;
+/** A drive that takes this many times its plan and is still not over is learned from as it is (and again at each multiple). */
+const OVERDUE = 3;
+/** The traffic news count the cars that have been on their way this long (s); a car counts at most this many times its plan. */
+const LIVE_AFTER_S = 12;
+const LIVE_MAX = 6;
 
 /** Kilometres of street for cars per network: {scale, km} (see `targetCount`). */
 const STREET_KM = new WeakMap();
@@ -190,6 +213,9 @@ export class TrafficSimulation extends Simulation {
     this.walkers = [];
     this._net = null;
     this._spawn = 0;
+    /** Drives finished since the layout was loaded, and those that were a jam (see `_finish`). */
+    this.drives = 0;
+    this.jams = 0;
     this._users = [];
     this._filledParking = false;
     /** Cars made so far (their `seq`, the order at junctions when two arrive at once). */
@@ -231,7 +257,74 @@ export class TrafficSimulation extends Simulation {
     return (c?.day ?? 0) * 1440 + (c?.minutes ?? 0);
   }
 
-  /** Cars wanted now: density × street length × demand at this time of day. */
+  /**
+   * How drivers take a slow drive: the town's own settings where a town is simulated (its table of
+   * the modes, row everybody: `quit`, the ratio at which half give up the car, and `jam`, the ratio
+   * from which a drive counts as a jam), else the defaults (core/modes.js).
+   */
+  _taste() {
+    const town = this.world.simulations?.find((sim) => sim.constructor.type === "town" && sim.enabled !== false);
+    return town?.taste?.everybody ?? DEFAULT_TASTE.everybody;
+  }
+
+  /**
+   * The share of the people who would drive on empty streets and do so now: fewer the longer the
+   * town's drives take at this hour, as the town has learned (core/modes.js `carShare`,
+   * `world.experience`); a few more in rain and cold, when fewer cycle.
+   */
+  share() {
+    const w = this.world;
+    const ratio = this.expectedRatio();
+    // a third of the cyclists the weather keeps off the bike take the car instead (estimate)
+    const wet = w.weather?.on ? 1 + 0.3 * (1 - w.weather.cycleShare()) * BIKE_TO_CAR : 1;
+    return carShare(ratio, this._taste().quit) * wet;
+  }
+
+  /**
+   * How many times its plan a drive is expected to take now: what the town has learned of this hour
+   * (`world.experience`) and what the traffic news say (`liveRatio`), each half.
+   */
+  expectedRatio() {
+    const clock = this.world.clock;
+    const learned = this.world.experience?.ratio("car", clock.minutes, clock.weekend()) ?? 1;
+    return (learned + this.liveRatio()) / 2;
+  }
+
+  /**
+   * The traffic news: how many times their plan the cars on the streets now have taken for the way
+   * they have made so far (1 on empty streets), worked out once per simulated second.
+   */
+  liveRatio() {
+    const now = this.world.time;
+    if (this._live && now - this._live.t < 1) return this._live.ratio;
+    let sum = 0, n = 0;
+    for (const car of this.cars) {
+      if (car.t0 == null || !(car.free > TRIP_ENDS_S)) continue;
+      const elapsed = now - car.t0;
+      if (elapsed < LIVE_AFTER_S) continue;
+      // the plan for the way made so far: all of it but what the rest would take
+      const made = car.free - this._freeSeconds(car);
+      sum += Math.min(LIVE_MAX, elapsed / Math.max(LIVE_AFTER_S / 2, made + TRIP_ENDS_S));
+      n++;
+    }
+    const ratio = n >= 3 ? Math.max(1, sum / n) : 1;
+    this._live = { t: now, ratio };
+    return ratio;
+  }
+
+  /** Cars wanted on the streets now: those of empty streets (`targetCount`) × `share`. */
+  wanted(net = networkOf(this.world)) {
+    return this.targetCount(net) * this.share();
+  }
+
+  /** The cars on the streets that are not the town's own people's (those have an `owner`, see `drive`). */
+  _background() {
+    let n = 0;
+    for (const car of this.cars) if (!car.owner) n++;
+    return n;
+  }
+
+  /** Cars on empty streets now: density × street length × demand at this time of day. */
   targetCount(net = networkOf(this.world)) {
     if (!net) return 0;
     // the streets' length, summed once per network and scale (the network does not change once built)
@@ -251,7 +344,7 @@ export class TrafficSimulation extends Simulation {
 
   /** The people of the cars walking to or from a building (zebra crossings ask for them). */
   pedestrians() {
-    return this.walkers.map((w) => ({ pos: w.pos || w.walk.points[0], dir: w.dir || [1, 0] }));
+    return this.walkers.map((w) => ({ pos: w.pos || w.walk.points[0], dir: w.dir || [1, 0], agent: w }));
   }
 
   _pose(car) {
@@ -271,7 +364,7 @@ export class TrafficSimulation extends Simulation {
     // the junction it is about to enter (others give way to the first, or to a green light)
     const j = junctionAhead(car.junctions, car.s);
     const approach = j && car.s < j.s - j.r && j.s - car.s < this.mm(APPROACH_M) ? { key: j.key, d: j.s - car.s, prio: approachPrio(j, this.world.time) } : null;
-    const pose = { vehicle: car, front, rear, dir, speed: car.v, approach };
+    const pose = { vehicle: car, front, rear, dir, speed: car.v, approach, move: j };
     car._pose = pose;
     return pose;
   }
@@ -354,14 +447,135 @@ export class TrafficSimulation extends Simulation {
     return true;
   }
 
+  /**
+   * What the rest of a car's route takes on empty streets (s): the way at the speed limits (as much
+   * of them as drivers use), the junctions on it, starting off and stopping.
+   */
+  _freeSeconds(car) {
+    const p = car.path;
+    let t = 0;
+    for (let i = Math.max(1, segmentIndex(p.lengths, car.s) + 1); i < p.lengths.length; i++) {
+      const from = Math.max(car.s, p.lengths[i - 1]);
+      t += this.meters(p.lengths[i] - from) / (Math.max(1, p.speeds[i - 1] ?? 8) * CRUISE);
+    }
+    for (const j of car.junctions || []) {
+      if (j.s <= car.s) continue;
+      // at traffic lights the wait of one who comes at any time; else slowing down and giving way
+      t += j.signal?.obj?.expectedWait ? j.signal.obj.expectedWait(j.signal.group) + JUNCTION_S / 2 : JUNCTION_S;
+    }
+    return t + TRIP_ENDS_S;
+  }
+
+  /**
+   * A drive begins (or goes on, `more`: on to the next car park): when, and what it should take on
+   * empty streets. The town learns from how long it really takes (`_finish`).
+   */
+  _begin(car, more = false) {
+    const clock = this.world.clock;
+    if (!more || car.t0 == null) Object.assign(car, { t0: this.world.time, free: 0, began: clock.minutes, weekend: clock.weekend(), overdue: OVERDUE, told: null });
+    car.free += this._freeSeconds(car);
+    return car;
+  }
+
+  /**
+   * A drive is over (at a parking space, at the edge of the layout): the town learns how long it took
+   * against its plan (`world.experience`), and so do the people in the car (their `onDrive`).
+   * @returns {number} the ratio (1 where it is not known)
+   */
+  _finish(car) {
+    if (car.t0 == null || !(car.free > TRIP_ENDS_S)) return 1;
+    const ratio = (this.world.time - car.t0) / car.free;
+    this._learn(car, ratio);
+    this.drives++;
+    if (ratio >= this._taste().jam) this.jams++;
+    car.ratio = ratio;
+    car.t0 = null;
+    return ratio;
+  }
+
+  /**
+   * The town hears how long a drive takes against its plan. A drive that was told of while it was
+   * still on the way (`car.told`) is told of again in the place of that, not as one more drive.
+   */
+  _learn(car, ratio) {
+    this.world.experience?.learn("car", car.began, car.weekend, ratio, car.told ?? null);
+    car.told = ratio;
+  }
+
+  /**
+   * What a drive between two places takes on empty streets (s), as a person plans it before they
+   * choose the car (sims/town.js): the fastest way at the speed limits drivers use, and its ends.
+   * Null where there is no way by car (no streets, a place too far from them).
+   * @param {number[]} from layout mm
+   * @param {number[]} to layout mm
+   */
+  planSeconds(from, to) {
+    const net = networkOf(this.world);
+    if (!this.enabled || !net || net.empty) return null;
+    const a = net.nearestNode(from, { mode: "car" }), b = net.nearestNode(to, { mode: "car" });
+    if (!a || !b || a === b || net.meters(dist2(a.pos, from)) > DOOR_M || net.meters(dist2(b.pos, to)) > MAX_WALK_M) return null;
+    const t = net.distance(a, b, "car");
+    return Number.isFinite(t) ? t / CRUISE + TRIP_ENDS_S : null;
+  }
+
+  /**
+   * A drive of the town's own people (sims/town.js): a car with them in it, from where they are (or
+   * from where their car is parked) to a parking space near a building, as the driver plans it
+   * (`planDrive`); where the building has no parking within reach, to the street before it. The car
+   * comes on top of the cars from beyond the layout: its people chose it themselves.
+   * @param {{people: object[], from: number[], to: string, purpose?: string, parked?: object | null,
+   *   onArrive: (at: {pos: number[] | null, parked: object | null, ratio: number}) => void}} o
+   *   people: the driver first; from: where they are (layout mm); to: a building's id; parked: where
+   *   their car stands (what an earlier drive gave `onArrive`); onArrive: when the car stands: `pos`
+   *   where they get out (null: at the door), `parked` its space (null: out of sight), `ratio` the
+   *   time the drive took to its plan
+   * @returns {object | null} the car, or null where no car can be driven (the caller counts the time instead)
+   */
+  drive({ people, from, to, purpose = "visit", parked = null, onArrive }) {
+    const net = networkOf(this.world);
+    if (!this.enabled || !net || net.empty || !people?.length) return null;
+    const entry = parked && this.parkedCars.includes(parked) ? parked : null;
+    const at = entry ? entry.spot?.pos ?? entry.facility.entry ?? entry.facility.exit : from;
+    const a = at ? net.nearestNode(at, { mode: "car" }) : null;
+    if (!a || (!entry && net.meters(dist2(a.pos, from)) > DOOR_M)) return null;
+    const who = purpose === "home" ? { home: to, resident: true } : {};
+    const plan = planDrive(this.world, { from: a, to, purpose, driver: who, stayMin: OWN_STAY_MIN });
+    let route = plan?.route ?? null, dest = plan?.entry.id ?? null;
+    if (!route) {
+      // no parking within reach of the building: to the street before its door
+      const door = entrancesOf(this.world, to)[0], b = door ? net.nearestNode(door.pos, { mode: "car" }) : null;
+      if (!b || b === a || net.meters(dist2(b.pos, door.pos)) > MAX_WALK_M) return null;
+      route = net.route(a, b, { mode: "car" });
+      dest = b.id;
+    }
+    const car = route ? this._car(net, route, dest, 0, { driver: people[0], passengers: people.slice(1) }) : null;
+    if (!car) return null;
+    if (entry) {
+      // out of its space: the same car
+      this.world.parking?.release(entry.facility.id, entry.car);
+      this.parkedCars = this.parkedCars.filter((x) => x !== entry);
+      Object.assign(car, { id: entry.car.id, colour: entry.car.colour });
+    }
+    Object.assign(car, { purpose, destId: to, destName: this.world.getObject(to)?.name ?? null, plan: plan ?? null, stay: OWN_STAY_MIN, tried: [], who, owner: people[0], onArrive });
+    this.cars.push(this._begin(car));
+    return car;
+  }
+
+  /** The drive of one of the town's own people is over: they get out (`drive`'s `onArrive`). */
+  _arrived(car, pos, parked) {
+    const ratio = this._finish(car), then = car.onArrive;
+    car.onArrive = null;
+    then?.({ pos: pos ?? null, parked: parked ?? null, ratio });
+  }
+
   /** A new car where a street ends at the edge of the layout (or anywhere on a ring): through the town or to a building in it. */
   _enter(net) {
     const ends = net.boundaryNodes();
     const anywhere = net.nodes.filter((n) => n.carDegree >= 1);
-    if (!anywhere.length) return;
+    if (!anywhere.length) return false;
     const from = ends.length ? this.rng.pick(ends) : this.rng.pick(anywhere);
     const clear = this.mm(LENGTH_M + 6);
-    for (const u of this._allUsers()) if (dist2(u.front, from.pos) < clear || dist2(u.rear, from.pos) < clear) return;
+    for (const u of this._allUsers()) if (dist2(u.front, from.pos) < clear || dist2(u.rear, from.pos) < clear) return false;
     // to the town: a building to drive to, and a parking space near it
     if (this.rng.chance(+this.config.destinations || 0)) {
       const goals = this._goals();
@@ -377,19 +591,20 @@ export class TrafficSimulation extends Simulation {
           if (car) {
             Object.assign(car, { purpose: goal.purpose, destId: goal.id, destName: goal.name, plan, stay, tried: [], who: driver });
             car.v = Math.min(8, car.path.speeds[0] || 8) * 0.6;
-            this.cars.push(car);
-            return;
+            this.cars.push(this._begin(car));
+            return true;
           }
         }
       }
     }
     const pool = (ends.length > 1 ? ends : anywhere).filter((n) => n !== from);
-    if (!pool.length) return;
+    if (!pool.length) return false;
     const to = this.rng.pick(pool);
     const car = this._car(net, this._route(net, from, to), to.id);
-    if (!car) return;
+    if (!car) return false;
     car.v = Math.min(8, car.path.speeds[0] || 8) * 0.6;
-    this.cars.push(car);
+    this.cars.push(this._begin(car));
+    return true;
   }
 
   /** Fill the streets at once (a new layout or new streets): cars spread over random routes. */
@@ -411,7 +626,7 @@ export class TrafficSimulation extends Simulation {
       const others = poses.concat(this.world.transit?.roadUsers?.() || []);
       if (others.some((q) => dist2(q.front, pose.front) < clear || dist2(q.rear, pose.front) < clear || dist2(q.front, pose.rear) < clear || dist2(midpoint(q), pose.front) < clear)) continue;
       car.v = (car.path.speeds[0] || 8) * 0.7;
-      this.cars.push(car);
+      this.cars.push(this._begin(car));
       poses.push(this._pose(car));
       k++;
     }
@@ -429,7 +644,9 @@ export class TrafficSimulation extends Simulation {
     const home = (+this.config.parked || 0) * (h < 6 || h >= 19 ? 1 : h < 8.5 ? 0.85 : h < 16 ? 0.55 : 0.75);
     for (const f of parking.facilities()) {
       const residents = f.access === "residents";
-      const share = residents ? home : f.access === "public" ? 0.35 * this.world.clock.demand("car") : 0.25;
+      // the others came by car during the day: few stand there early in the morning and at night; fewer
+      // where the town has learned that drives take long
+      const share = residents ? home : (f.access === "public" ? 0.35 : 0.25) * visitorsParked(h) * this.share();
       const n = Math.min(f.spaces, Math.round(f.spaces * Math.min(0.95, share) + this.rng.uniform(-0.5, 0.5)));
       for (let k = 0; k < n; k++) {
         const purpose = residents ? "home" : f.access === "employees" ? "work" : f.access === "customers" ? "shopping" : "visit";
@@ -466,6 +683,11 @@ export class TrafficSimulation extends Simulation {
     const len = this.mm(LENGTH_M);
     const ends = net.boundaryNodes();
     for (const car of this.cars) {
+      // one of the town's own people: they get out where they are and walk on
+      if (car.owner) {
+        this._arrived(car, null, null);
+        continue;
+      }
       const pose = this._pose(car);
       const oldDest = car.destPos;
       const ahead = [pose.front[0] + pose.dir[0] * this.mm(6), pose.front[1] + pose.dir[1] * this.mm(6)];
@@ -497,7 +719,7 @@ export class TrafficSimulation extends Simulation {
       placed.push(np);
       // the car and its people stay the same; it now drives out of the layout
       Object.assign(next, { id: car.id, colour: car.colour, factor: car.factor, v: car.v, driver: car.driver, passengers: car.passengers, purpose: "through" });
-      out.push(next);
+      out.push(this._begin(next));
     }
     this.cars = out;
   }
@@ -529,7 +751,7 @@ export class TrafficSimulation extends Simulation {
       if (this.cars.length) this._rebind(net);
       this._net = net;
       this._users = this.cars.map((c) => this._pose(c));
-      if (first) this._fill(net, this.targetCount(net));
+      if (first) this._fill(net, Math.round(this.wanted(net)));
     }
     if (!this._filledParking) {
       this._filledParking = true;
@@ -542,11 +764,12 @@ export class TrafficSimulation extends Simulation {
       this.parkedCars = this.parkedCars.filter((p) => !evicted.has(p.car));
     }
     this._users = this.cars.map((c) => this._pose(c));
-    const target = this.targetCount(net);
+    // cars come in while fewer are on the streets than want to be there now: as many as on empty
+    // streets, less those the town has learned to leave at home at this hour (`share`). The cars of
+    // the town's own people (`owner`, see `drive`) come on top: they chose the car themselves.
     this._spawn -= dt;
-    if (this.cars.length < target && this._spawn <= 0) {
-      this._enter(net);
-      this._users = this.cars.map((c) => this._pose(c));
+    if (this._spawn <= 0 && this._background() < this.wanted(net)) {
+      if (this._enter(net)) this._users = this.cars.map((c) => this._pose(c));
       this._spawn = 1.5 / Math.max(1, net.boundaryNodes().length);
     }
     this._leaveParking(net);
@@ -605,7 +828,7 @@ export class TrafficSimulation extends Simulation {
     car.purpose = car.purpose === "home" ? "work" : "home";
     car.destName = null;
     car.plan = null;
-    this.cars.push(car);
+    this.cars.push(this._begin(car));
     return true;
   }
 
@@ -626,7 +849,7 @@ export class TrafficSimulation extends Simulation {
     if (!walk || walk.offstage) return then();
     const people = [car.driver, ...(car.passengers || [])].filter(Boolean), mob = mobilityOf(this.world);
     const mps = Math.min(...people.map((p) => (p.profile ? walkingSpeed(p.profile, mob) : WALK_MPS)), WALK_MPS * 2);
-    this.walkers.push({ car, people, walk, s: 0, mps, speed: this.mm(mps), wait, after, then, pos: walk.points[0], dir: [1, 0] });
+    this.walkers.push({ car, people, walk, path: walk, s: 0, mps, speed: mps, lat: 0, wait, after, then, pos: walk.points[0], dir: [1, 0] });
   }
 
   _walk(dt) {
@@ -644,10 +867,8 @@ export class TrafficSimulation extends Simulation {
         done.push(w);
         continue;
       }
-      w.s += w.speed * dt;
-      const at = polylineAt(w.walk.points, Math.min(w.s, w.walk.length), w.walk.lengths);
-      w.pos = at.point;
-      w.dir = at.dir;
+      // among the others and the vehicles: at the kerb until there is a gap (core/walking.js)
+      this.world.walking.advance(w, dt, this.world.weather.walkFactor());
       if (w.s >= w.walk.length && !(w.after > 0)) done.push(w);
     }
     if (!done.length) return;
@@ -667,17 +888,33 @@ export class TrafficSimulation extends Simulation {
       const next = car.tried.length < 3 && from ? planDrive(this.world, { from, to: car.destId, purpose: car.purpose, driver: car.who || {}, stayMin: car.stay, avoid: car.tried }) : null;
       if (next && this._setRoute(car, net, next.route, next.entry.id)) {
         car.plan = next;
+        this._begin(car, true);
         return false;
+      }
+      // one of the town's own people gives up: the car is left somewhere out of sight, they walk on
+      if (car.owner) {
+        this._arrived(car, null, null);
+        return true;
       }
       // gives up: drives out of the layout
       car.plan = null;
       const ends = net.boundaryNodes().filter((n) => n !== from);
       const to = ends.length ? this.rng.pick(ends) : null;
-      return !(from && to && this._setRoute(car, net, this._route(net, from, to), to.id));
+      if (!(from && to && this._setRoute(car, net, this._route(net, from, to), to.id))) return true;
+      this._begin(car, true);
+      return false;
     }
     const terms = parkingTerms(f, { ...(car.who || {}), purpose: car.purpose, destId: car.destId, permits: car.permits });
     car.fee = Math.round(terms.fee(car.stay) * 100) / 100;
     car.why = terms.why;
+    if (car.owner) {
+      // the town's own people: the car stays until they come back for it (`drive` with `parked`)
+      const kept = { car, facility: f, slot: slot.slot, spot: slot.spot, until: Infinity, owner: car.owner };
+      this.parkedCars.push(kept);
+      this._arrived(car, slot.spot?.pos ?? f.exit ?? null, kept);
+      return true;
+    }
+    this._finish(car);
     const entry = { car, facility: f, slot: slot.slot, spot: slot.spot, until: Infinity, back: { door: plan.door } };
     this.parkedCars.push(entry);
     // the people walk to the building; their stay begins when they are there
@@ -702,22 +939,32 @@ export class TrafficSimulation extends Simulation {
     // (cars that wait for each other in a circle squeeze past after a while: see waitFor)
     const lead = squeezing(car) ? { gap: Infinity, user: null } : leaderAhead(car, me.front, me.dir, users, look, this.mm(1.3), skip);
     const gap = lead.gap;
-    waitFor(car, lead.user, dt);
-    if (lead.user && (lead.user.vehicle.kind === "bike" || lead.user.vehicle.kind === "scooter") && !car.passing) {
+    const ahead = lead.user?.vehicle;
+    if (ahead && (ahead.kind === "bike" || ahead.kind === "scooter") && !car.passing) {
       car.behind = (car.behind || 0) + dt;
       if (car.behind > PASS_AFTER_S && this._mayPass(car, me, users, net, lead)) {
-        car.passing = { who: lead.user.vehicle, until: car.s + gap + this.mm(LENGTH_M + 12) };
+        car.passing = { who: ahead, until: car.s + gap + this.mm(LENGTH_M + 12) };
+        car.behind = 0;
+      }
+    } else if (ahead && ahead.kind === "bus" && ahead.phase === "dwelling" && !car.passing) {
+      // a bus at its stop (doors open, or laying over): past it when the other lane is free
+      car.behind = (car.behind || 0) + dt;
+      const past = this.meters(gap + dist2(lead.user.front, lead.user.rear)) + LENGTH_M + 6;
+      if (car.behind > PASS_BUS_AFTER_S && this._mayPass(car, me, users, net, lead, past)) {
+        car.passing = { who: ahead, until: car.s + this.mm(past), slow: PASS_BUS_KMH / 3.6 };
         car.behind = 0;
       }
     } else if (!lead.user) car.behind = 0;
     if (car.passing && car.s > car.passing.until) car.passing = null;
+    if (car.passing?.slow) vT = Math.min(vT, car.passing.slow);
     const laneShift = car.passing ? this._passShift(car) : 0;
     car.shift = approach(car.shift || 0, laneShift, this.mm(SHIFT_MS) * dt);
-    if (gap < Infinity) vT = Math.min(vT, Math.sqrt(2 * BRAKE * Math.max(0, this.meters(gap) - GAP_M)));
+    if (gap < Infinity) vT = Math.min(vT, followSpeed(this.meters(gap) - GAP_M, speedAlong(lead.user, me.dir), BRAKE));
     // where it has to stand: before a junction, a zebra crossing with people on it, a closed level crossing
-    let stopAt = Infinity;
-    const hold = (mm) => {
+    let stopAt = Infinity, why = null, heldBy = null;
+    const hold = (mm, reason) => {
       vT = Math.min(vT, Math.sqrt(2 * BRAKE * Math.max(0, this.meters(mm))));
+      if (mm < stopAt) why = reason;
       stopAt = Math.min(stopAt, Math.max(0, mm));
     };
     const now = this.world.time;
@@ -728,25 +975,53 @@ export class TrafficSimulation extends Simulation {
       if (dStop < -1) {
         car.waited = 0;
         car.stopped = null;
-      } else if (light === "red" || light === "red-amber" || (light === "amber" && dStop > (car.v * car.v) / (2 * BRAKE))) hold(line);
+      } else if (light === "red" || light === "red-amber" || (light === "amber" && dStop > (car.v * car.v) / (2 * BRAKE))) hold(line, "light");
       else if (j.rule?.stop && car.stopped !== j.key) {
-        hold(line);
+        hold(line, "stop");
         if (car.v < 0.2 && dStop < 2) car.stopped = j.key;
       } else if (dStop < (car.v * car.v) / (2 * BRAKE) + 3 && car.waited < junctionPatience(prio) && mustYield(car, j, j.s - car.s, users, prio)) {
-        hold(line);
+        hold(line, "yield");
         if (car.v < 0.3) car.waited += dt;
       }
-      // keep the junction clear (StVO § 11): not into it while the way out is blocked
-      if (dStop >= 0 && dStop < (car.v * car.v) / (2 * BRAKE) + 3 && j.s + j.r < p.length - this.mm(LENGTH_M)) {
+      // keep the junction clear (StVO § 11): not into it while the way out is blocked (in a ring of
+      // vehicles that wait for each other's room, one goes in after a while: see waitFor)
+      if (!entering(car) && dStop >= 0 && dStop < (car.v * car.v) / (2 * BRAKE) + 3 && j.s + j.r < p.length - this.mm(LENGTH_M)) {
         const out = polylineAt(p.points, j.s + j.r, p.lengths);
-        if (!roomAfter(car, out.point, out.dir, users, this.mm(LENGTH_M + GAP_M), this.mm(1.3))) hold(line);
+        const blocker = blockerAfter(car, out.point, out.dir, users, this.mm(LENGTH_M + GAP_M), this.mm(1.3));
+        if (blocker) {
+          hold(line, "room");
+          heldBy = blocker;
+        }
       }
     }
     for (const x of car.crossings || []) {
       const e = x.s - x.half - this.mm(1) - car.s;
       if (e < -this.mm(0.5) || e > look + this.mm(10)) continue;
-      if (x.kind === "zebra" ? x.obj.busy() : x.obj.closed(now)) hold(e - this.mm(x.kind === "rail" ? 3 : 0.5));
+      if (x.kind === "zebra" ? x.obj.busy() : x.obj.closed(now)) hold(e - this.mm(x.kind === "rail" ? 3 : 0.5), x.kind);
+      else if (e >= 0 && e < look && !entering(car) && x.s + x.half < p.length - this.mm(LENGTH_M)) {
+        // not onto a crossing while there is no room behind it: nobody stands on a zebra or on the rails (StVO § 11, § 19)
+        const out = polylineAt(p.points, x.s + x.half, p.lengths);
+        const blocker = blockerAfter(car, out.point, out.dir, users, this.mm(LENGTH_M + GAP_M), this.mm(1.3));
+        if (blocker) {
+          hold(e - this.mm(x.kind === "rail" ? 3 : 0.5), "room");
+          heldBy = blocker;
+        }
+      }
     }
+    // people on the street ahead (they cross, or a gap was misjudged): stop before them
+    const person = this.world.walking.onRoad.length ? peopleAhead(this.world, me.front, me.dir, look, this.mm(WIDTH_M / 2 + 0.6), car.shift ? null : { points: p.points, lengths: p.lengths, length: p.length, s: car.s }) : Infinity;
+    if (person < Infinity) {
+      // a near miss: only the hardest braking stops the car before them (counted once)
+      if (!car.braking && car.v > 2 && this.meters(person) - PEOPLE_GAP_M < (car.v * car.v) / (2 * NEAR_MISS_BRAKE)) this.world.walking.nearMisses++;
+      car.braking = true;
+      hold(person - this.mm(PEOPLE_GAP_M), "people");
+    } else car.braking = false;
+    // who it waits for: the vehicle ahead, or the one that leaves no room behind the junction
+    waitFor(car, lead.user || heldBy, dt, !lead.user);
+    /** Why the car is held now ("light", "stop", "yield", "room", "zebra", "rail"), or null. */
+    car.hold = stopAt < this.mm(1.5) ? why : null;
+    /** How long it has stood for people crossing (s): after a while those who come to the kerb let it go first (core/walking.js). */
+    car.yielded = car.hold === "people" || car.hold === "zebra" ? (car.yielded || 0) + dt : 0;
     car.v = vT > car.v ? Math.min(vT, car.v + ACCEL * dt) : Math.max(vT, car.v - HARD * dt, 0);
     let move = Math.min(this.mm(car.v * dt), stopAt);
     // never into the vehicle ahead
@@ -758,11 +1033,23 @@ export class TrafficSimulation extends Simulation {
     if (car.s >= p.length - this.mm(0.5)) {
       // arrived: park at the goal, leave at the edge of the layout, or drive on to another place (ring roads)
       if (car.plan?.facility) return this._park(car, net);
+      if (car.owner) {
+        // no parking there: out of sight before the door
+        this._arrived(car, null, null);
+        return true;
+      }
+      this._finish(car);
       const node = car.net === net ? net.nodes[car.dest] : net.nearestNode(car.destPos, { mode: "car" });
-      if (!node || node.carDegree <= 1 || this.cars.length > this.targetCount(net)) return true;
+      if (!node || node.carDegree <= 1 || car.owner || this._background() > this.wanted(net)) return true;
       const pool = net.nodes.filter((n) => n.carDegree >= 1 && n !== node);
       const to = this.rng.pick(pool);
       if (!to || !this._setRoute(car, net, this._route(net, node, to), to.id)) return true;
+      this._begin(car);
+    }
+    // still on the way long after it should have been there: the town hears of it now, not only when it arrives
+    if (car.t0 != null && car.free > TRIP_ENDS_S && this.world.time - car.t0 > car.overdue * car.free) {
+      this._learn(car, car.overdue);
+      car.overdue += OVERDUE;
     }
     return false;
   }
@@ -773,19 +1060,23 @@ export class TrafficSimulation extends Simulation {
    * queue, at a light), and not where the car would still be on the other lane at the traffic lights
    * of a tram stop (core/stop-signals.js): it passes the bike, then moves back.
    */
-  _mayPass(car, me, users, net, lead) {
-    if ((lead.user.vehicle.v ?? 0) < 1) return false;
+  _mayPass(car, me, users, net, lead, pastM = 0) {
+    // a bike that stands is not overtaken; a bus at its stop is passed (`pastM`: how far that is, m)
+    if (!pastM && (lead.user.vehicle.v ?? 0) < 1) return false;
     const at = net.edgeAt(car.route, this._centreS(car));
     const e = at?.edge;
     if (!e || e.carDir || (e.lanes ?? 1) > 1 || e.laneOffset <= 0) return false;
     const j = junctionAhead(car.junctions, car.s);
-    if (j && j.s - car.s < this.mm(30)) return false;
-    const back = this.meters(lead.gap) + LENGTH_M + 12 + (Math.max(car.v, 5) * this.meters(this._passShift(car))) / SHIFT_MS + 10;
+    if (j && j.s - j.r - car.s < this.mm(Math.max(30, pastM + 8))) return false;
+    // no zebra or level crossing on the way past (people step out from behind the bus there)
+    if (pastM) for (const x of car.crossings || []) if (x.s > car.s && x.s - car.s < this.mm(pastM + 8)) return false;
+    const back = pastM ? pastM + 10 : this.meters(lead.gap) + LENGTH_M + 12 + (Math.max(car.v, 5) * this.meters(this._passShift(car))) / SHIFT_MS + 10;
     for (const sig of this.world.transit?.signals?.list() || []) {
       const d = sub2(sig.line[sig.line.length >> 1], me.front), along = this.meters(dot2(d, me.dir));
       if (dot2(sig.dir, me.dir) > 0.7 && along > 0 && along < back && this.meters(Math.abs(d[0] * me.dir[1] - d[1] * me.dir[0])) < 25) return false;
     }
-    const far = this.mm(ONCOMING_M), left = [-me.dir[1], me.dir[0]];
+    // the other lane free: as far as a vehicle coming at 50 km/h drives while the car is over there
+    const far = this.mm(pastM ? Math.max(ONCOMING_M, pastM + (pastM / (PASS_BUS_KMH / 3.6)) * 13.9) : ONCOMING_M), left = [-me.dir[1], me.dir[0]];
     for (const u of users.near ? users.near(me.front, far) : users) {
       if (u.vehicle === car || dot2(u.dir, me.dir) > -0.5) continue;
       const d = sub2(u.front, me.front), along = dot2(d, me.dir), side = dot2(d, left);
@@ -824,7 +1115,7 @@ export class TrafficSimulation extends Simulation {
   card(hit) {
     const car = hit.ref, kmh = Math.round(car.v * 3.6);
     const rows = [["Speed", `${kmh} km/h`]];
-    if (car.driver?.name) rows.push(["Driver", car.driver.name]);
+    if (car.driver?.name) rows.push(["Driver", car.owner ? `${car.driver.name} (lives in the town)` : car.driver.name]);
     const n = car.passengers?.length ?? 0;
     rows.push(["Riding along", n ? car.passengers.map((p) => p.name).join(", ") : "nobody"]);
     const load = this._loadTime(car);
@@ -840,7 +1131,7 @@ export class TrafficSimulation extends Simulation {
     return {
       title: "Car",
       subtitle: "Road traffic",
-      status: car.passing ? "Overtaking a bike" : kmh >= 2 ? `Driving at ${kmh} km/h` : car.behind > 0 ? "Behind a bike" : car.waited > 0 ? "Waiting at a junction" : "Standing",
+      status: car.passing ? (car.passing.slow ? "Passing a bus at its stop" : "Overtaking a bike") : kmh >= 2 ? `Driving at ${kmh} km/h` : car.behind > 0 ? "Behind a bike" : car.waited > 0 ? "Waiting at a junction" : "Standing",
       rows,
       sections,
       text: "Cars come in where streets end at the edge of the layout, drive through the town or to a building, park and leave again.",
@@ -883,11 +1174,24 @@ export class TrafficSimulation extends Simulation {
       w.people.forEach((p, i) => {
         const back = i * m(0.7);
         const at = polylineAt(w.walk.points, Math.max(0, Math.min(w.s, w.walk.length) - back), w.walk.lengths).point;
-        const still = w.wait > 0 || w.s >= w.walk.length;
+        const still = w.wait > 0 || w.held || w.s >= w.walk.length;
         drawPerson(view, at, { dir: w.dir, speed: still ? 0 : w.mps, phase: (this.world.time * 2 + i) % 1, colour: w.car.colour, ...personLooks(this.world, p.profile) });
       });
     }
   }
+}
+
+/**
+ * How full the parking of visitors, customers and employees is at an hour of the day, against the
+ * middle of the day (1): nearly empty at night, filling from 6 to 9, emptying from 17 to 21.
+ */
+function visitorsParked(h) {
+  const points = [[0, 0.08], [6, 0.08], [9, 1], [17, 1], [21, 0.25], [24, 0.08]];
+  for (let i = 1; i < points.length; i++) {
+    const [h0, v0] = points[i - 1], [h1, v1] = points[i];
+    if (h <= h1) return v0 + ((v1 - v0) * (h - h0)) / (h1 - h0);
+  }
+  return 0.08;
 }
 
 /** Move a value towards a target by at most `step`. */

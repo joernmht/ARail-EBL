@@ -147,9 +147,12 @@ test("passengers arrive, trains come and people board and alight", () => {
   // the morning rush of the small town: its commuters and pupils at the platforms, a few at the bus terminal
   const sim = world.simulations[0];
   const most = new Map();
+  let boardedOrAlighted = 0;
   for (let i = 0; i < 200; i++) {
     run(world, 2);
     for (const id of ["platform-1", "platform-2", "bus-terminal-1"]) most.set(id, Math.max(most.get(id) || 0, sim.stats(id)?.count || 0));
+    // (the stops keep the last minute of who left them: the most of it over the morning)
+    boardedOrAlighted = Math.max(boardedOrAlighted, [...sim.crowds.values()].reduce((n, c) => n + c.outTimes.length, 0));
   }
   assert.ok(events["vehicle.arrived"] >= 6, `vehicles arrived: ${events["vehicle.arrived"]}`);
   assert.equal(crowded, 0, "one vehicle at a dock at a time");
@@ -158,7 +161,6 @@ test("passengers arrive, trains come and people board and alight", () => {
     assert.ok(most.get(id) > 0, `${id}: people waiting at some time (${most.get(id)})`);
     assert.ok(s.mood > 0.2 && s.mood <= 1, `${id}: mood ${s.mood}`);
   }
-  const boardedOrAlighted = [...sim.crowds.values()].reduce((n, c) => n + c.outTimes.length, 0);
   assert.ok(boardedOrAlighted > 0, "people leave the stops (boarding or walking away)");
 });
 

@@ -333,6 +333,17 @@ export function pointSegment(p, a, b) {
   return { distance: dist2(p, q), t, point: q };
 }
 
+/**
+ * The distance between two segments a–b and c–d: 0 where they cross, else the smallest distance of
+ * an end of one to the other.
+ */
+export function segmentDistance(a, b, c, d) {
+  const side = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  const d1 = side(c, d, a), d2 = side(c, d, b), d3 = side(a, b, c), d4 = side(a, b, d);
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return 0;
+  return Math.min(pointSegment(a, c, d).distance, pointSegment(b, c, d).distance, pointSegment(c, a, b).distance, pointSegment(d, a, b).distance);
+}
+
 /* ------------------------------------------------------------------ polylines */
 
 /** Cumulative lengths of a polyline, starting with 0. */

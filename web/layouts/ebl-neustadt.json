@@ -80,10 +80,11 @@
   "services": {"rail_headway_s": 70, "rail_dwell_s": 24, "bus_headway_s": 90, "bus_dwell_s": 20, "approach_s": 6},
   "clock": {"start": "07:30"},
   "consists": [{"id": "stadtbahn", "name": "Stadtbahn", "lines": ["S 10"], "vehicles": [{"type": "et442s"}]}],
+  "experience": {"days": 16, "modes": {"walk": {"weekday": [1,1,1,1,1,2.05,2.23,2.02,1.16,1.12,1.1,1.1,1.11,1.09,1.1,1.1,1.08,1.09,1.09,1.09,1.08,1.1,1.06,1.02], "weekend": [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]}, "bike": {"weekday": [1,1,1,1,1,0.87,2.38,2.7,1.14,1.47,1.29,1.35,0.99,0.98,1.06,1.59,1.84,1.9,1.06,1.76,1.21,1,1,1], "weekend": [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]}, "transit": {"weekday": [1,1,1,1,1,2.3,3.1,2.06,2.08,1.74,1.71,1.46,2.12,1.98,1.42,1.7,3.03,2.78,3.51,2.49,2.15,2.16,2.32,2.18], "weekend": [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]}, "car": {"weekday": [0.83,0.73,0.7,0.7,0.7,1.18,4.01,2.47,1.74,2,2.39,2.08,2.11,1.88,2.06,2.91,2.62,4.15,3.18,2,1.78,1.28,1.11,0.78], "weekend": [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]}}, "for": "1si2l1c"},
   "simulations": [
     {"type": "passengers", "base_rate": 0.5, "max_per_area": 160},
-    {"type": "town", "people_per_100": 25, "max_people": 3000, "walk_max_m": 120, "bus_share": 0.6},
-    {"type": "traffic", "cars_per_km": 8},
+    {"type": "town", "people_per_100": 25, "max_people": 3000, "walk_max_m": 120, "stretch": 3},
+    {"type": "traffic", "cars_per_km": 5},
     {"type": "cycling", "riders_per_km": 4}
   ],
   "objects": [
@@ -677,6 +678,7 @@
         {"id": "track-sb-1", "type": "track", "name": "S-Bahn, track 1", "track_id": "SB 1", "points": [[-450, 937], [300, 935], [1000, 930], [2000, 936], [2400, 938], [2800, 926], [3200, 909], [3600, 897], [4000, 885], [4400, 866], [4800, 860], [5200, 858], [5600, 849], [6100, 845]]},
         {"id": "track-sb-2", "type": "track", "name": "S-Bahn, track 2", "track_id": "SB 2", "points": [[-450, 812], [-200, 803], [300, 803], [500, 812], [700, 838], [900, 866], [1100, 872], [2000, 876], [2400, 873], [2800, 862], [3200, 848], [3600, 836], [4000, 824], [4400, 817], [4800, 808], [5200, 799], [5600, 787], [6100, 776]]},
         {"id": "platform-pirna", "type": "platform", "name": "Pirna", "from": [-245, 870], "to": [375, 868], "width_mm": 70, "sides": "right", "track_right": "SB 2", "lines": "S 10"},
+        {"id": "zebra-pirna", "type": "zebra-crossing", "name": "Zebra crossing Pirna", "road": "road-brueckenstrasse-nord", "position": [-559, 871]},
         {"id": "platform-heidenau", "type": "platform", "name": "Heidenau", "from": [4840, 755], "to": [5460, 748], "width_mm": 60, "sides": "left", "track_left": "SB 2", "lines": "S 10"},
         {"id": "line-s10", "type": "rail-line", "name": "S 10 Pirna – Heidenau", "number": "S 10", "origin": "Pirna", "color": "#00965E", "headway_s": 300, "speed_kmh": 80, "tracks": ["track-sb-2"]}
       ]
