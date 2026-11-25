@@ -24,6 +24,7 @@ import { TrainRegistry } from "./trains.js";
 import { Clock, parseTime } from "./clock.js";
 import { Weather, drawWeather } from "./weather.js";
 import { Experience } from "./modes.js";
+import { Walking } from "./walking.js";
 import { RoadNetwork } from "./network.js";
 import { Transit } from "./transit.js";
 import { ParkingSpaces } from "./parking.js";
@@ -91,6 +92,8 @@ export class World {
     this.weather = new Weather(this);
     /** What the town has learned about its modes of transport, by hour (core/modes.js); the layout's `experience`. */
     this.experience = new Experience();
+    /** People on foot among each other and the vehicles: gaps at the kerb, stepping aside (core/walking.js). */
+    this.walking = new Walking(this);
     this.services = new ServiceManager(this);
     this.disruptions = new DisruptionManager(this);
     this.scenarios = new ScenarioPlayer(this);
@@ -361,6 +364,7 @@ export class World {
       this.scenarios.step();
       this.disruptions.step();
       this.services.step(dt);
+      this.walking.begin();
       this.transit.step(dt);
       for (const o of this.objects) if (o.update !== idle) o.update(dt);
       for (const s of this.simulations) s.step(dt);

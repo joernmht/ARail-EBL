@@ -36,7 +36,7 @@
  */
 import { Simulation } from "../core/simulation.js";
 import { CD, moodColor } from "../core/colors.js";
-import { createRng, dist2, hashKey, polylineAt, rectAround } from "../core/math.js";
+import { createRng, dist2, hashKey, rectAround } from "../core/math.js";
 import { DAY_MINUTES, formatTime, wrapMinutes } from "../core/clock.js";
 import { hiddenAt, straightWalk } from "../core/network.js";
 import { Person, Population, residentialBuildings } from "../core/people.js";
@@ -71,6 +71,8 @@ const ACCESS_M = 300; // longest walk to a bus stop (prototype metres)
 const CAR_MPS = 30 / 3.6, CAR_DETOUR = 1.3, PARK_S = 60;
 /** The walk to the car at home and from the car park to the door (prototype m). */
 const CAR_WALK_M = [30, 60];
+/** People leave through a door this far apart (s): about one a second through a house door (Weidmann 1993). */
+const DOOR_S = 1.1;
 /** Trips kept for the statistics (the latest). */
 const TRIP_LOG = 5000;
 /** The parts of a trip (`tripStats`), in words. */
@@ -205,6 +207,17 @@ class Agent extends Person {
     /** Mood 0..1 after somebody got in the way (`annoy`), and when that was. */
     this.mood = undefined;
     this.annoyed = undefined;
+    // on foot among the others (core/walking.js): mm to the right of the walk's line, the point on the
+    // line, seconds waited at the kerb for a gap, standing there now, on a carriageway now
+    this.lat = 0;
+    this.line = undefined;
+    this.kerb = 0;
+    this.held = false;
+    this.onRoad = false;
+    this._cross = undefined;
+    /** Where it walks in its group (`{lat, single, depth_s}`), and the group, or null. */
+    this.form = null;
+    this.group = null;
   }
 
   /** The home building ({building, entrance}), null for people who live beyond the layout. */
@@ -1100,6 +1113,9 @@ export class TownSimulation extends Simulation {
       this._walkingList = null;
       a.path = leg.path;
       a.s = 0;
+      a.lat = 0;
+      a.kerb = 0;
+      a.held = false;
       a.person = null;
     } else if (leg.type === "car") {
       // by car: not drawn, there after the time it takes
@@ -1379,7 +1395,7 @@ export class TownSimulation extends Simulation {
         }
         a.next++;
         if (step.byTrain) continue; // already here (e.g. walked home instead of taking the train)
-        if (a.stayUntil > this.world.time) {
+        if (a.stayUntil > this.world.time || !this._doorFree(a)) {
           a.next--;
           continue;
         }
@@ -1403,6 +1419,20 @@ export class TownSimulation extends Simulation {
       this._check = 0;
       this._sanity();
     }
+  }
+
+  /**
+   * People leave a building through its door one after the other ({@link DOOR_S} apart), not as one
+   * figure: may this one go now? (Then the door is taken for the next.)
+   */
+  _doorFree(a) {
+    if (!a.inside) return true;
+    const doors = (this._doors ||= new Map());
+    const key = a.inside === a.house?.building ? `${a.inside}:${a.house.entrance}` : a.inside;
+    const now = this.world.time;
+    if (now - (doors.get(key) ?? -Infinity) < DOOR_S) return false;
+    doors.set(key, now);
+    return true;
   }
 
   /**
@@ -1448,19 +1478,16 @@ export class TownSimulation extends Simulation {
   _walk(a, dt) {
     const path = a.path;
     if (!path) return this._nextLeg(a);
-    // slower on snow and ice (the weather, core/weather.js)
-    const mmPerS = (a.speed * this.world.weather.walkFactor() * 1000) / this.world.scale;
-    a.s += mmPerS * dt;
-    a.phase += a.speed * dt * 5;
-    if (a.s >= path.length) {
+    // among the others and the vehicles (core/walking.js): at the kerb until there is a gap, to the
+    // right when somebody comes, behind a slower one; slower on snow and ice (core/weather.js)
+    const there = this.world.walking.advance(a, dt, this.world.weather.walkFactor());
+    if (!a.held) a.phase += a.speed * dt * 5;
+    if (there) {
       a.pos = path.points[path.points.length - 1].slice();
       const leg = a.trip?.legs[a.trip.leg];
       if (leg?.toBuilding && a.trip.leg === a.trip.legs.length - 1) return this._finishTrip(a);
       return this._nextLeg(a);
     }
-    const at = polylineAt(path.points, a.s, path.lengths);
-    a.pos = at.point;
-    a.dir = at.dir;
   }
 
   /* ================================================================ trips from door to door */
@@ -1585,7 +1612,7 @@ export class TownSimulation extends Simulation {
       if (hiddenAt(a.path, a.s)) continue; // in an underpass, or off stage
       if (!view.inImage(x, y, 0)) continue;
       drawPerson(view, [x, y], {
-        dir, speed: a.speed, phase: a.phase, height: (a.profile?.age === "child" ? 1.2 : 1.6) + (hashKey(a.id) % 30) / 100,
+        dir, speed: a.held ? 0 : a.speed, phase: a.phase, height: (a.profile?.age === "child" ? 1.2 : 1.6) + (hashKey(a.id) % 30) / 100,
         colour: mode === "mood" ? moodColor(a.mood ?? 0.85) : a.colour, ...personLooks(this.world, a.profile),
       });
     }

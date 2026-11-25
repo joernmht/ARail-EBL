@@ -32,6 +32,7 @@ import { clamp, createRng, cross2, dist2, dot2, pointSegment, polylineAt, polyli
 import { driveS, joinPaths } from "./network.js";
 import { TRAM_CURVES, roundCorners } from "./curves.js";
 import { StopSignals } from "./stop-signals.js";
+import { peopleAhead } from "./walking.js";
 import { CD, PALETTE, grey, mix, shade } from "./colors.js";
 
 const ACCEL = 1.0; // m/s²
@@ -1450,6 +1451,9 @@ export class Transit {
       }
       hold(e, "end");
     }
+    // people on the street ahead: stop before them
+    const person = this.world.walking.onRoad.length ? peopleAhead(this.world, me.front, me.dir, look, this.mm(line.width / 2 + 0.6), { points: c.points, lengths: c.lengths, length: L, s: ((bus.s % L) + L) % L, loop: true }) : Infinity;
+    if (person < Infinity) hold(person - this.mm(2), "people");
     // who it waits for: the vehicle ahead, or the one that leaves no room behind the junction
     waitFor(bus, lead.user || heldBy, dt, !lead.user);
     /** Why the bus or tram is held now ("light", "stop", "yield", "room", "zebra", "rail", "single", "end"), or null. */

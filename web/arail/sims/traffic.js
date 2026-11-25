@@ -44,6 +44,7 @@ import { hiddenAt, joinPaths } from "../core/network.js";
 import { Person, Population } from "../core/people.js";
 import { carLegTime, drawProfile, mobilityOf, walkingSpeed } from "../core/mobility.js";
 import { carShare } from "../core/modes.js";
+import { NEAR_MISS_BRAKE, peopleAhead } from "../core/walking.js";
 import { parkingTerms } from "../objects/parking.js";
 import { hasShops } from "../objects/building-kit.js";
 import { drawPerson, personLooks } from "./passengers.js";
@@ -76,6 +77,7 @@ const ACCEL = 2.0; // m/s²
 const BRAKE = 2.5; // comfortable braking (m/s²)
 const HARD = 7; // hardest braking (m/s²)
 const GAP_M = 2.5; // distance to the vehicle ahead when standing (m)
+const PEOPLE_GAP_M = 2; // distance kept to a person on the street ahead (m)
 const WALK_MPS = 1.3; // walking speed of drivers and passengers (m/s)
 const MAX_WALK_M = 400; // the farthest a driver parks from the goal (m)
 const EUR_PER_MIN = 0.2; // what a minute is worth to a driver (12 € an hour): weighs fees against time
@@ -332,7 +334,7 @@ export class TrafficSimulation extends Simulation {
 
   /** The people of the cars walking to or from a building (zebra crossings ask for them). */
   pedestrians() {
-    return this.walkers.map((w) => ({ pos: w.pos || w.walk.points[0], dir: w.dir || [1, 0] }));
+    return this.walkers.map((w) => ({ pos: w.pos || w.walk.points[0], dir: w.dir || [1, 0], agent: w }));
   }
 
   _pose(car) {
@@ -759,7 +761,7 @@ export class TrafficSimulation extends Simulation {
     if (!walk || walk.offstage) return then();
     const people = [car.driver, ...(car.passengers || [])].filter(Boolean), mob = mobilityOf(this.world);
     const mps = Math.min(...people.map((p) => (p.profile ? walkingSpeed(p.profile, mob) : WALK_MPS)), WALK_MPS * 2);
-    this.walkers.push({ car, people, walk, s: 0, mps, speed: this.mm(mps), wait, after, then, pos: walk.points[0], dir: [1, 0] });
+    this.walkers.push({ car, people, walk, path: walk, s: 0, mps, speed: mps, lat: 0, wait, after, then, pos: walk.points[0], dir: [1, 0] });
   }
 
   _walk(dt) {
@@ -777,10 +779,8 @@ export class TrafficSimulation extends Simulation {
         done.push(w);
         continue;
       }
-      w.s += w.speed * dt;
-      const at = polylineAt(w.walk.points, Math.min(w.s, w.walk.length), w.walk.lengths);
-      w.pos = at.point;
-      w.dir = at.dir;
+      // among the others and the vehicles: at the kerb until there is a gap (core/walking.js)
+      this.world.walking.advance(w, dt, this.world.weather.walkFactor());
       if (w.s >= w.walk.length && !(w.after > 0)) done.push(w);
     }
     if (!done.length) return;
@@ -899,6 +899,14 @@ export class TrafficSimulation extends Simulation {
       if (e < -this.mm(0.5) || e > look + this.mm(10)) continue;
       if (x.kind === "zebra" ? x.obj.busy() : x.obj.closed(now)) hold(e - this.mm(x.kind === "rail" ? 3 : 0.5), x.kind);
     }
+    // people on the street ahead (they cross, or a gap was misjudged): stop before them
+    const person = this.world.walking.onRoad.length ? peopleAhead(this.world, me.front, me.dir, look, this.mm(WIDTH_M / 2 + 0.6), car.shift ? null : { points: p.points, lengths: p.lengths, length: p.length, s: car.s }) : Infinity;
+    if (person < Infinity) {
+      // a near miss: only the hardest braking stops the car before them (counted once)
+      if (!car.braking && car.v > 2 && this.meters(person) - PEOPLE_GAP_M < (car.v * car.v) / (2 * NEAR_MISS_BRAKE)) this.world.walking.nearMisses++;
+      car.braking = true;
+      hold(person - this.mm(PEOPLE_GAP_M), "people");
+    } else car.braking = false;
     // who it waits for: the vehicle ahead, or the one that leaves no room behind the junction
     waitFor(car, lead.user || heldBy, dt, !lead.user);
     /** Why the car is held now ("light", "stop", "yield", "room", "zebra", "rail"), or null. */
@@ -1050,7 +1058,7 @@ export class TrafficSimulation extends Simulation {
       w.people.forEach((p, i) => {
         const back = i * m(0.7);
         const at = polylineAt(w.walk.points, Math.max(0, Math.min(w.s, w.walk.length) - back), w.walk.lengths).point;
-        const still = w.wait > 0 || w.s >= w.walk.length;
+        const still = w.wait > 0 || w.held || w.s >= w.walk.length;
         drawPerson(view, at, { dir: w.dir, speed: still ? 0 : w.mps, phase: (this.world.time * 2 + i) % 1, colour: w.car.colour, ...personLooks(this.world, p.profile) });
       });
     }

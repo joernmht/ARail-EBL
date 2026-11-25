@@ -29,6 +29,7 @@ import { CD, OVERLAY, grey, mix, moodColor } from "../core/colors.js";
 import { APPROACH_M, approachPrio, followSpeed, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, speedAlong, squeezing, waitFor } from "../core/transit.js";
 import { Person, Population } from "../core/people.js";
 import { bikeColour, drawBike } from "../core/vehicles.js";
+import { peopleAhead } from "../core/walking.js";
 
 /** The riders: label, top speed (km/h, e-scooters at most 20, eKFV), length and width of the vehicle (m). */
 export const RIDERS = {
@@ -396,6 +397,11 @@ export class CyclingSimulation extends Simulation {
       const e = x.s - x.half - this.mm(0.5) - rider.s;
       if (e < -this.mm(0.3) || e > look + this.mm(6)) continue;
       if (x.kind === "zebra" ? sf.where === "road" && x.obj.busy() : x.obj.closed(now)) hold(e);
+    }
+    // people crossing the street ahead: stop before them
+    if (sf.where === "road" || sf.where === "lane") {
+      const person = this.world.walking.onRoad.length ? peopleAhead(this.world, me.front, me.dir, look, this.mm(0.9), { points: L.points, lengths: L.lengths, length: L.length, s: rider.s }) : Infinity;
+      if (person < Infinity) hold(person - this.mm(1.2));
     }
     // people on foot in the way on a sidewalk or a shared path: walking pace behind them, and anger
     if (sf.where !== "road" && sf.edge && people.length) this._meetPeople(rider, me, sf, people, () => (vT = Math.min(vT, BEHIND_PEOPLE_KMH / 3.6)));
