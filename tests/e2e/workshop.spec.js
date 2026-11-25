@@ -4,7 +4,8 @@
 // lathe's cut as a number with measuring first beside it; the picture of the depot with a unit
 // chosen, moved, released to service and phoned for; the table: the layout's module Workshop hall
 // with the game's night in it, a unit chosen there, the parts of the picture by their names here;
-// a night played through with what is said when something does not go to plan, and the verdict.
+// a night played through with what is said when something does not go to plan, and the verdict; a
+// finding written into the release that fleet management sends back to the hall.
 import { expect, test } from "@playwright/test";
 
 import { inPicture } from "./picture.js";
@@ -344,5 +345,46 @@ test("a night played through as the computer would: what does not go to plan is 
   const kept = await page.evaluate(() => JSON.parse(localStorage.getItem("arail.game.progress")));
   expect(kept.missions["fit-to-run"].plays).toBe(1);
   expect(kept.roles).toContain(ROLE);
+  expect(errors).toEqual([]);
+});
+
+test("a finding written into the release: fleet management sends the unit back to the hall, the foreman says so, and it is repaired and released anew", async ({ page }) => {
+  const errors = await start(page);
+  const said = [], asked = page.locator(`${SEAT} .play-decision:not(.waiting)`);
+  let back = null;
+  for (let k = 0; k < 1500; k++) {
+    const state = await page.evaluate((role) => {
+      const p = window.__play, s = p.session, g = s.seat(role).game, P = new g.constructor.player();
+      for (let i = 0; i < 40 && !g.open.length && !s.over && !p.listening(); i++) {
+        P.hands(g);
+        s.step(0.5);
+      }
+      p.draw(true);
+      const line = [...document.querySelectorAll(`#seat-${role} .vn-story`)].find((el) => !el.hidden)?.querySelector(".vn-line")?.textContent ?? null;
+      const u = g.units.find((x) => x.sent_back);
+      return { over: s.over, open: g.open.map((d) => d.id), line, advice: Object.fromEntries(g.open.map((d) => [d.id, g.advice(d.id)])), sent: u ? { id: u.id, released: u.released_t != null, track: u.track } : null };
+    }, ROLE);
+    if (state.line) said.push(state.line);
+    if (state.sent) back = state.sent;
+    // (once the unit sent back is released anew, there is nothing more to see)
+    if (state.over || (back?.released && said.some((x) => x.includes("back to the hall")))) break;
+    await heard(page);
+    for (const id of state.open) {
+      if (id.startsWith("finding-")) {
+        await page.evaluate(([role, x]) => window.__play.look(role, x), [ROLE, id]);
+        await asked.getByRole("button", { name: /Go on with the order; it goes into the release/ }).click();
+      } else await page.evaluate(([role, x, o]) => window.__play.decide(role, x, o), [ROLE, id, state.advice[id]]);
+    }
+  }
+  expect(back, "a unit is sent back").not.toBeNull();
+  // the foreman says it: the fleet manager's word, and what it costs the hall
+  expect(said.some((x) => /^O\. Stieglitz sends 442 \d{3} back to the hall: .+\. That is repaired before it runs\. We set up for it again/.test(x))).toBe(true);
+  const g = await page.evaluate((role) => {
+    const w = window.__play.session.seat(role).game, u = w.units.find((x) => x.sent_back);
+    return { kinds: [...new Set(w.irregulars.map((x) => x.kind))], kept: u.kept, repair: u.findings.find((f) => f.must_have && f.type === "extra")?.state };
+  }, ROLE);
+  expect(g.kinds).toContain("sent-back");
+  expect(g.kinds).not.toContain("kept");
+  expect([g.kept, g.repair]).toEqual([false, "repaired"]);
   expect(errors).toEqual([]);
 });

@@ -30,7 +30,8 @@
  *
  * Simplified for teaching: a second of the shift is twelve of the night (`PACE`); a track's crew
  * is with the track; every move takes the same time and one goes at a time; any unit that is
- * returned to operation can take any train; a unit kept by fleet management is lost for the night.
+ * returned to operation can take any train; a unit kept in by fleet management (a release signed
+ * without authorisation) is lost for the night.
  * @module arail/game/workshop
  */
 import { Game, Player, clockAt } from "./core.js";
@@ -83,7 +84,7 @@ export const MOVE = { shunt_min: 6, in_min: 4, out_min: 4, lift_min: 3 };
  * by the one person authorised for it tonight), the drive of a door (on any hall track), a brake
  * disc or contact strip changed after a reading below its limit, a second measurement.
  */
-export const WORK = { inspection_min: 170, pads_min: 110, brake_test_min: 20, door_min: 75, change_min: 45, measure_min: 10 };
+export const WORK = { inspection_min: 170, pads_min: 110, brake_test_min: 20, door_min: 75, change_min: 45, measure_min: 10, reopen_min: 20 };
 
 /**
  * The wheel lathe: setting up a wheelset (min), each millimetre cut (min), setting up again after
@@ -128,12 +129,12 @@ export const UNITS = [
 /**
  * What a fitter may find beyond the order, by chance: what is seen, how likely fleet management
  * wants it repaired before the unit runs (else it may run with a restriction), the foreman's
- * estimate of the repair (min, from … to; it can take ten more), and the restriction it runs with
- * if it waits.
+ * estimate of the repair (min, from … to; it can take ten more), the restriction it runs with
+ * if it waits, and whether it is on the brakes (repaired after the brake test, the test is due again).
  */
 export const FINDINGS = [
   { id: "damper", what: "a damper on the second bogie is wet with oil", must: 0.45, est: [25, 50], restriction: "the damper watched: checked again within seven days" },
-  { id: "hose", what: "a brake hose under the middle car is chafed, its fabric shows", must: 0.8, est: [20, 40], restriction: "the hose checked at every stabling until it is changed" },
+  { id: "hose", what: "a brake hose under the middle car is chafed, its fabric shows", must: 0.8, est: [20, 40], restriction: "the hose checked at every stabling until it is changed", brakes: true },
   { id: "sander", what: "the sanding pipe at the first axle is bent and blocked", must: 0.5, est: [15, 35], restriction: "no sand on one axle: 120 km/h at most" },
   { id: "step", what: "the weld of the step at door 2 has a crack", must: 0.25, est: [30, 60], restriction: "door 2 locked" },
 ];
@@ -174,11 +175,13 @@ export const LEVELS = {
  */
 export const MOOD = {
   start: 85, call: 70, act: 35,
-  night_call: -7, bypassed: -22, noted: -12, noted_must: -24, handed: -30, released: 3, after_four: -8,
+  night_call: -7, bypassed: -22, noted: -3, noted_must: -24, handed: -30, released: 3, after_four: -8,
   dev_call: -8, excess_mm: -9, scrapped: -12, repeat: -30, fits: 5,
   on_time: 3, restricted: -9, late_min: -4, cancelled: -32, planned: -14, slipping: -7, kept_word: 6,
   promise: 14, compromise: 7, explained: 10, refused: -6, declined: -8, broken: -26,
 };
+/** What a release that fleet management sends back for a finding written into it costs the night's orders. */
+export const SENT_BACK = { orders: 0.12 };
 /** What a cancelled train is worth in the score: cancelled at the platform, and cancelled in good time. */
 const CANCELLED = { late: -0.4, planned: -0.15 };
 /** Fleet management wants every unit released by this minute of the night (04:00). */
@@ -269,12 +272,13 @@ export class WorkshopGame extends Game {
    * beyond the order (`unit`, `what`); a value at its limit (`unit`, `what`); the lathe starting
    * again after a cut too shallow (`unit`); work beyond the standing order done without an order,
    * or a unit handed over before its return to operation (`who`, `unit`); a unit that fleet
-   * management does not return to operation (`unit`, `what`); a unit that runs with a restriction
+   * management does not return to operation (`unit`, `what`); a unit it sends back to the hall
+   * for a finding written into its release (`unit`, `what`, `who`); a unit that runs with a restriction
    * (`unit`, `what`); a train that leaves late (`train`, `min`) or not at all (`train`); a part
    * that fails in service (`unit`, `what`); a promise not kept (`who`); a complaint in writing
    * (`who`); a release signed by somebody not authorised (`who`).
    */
-  static irregularities = ["finding", "limit", "second-pass", "bypassed", "kept", "restricted", "late", "cancelled", "repeat", "promise-broken", "complaint", "void-release"];
+  static irregularities = ["finding", "limit", "second-pass", "bypassed", "kept", "sent-back", "restricted", "late", "cancelled", "repeat", "promise-broken", "complaint", "void-release"];
 
   /** @param {{seed?: number, level?: keyof LEVELS, conditions?: object, wired?: Iterable<string>, length?: number}} [options] */
   constructor(options = {}) {
@@ -471,7 +475,10 @@ export class WorkshopGame extends Game {
     this._mood("fleet", this.t > S(OUT_BY_MIN) ? MOOD.after_four : MOOD.released);
     if (this.word?.unit === u.id && this.word.kept == null && this.t <= this.word.t + S(GRACE_MIN)) {
       this.word.kept = true;
+      // (what the dispatcher's patience truly gained, below its top of 100: a release sent back takes back that)
+      const was = this.resources.get("mood-dispatch").value;
       this._mood("dispatch", MOOD.kept_word);
+      this.word.gave = this.resources.get("mood-dispatch").value - was;
       this.log(`${hm(this.t)} ${u.name} is out by the time said to ${PEOPLE.dispatch.name}.`, "request");
     }
     this._patience("fleet");
@@ -686,7 +693,7 @@ export class WorkshopGame extends Game {
       text: `Ask and the track waits for the answer; repair it unasked and it may be more than you may. The order is fleet management's. `
         + `${HANDS.foreman} reckons ${f.est[0]} to ${f.est[1]} min for the repair. Fleet management's standing order covers findings up to ${STANDING_MIN} min of work; beyond it, what is repaired and what may wait is ${p.name}'s decision. `
         + `${p.name} is on call and takes ${mins(S(ON_CALL.fleet[0]))} to ${mins(S(ON_CALL.fleet[1]))} min to answer; nobody works on ${u.name} meanwhile. `
-        + `Written into the release as found, it is decided at the return to operation, when nothing can be repaired any more.${strict ? ` You promised ${p.name}: nothing without an order.` : ""}`,
+        + `Written into the release as found, nobody is woken and the order goes on: fleet management decides at the return to operation. If it wants the repair then, the release comes back and the unit with it, into the hall again, the crew set up for it again (${WORK.reopen_min} min), and the repair.${strict ? ` You promised ${p.name}: nothing without an order.` : ""}`,
       options: [
         { id: "ask", label: `Phone ${p.name} and wait for the order` },
         ...(strict ? [] : [{ id: "do", label: "Repair it now, under the standing order" }]),
@@ -983,7 +990,7 @@ export class WorkshopGame extends Game {
       then: (x) => {
         this.about.delete(id);
         // (fleet management has decided meanwhile: there is nothing left to hand over)
-        if (u.rto_t != null || u.kept || u.gone_t != null) return;
+        if (u.rto_t != null || u.kept || u.gone_t != null || u.released_t == null) return;
         if (x === "phone") this.phone(u.id);
         else if (x === "go") this._handOver(u);
         else this.log(`${hm(this.t)} The driver of the ${hm(pl.at)} waits at ${u.name}.`, "request");
@@ -1178,7 +1185,7 @@ export class WorkshopGame extends Game {
 
   /* ---------------------------------------------------------------- what comes of it */
 
-  /** Fleet management returns released units to operation, or keeps them in. */
+  /** Fleet management returns released units to operation, sends one back to the hall for a finding written into its release that must be repaired, or keeps it in. */
   _returns() {
     const p = PEOPLE.fleet;
     for (const u of this.units) {
@@ -1191,11 +1198,7 @@ export class WorkshopGame extends Game {
         continue;
       }
       if (must) {
-        u.kept = true;
-        this._mood("fleet", MOOD.noted_must);
-        this.log(`${hm(this.t)} ${p.name}: "${u.name} with ${must.what}? Not returned to operation. And you tell me now, when nobody can repair it."`, "fault");
-        this.irregular("kept", `kept:${u.id}`, { unit: u.name, what: must.what, who: p.name });
-        this._patience("fleet");
+        this._sendBack(u, must);
         continue;
       }
       for (const f of noted) {
@@ -1209,6 +1212,42 @@ export class WorkshopGame extends Game {
       if (u.restrictions.length) this.irregular("restricted", `restricted:${u.id}`, { unit: u.name, what: u.restrictions.join("; "), who: p.name });
       this._patience("fleet");
     }
+  }
+
+  /**
+   * Fleet management wants a finding repaired that was written into the release: the unit is not
+   * returned to operation but goes back to the hall with the repair ordered, repaired where it
+   * stands on a hall track, or taken in again when a track is free. The night decides whether it is
+   * still in time for a train.
+   */
+  _sendBack(u, f) {
+    const p = PEOPLE.fleet;
+    Object.assign(u, { released_t: null, rto_due: null, phoned: false, sent_back: (u.sent_back ?? 0) + 1 });
+    this._repair(u, f, true);
+    const task = u.tasks.find((t) => t.finding === f);
+    // (the release withdrawn, a crew that had finished with the unit set up for it again)
+    task.work += S(WORK.reopen_min);
+    // (on the lathe's track it is repaired from the lathe's pit: it does not move for it)
+    if (HALL.includes(u.track) && !task.where.includes(u.track)) task.where = [...task.where, u.track];
+    // (a repair on the brakes after the unit's brake test: the test is due again, right after the repair, and signed again)
+    const test = f.brakes ? u.tasks.find((t) => t.id === "brake-test" && t.state === "done") : null;
+    if (test) {
+      Object.assign(test, { state: "open", done: 0 });
+      u.tasks.splice(u.tasks.indexOf(test), 1);
+      u.tasks.splice(u.tasks.indexOf(task) + 1, 0, test);
+    }
+    // (a track left free while it waited outside before: it is a unit to ask about again)
+    for (const left of this._left.values()) left.delete(u.id);
+    // (a time said to the dispatcher for this unit rested on the release that came back: it is judged again)
+    if (this.word?.unit === u.id && this.word.kept === true) {
+      this.word.kept = null;
+      this._mood("dispatch", -(this.word.gave ?? MOOD.kept_word));
+      this.word.gave = 0;
+    }
+    this._mood("fleet", MOOD.noted_must);
+    this.log(`${hm(this.t)} ${p.name}: "${u.name}: ${f.what}, and you write it into the release? Not returned to operation: repair it first${test ? ", and test the brakes again" : ""}. You could have asked me when it was found."`, "fault");
+    this.irregular("sent-back", `sent-back:${u.id}:${f.id}`, { unit: u.name, what: f.what, who: p.name });
+    this._patience("fleet");
   }
 
   /** The units that are returned to operation and stand in the depot: those without a restriction first, then as they were released. */
@@ -1323,7 +1362,7 @@ export class WorkshopGame extends Game {
     // the driver's question at a door is over once fleet management has decided on the unit, or no train waits for one any more
     for (const d of this.open.filter((x) => x.id.startsWith("door-"))) {
       const u = this.unit(d.id.slice(5)), waits = this.pullouts.some((p) => p.unit == null && !p.cancelled && this.t >= p.at);
-      if (u.rto_t != null || u.kept || u.gone_t != null || !waits) this._drop(d.id);
+      if (u.rto_t != null || u.kept || u.gone_t != null || u.released_t == null || !waits) this._drop(d.id);
     }
     this._failures();
     this._wordDue();
@@ -1345,7 +1384,7 @@ export class WorkshopGame extends Game {
     return {
       trains: P.length, gone: gone.length, on_time: gone.filter((p) => p.late_min < 1).length, late_min: gone.reduce((s, p) => s + p.late_min, 0), cancelled: P.filter((p) => p.cancelled).length,
       restricted: gone.filter((p) => p.restricted).length, failed: P.filter((p) => p.failed).length,
-      released: this.units.filter((u) => u.released_t != null).length, returned: this.units.filter((u) => u.rto_t != null && !u.handed).length, kept: this.units.filter((u) => u.kept).length, handed: this.units.filter((u) => u.handed).length,
+      released: this.units.filter((u) => u.released_t != null).length, returned: this.units.filter((u) => u.rto_t != null && !u.handed).length, kept: this.units.filter((u) => u.kept).length, sent_back: this.units.reduce((n, u) => n + (u.sent_back ?? 0), 0), handed: this.units.filter((u) => u.handed).length,
       work: tasks.reduce((s, t) => s + t.work, 0), work_done: tasks.reduce((s, t) => s + Math.min(t.work, t.done), 0), tasks: tasks.length, tasks_done: tasks.filter((t) => t.state === "done").length, noted,
       ...this.tally, moods, lowest: Math.min(...Object.values(moods)), promises: this.promises.length + (this.word ? 1 : 0), broken: this.promises.filter((p) => p.kept === false).length + (this.word?.kept === false ? 1 : 0),
     };
@@ -1368,7 +1407,7 @@ export class WorkshopGame extends Game {
     const names = Object.entries(PEOPLE).map(([k, p]) => `${p.label} ${a.moods[k]}`).join(", ");
     return [
       { id: "trains", label: "Trains with their unit", weight: 35, value: trains, note: a.gone + a.cancelled ? `${a.on_time} of ${a.trains} on time${a.late_min ? `, ${a.late_min} min late in all` : ""}${a.cancelled ? `, ${a.cancelled} cancelled` : ""}${a.restricted ? `, ${plural(a.restricted, "unit")} with a restriction` : ""}` : "no train is due yet" },
-      { id: "orders", label: "The night's orders", weight: 20, value: (a.work ? a.work_done / a.work : 1) - 0.12 * a.noted - 0.25 * a.kept, note: `${a.tasks_done} of ${plural(a.tasks, "job")} done, ${a.released} of ${this.units.length} units released${a.noted ? `, ${plural(a.noted, "finding")} left in a release` : ""}${a.kept ? `, ${plural(a.kept, "unit")} kept in by fleet management` : ""}` },
+      { id: "orders", label: "The night's orders", weight: 20, value: (a.work ? a.work_done / a.work : 1) - 0.12 * a.noted - SENT_BACK.orders * a.sent_back - 0.25 * a.kept, note: `${a.tasks_done} of ${plural(a.tasks, "job")} done, ${a.released} of ${this.units.length} units released${a.noted ? `, ${plural(a.noted, "finding")} left in a release` : ""}${a.sent_back ? `, ${plural(a.sent_back, "release")} sent back by fleet management` : ""}${a.kept ? `, ${plural(a.kept, "unit")} kept in by fleet management` : ""}` },
       { id: "quality", label: "Nothing comes back", weight: 15, value: 1 - 0.4 * a.repeats - 0.12 * a.second - 0.06 * a.excess_mm - 0.08 * a.scrapped - sev, note: `${plural(a.repeats, "part")} failed in service, the lathe set up again ${a.second} time${a.second === 1 ? "" : "s"}, ${mm(a.excess_mm)} mm cut beyond need, ${plural(a.broken, "promise")} not kept` },
       // the one who is worst off counts most: a night that is good for two of three is not good enough
       { id: "people", label: "The people you work with", weight: 30, value: (0.6 * a.lowest + 0.4 * mean) / 100, note: `patience of 100: ${names}` },

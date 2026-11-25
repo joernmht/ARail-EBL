@@ -84,7 +84,7 @@ the pit when the inspection comes in at 23:40 is the night's first judgment.
 | What happens | The choice | Whose decision it really is |
 | --- | --- | --- |
 | A hall track is free | which waiting unit goes in, or none yet | the workshop's |
-| A fitter finds something beyond the order | phone fleet management and wait for the order (the track stands meanwhile); repair it now under the **standing order** (it covers half an hour of work, and the foreman's estimate is a range); or go on, and write it into the release | fleet management's, beyond the standing order |
+| A fitter finds something beyond the order | phone fleet management and wait for the order (the track stands meanwhile); repair it now under the **standing order** (it covers half an hour of work, and the foreman's estimate is a range); or go on, and write it into the release (nobody is woken; fleet management decides at the return to operation, and a finding it wants repaired then sends the unit back into the hall) | fleet management's, beyond the standing order |
 | A part measures at its limit | measure again (ten minutes, and it is settled); change the part (45 minutes); phone maintenance development for a concession; or take the reading as it is | the limit is maintenance development's |
 | A wheelset is on the lathe | how deep the cut is (1 to 6 mm), or measure the damage first | the workshop's, within the file: 0.5 mm below the damage, and above 3 mm the other wheelset of the bogie too |
 | The brake test is due, and the one person authorised for it is at the lathe | the lathe waits, the unit waits, or somebody whose authorisation has run out signs | the workshop's; the third is no release at all |
@@ -96,7 +96,8 @@ finding repaired before the unit runs, how long a repair really takes, on which 
 a part truly is, how deep the flat's damage goes, and how long somebody on call takes to answer.
 
 Three people count differently, each with a patience of 0 to 100. The fleet manager counts calls
-at night, work done without an order, findings left in a release and units released after four.
+at night, work done without an order, findings left in a release (most one that sends a unit back)
+and units released after four.
 The maintenance development engineer counts millimetres cut beyond need, good parts scrapped and
 parts that come back. The dispatcher counts trains. Below 70 each phones once and asks for a
 promise that another of them pays ("nothing on my units without my order" costs the pit ten
@@ -116,20 +117,34 @@ repaired, or such a signature); its train is then worth what a cancelled one is.
 | Work | the inspection 170 min, the brake pads 110, the brake test 20, the door's drive 75, a part changed 45, a second measurement 10 |
 | The lathe | 30 min to set up, 12 a millimetre; setting up again after a cut too shallow 15; above 3 mm the other wheelset as long again; a millimetre of diameter is about 30 000 km |
 | On call | fleet management answers in 4 to 12 min, maintenance development in 6 to 14; a return to operation comes 6 to 16 min after the release, 2 after a phone call |
+| A release sent back | the unit goes into the hall again when a track is free (or is repaired where it stands on the pit or the jacks); 20 min to set up for it again, then the repair, and after a brake hose the unit's brake test again (442 105's); a time said to the dispatcher for it counts by the new release |
 | Score | trains with their unit 35, the night's orders 20, nothing comes back 15, the people 30 |
 
 Played by the computer on 24 seeds of the level *normal*: nobody at the desk 19 points (nothing
-comes into the hall: no train has a unit); by the book 85 (a train cancelled on three nights in ten, late on a few more);
+comes into the hall: no train has a unit); by the book 84 (a train cancelled on three nights in ten, late on a few more);
 with the pit kept free for the inspection and the brake pads done on the jacks 93; hasty all
 round 71. Taking the reading at a limit and repairing a finding unasked each beat the book on
-some nights and lose on others; leaving it in the release beats the book only rarely (on one of
-the first 40 nights).
+some nights and lose on others.
+
+A finding written into the release is a judgment, not a mistake. On 100 seeds:
+
+| Findings written into the release | Mean | Beats the book | Loses to it |
+| --- | --- | --- | --- |
+| none: always phoned in (the book) | 82.8 | | |
+| where the foreman says "with that it can run" | 83.0 | on 28 nights | on 7 |
+| also where it "can go either way" | 82.5 | on 49 nights | on 34 |
+| every one, the chafed brake hose too | 80.3 | on 33 nights | on 59 |
+
+Of the units sent back for a finding written into every release, seven in eight are repaired and
+returned to operation before the night is over. A send-back costs more where a time was said to the
+dispatcher for that unit: the time counts by the new release, and is often missed.
 
 Levels: *training* (one finding beyond the order, nobody slow on the phone), *normal*, *hard* (a
 fitter short, the phones slower, the foreman's guesses wider).
 
 Simplified for teaching: a track's crew is with the track; every move takes the same time; any
-unit can take any train; a unit kept in by fleet management is lost for the night; the ECM
+unit can take any train; a unit kept in by fleet management (a release signed without authorisation)
+is lost for the night; the ECM
 manager speaks only at the hand-over and when a rule is left.
 
 ## In the code
