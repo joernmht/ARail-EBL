@@ -10,6 +10,7 @@
 import { markersUsed } from "./anchors.js";
 import { DEFAULT_CLOCK, dateProblem, parseDay, parseTime } from "./clock.js";
 import { weatherProblems } from "./weather.js";
+import { experienceProblems } from "./modes.js";
 import { DICTIONARIES } from "./detector.js";
 import { composeLayout, layerProblems } from "./layers.js";
 
@@ -158,6 +159,7 @@ export function normalizeLayout(json = {}) {
     services: { ...DEFAULT_SERVICES, ...(isObject(j.services) ? j.services : {}) },
     clock: { ...DEFAULT_CLOCK, ...(isObject(j.clock) ? j.clock : {}) },
     weather: j.weather ?? null,
+    experience: j.experience ?? null,
     grid: normalizeGrid(j.grid),
     simulations: list(j.simulations, typed) ?? [{ type: "passengers" }],
     objects: list(j.objects, typed) ?? [],
@@ -259,6 +261,7 @@ export function validateLayout(json, registry) {
   const clockDate = isObject(json.clock) && json.clock.date != null ? dateProblem(json.clock.date) : null;
   if (clockDate) problems.push(`clock.date ${clockDate}`);
   problems.push(...weatherProblems(json.weather));
+  problems.push(...experienceProblems(json.experience));
   (Array.isArray(json.scenarios) ? json.scenarios : []).forEach((s, i) => {
     if (!isObject(s)) return problems.push(`scenarios[${i}] is not an object`);
     if (!s.id) problems.push(`scenarios[${i}] has no id`);

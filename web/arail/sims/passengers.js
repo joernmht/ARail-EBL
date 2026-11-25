@@ -895,6 +895,8 @@ export class PassengerSimulation extends Simulation {
   }
 
   _arrived({ vehicle, dock }) {
+    // (the stop's people are looked after: a line's bus or tram may leave when all are on and off, core/transit.js)
+    if (vehicle) vehicle.seenAt = this.world.time;
     this._sync();
     const c = this.crowds.get(dock.area.id);
     if (!c) return;
@@ -1027,6 +1029,9 @@ export class PassengerSimulation extends Simulation {
   _holdDoors(c, dt) {
     const busy = new Map();
     for (const p of c.people) {
+      // somebody still on the way to a door of it, in it, or getting off it: it is not done at this stop
+      const at = p.state === "boarding" ? p.vehicle : p.state === "onboard" ? p.alighting : null;
+      if (at) at.busyAt = this.world.time;
       const v = p.state === "boarding" && p.stepUntil != null ? p.vehicle : p.state === "onboard" && p.delay > 0 ? p.alighting : null;
       if (!v) continue;
       const end = p.state === "boarding" ? p.stepUntil : c.t + p.delay;

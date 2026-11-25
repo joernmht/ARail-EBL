@@ -318,7 +318,7 @@ test("the town: every resident has a profile from its own stream; some drive the
   assert.ok(all && all.trips > 0 && all.minutes > 0, JSON.stringify(stats));
   assert.ok(all.car > 0);
   const csv = t.tripsCSV().split("\n");
-  assert.equal(csv[0], "id,name,characteristics,purpose,from,to,start,minutes,walk,wait,doors,ride,car,end");
+  assert.equal(csv[0], "id,name,characteristics,purpose,from,to,start,minutes,walk,wait,doors,ride,car,bike,end,mode,went badly,with others");
   assert.ok(csv.length > 2);
   const someone = t.agents.find((a) => a.trips?.length);
   assert.ok(t.describeAgent(someone).sections.some((s) => s.title === "Door to door"));

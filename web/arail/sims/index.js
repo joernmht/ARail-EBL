@@ -17,7 +17,7 @@ export {
 } from "./passengers.js";
 export { PURPOSE_COLOURS, PURPOSE_LABELS, TRIP_PARTS } from "./town.js";
 export { CAR_COLOURS, planDrive, OCCUPANCY_BY_PURPOSE } from "./traffic.js";
-export { RIDERS, ridingSurface } from "./cycling.js";
+export { ABREAST, RIDERS, ridingSurface } from "./cycling.js";
 
 /** The built-in simulations, one per line. */
 export const SIMULATION_TYPES = [

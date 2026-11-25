@@ -114,7 +114,11 @@ test("Run plays the plan on the layout: its trains, the boards, the result; the 
   assert.equal(card.Driver, "L. Specht");
   assert.equal(card.Delay, "+4 min");
   assert.ok(boards.has("S 1 07:45 cancelled") && boards.has("S 1 → Talsee 07:25 +4"), [...boards].join("\n"));
-  assert.deepEqual({ ...plan.result, trains: undefined }, { trains: undefined, onTime: 3, late: 1, cancelled: 2, leftBehind: 204 });
+  // (left behind: the 204 the draft's units have no places for, and those of the platform who could not get on the
+  // full trains that morning, at most as many as a stop holds)
+  assert.deepEqual({ ...plan.result, trains: undefined, leftBehind: undefined }, { trains: undefined, onTime: 3, late: 1, cancelled: 2, leftBehind: undefined });
+  const crowd = world.simulations.find((sim) => sim.constructor.type === "passengers")?.config.max_per_area ?? 60;
+  assert.ok(plan.result.leftBehind >= 204 && plan.result.leftBehind <= 204 + crowd, `${plan.result.leftBehind} left behind`);
   assert.ok([...world.services.docks.values()].every((st) => st.mode === "timetable"), "the timetable again");
   // the plan that works: all on time, nobody left behind
   solve(plan).run();

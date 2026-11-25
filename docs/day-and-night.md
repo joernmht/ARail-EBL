@@ -119,6 +119,28 @@ scales residents and people from elsewhere alike). They are:
 Some adults go shopping in the evening. Shops are open 07:00–21:00, schools 07:30–15:30. Without
 shops nobody goes shopping. Every day gets new, reproducible plans (from the world's random seed).
 
+### Households, and who goes with whom
+
+The people of a house live in **households** (`together`, on by default): families of one to three
+children with one or two adults (a grandparent where no parent is left), couples and singles, among
+the old as among the others; each house from its own random stream, so the same seed gives the same
+households. A household **shares its cars**: one for each of its people who would have one, two at
+most, and whoever of them has a driving licence can take one while one stands at home. A person's
+card says who they live with, and whether the household's car is out.
+
+The people of a house plan their day together, and some ways are made **together**:
+
+- A child younger than 10 is **taken to school** by an adult of the household: by the one at home by
+  day, else by one on the way to work or to the train, who goes on from the school.
+- Pupils of a house who go to the same school **walk together**, two to four of them, there and back.
+- When an adult goes **shopping**, the partner at home often goes along, and so do the children.
+
+A group walks at the pace of its slowest, two abreast, in single file when somebody comes the other
+way or the group crosses a street; a child strays a little ahead and back. At a stop each waits and
+gets on for themselves, and when they got apart there (the bus was full for one of them), the others
+wait for them where they get off. A car takes them all. Each has the trip in their own record
+(`with others` in the CSV). Who is led by another waits for them 25 clock minutes, then goes alone.
+
 ### What the town needs: trains, buses, trams and other passengers
 
 From the same numbers the town tells the stops what it needs:
@@ -126,12 +148,14 @@ From the same numbers the town tells the stops what it needs:
 - **How often vehicles run.** For the platforms: half the morning trips by train (commuters,
   pupils and visitors, who spread over about two hours) and the busiest hour's share of the
   other trips (0.3 trips by train a resident and day: errands, leisure, visits), shared by the
-  platform tracks. For a bus or tram line: the long ways of the morning (longer than
-  `walk_max_m`) between two of its stops, by `bus_share`. For the bays of a bus terminal: 0.2 trips by
+  platform tracks. For a bus or tram line: of the long ways of the morning (longer than
+  `walk_max_m`) between two of its stops, the share that takes the bus or tram, as the choice of the
+  modes gives it for ways of that length (and, once the town has made some hundred long trips, half
+  of it what its people really took). For the bays of a bus terminal: 0.2 trips by
   bus a resident and day. The interval is the longest of 5, 10, 15, 20, 30 and 60 clock minutes
   whose vehicles carry that at a comfortable 70 % (a regional train 140 people, a bus 49, a tram
   4.2 per metre of its length), with the rush-hour frequency (× 1.5). A small town gets a train an
-  hour on each track and a bus every half hour. This holds for platforms, bays and lines without a
+  hour on each track and a bus or tram an hour too: few take the bus where everything is near. This holds for platforms, bays and lines without a
   `headway_s` of their own, while `services.auto_interval` is true (the default); a set interval
   stays. The card of a stop shows each interval, and says so when it is what the town needs.
 - **Other passengers.** People the town's agents do not stand for (errands, leisure, visits,
@@ -148,25 +172,118 @@ From the same numbers the town tells the stops what it needs:
   except on a street or footpath over it. Where the streets do not connect start and goal, they
   walk out of sight. Without any streets people walk straight. A bike that comes too close on the
   sidewalk (or a shared path) makes them angry for a while.
-- **By car**: of the residents with a driving licence and a car ([Passenger mobility](#passenger-mobility)),
-  `car_share` (30 %) drive their ways longer than `walk_max_m` in the town that day (visitors came by
-  train: their car is elsewhere). A trip by car
-  is not drawn (the road traffic has cars of its own): it takes the walk to the car (30 m) and from
-  the car park (60 m) at their speed, loading and unloading (luggage, a pram, a wheelchair), the
-  drive at 30 km/h on a way 1.3 times the straight line, and a minute to park. The others are
-  *captive*: they walk or take the bus and the train. Trips to elsewhere stay by train.
-- **Bus or tram**: a way longer than `walk_max_m` (150 m) is taken by bus or tram with probability
-  `bus_share` (80 %; pupils and seniors a little more often) when a bus or tram line connects a stop
-  within 300 m of the start with a stop within 300 m of the destination, and it is not much slower
-  than walking at their own speed (a slow walker takes the bus sooner). People wait at the stop, board only their line, ride, get off at their stop and walk
-  on. Nobody waits longer than 20 clock minutes, or a little longer than the interval of what they
-  wait for (an hourly train is worth waiting for): then they walk (or go home instead of taking
-  the train).
+- **Among the others and the vehicles** (`world.walking`, `core/walking.js`): where a walk leaves
+  the sidewalk for a street, people stop at the kerb and look: they step onto the street only when no
+  vehicle stands in their way and none would be there before they are across, with 2 s to spare (the
+  gap people accept; after 15 s at the kerb half a second is enough). They cross in front of a
+  vehicle that stands, never through one: where a queue stands on the crossing they go round it, a
+  few steps along the kerb. At a zebra crossing the vehicles that can still stop will, so only those
+  too close count, and trams. Vehicles brake for people on the street all the same (the driver who
+  turns into a side street lets them cross); a vehicle that had to brake hard is a near miss
+  (`world.walking.nearMisses`). Where many people cross, vehicles and people take turns: a vehicle
+  that has waited 6 s goes before those who come to the kerb now. People waiting at a kerb stand
+  beside each other, the next ones behind them. On the sidewalk people keep to the right when
+  somebody comes, pass a slower one where there is room and walk behind them where there is none;
+  through a door they come one after the other.
+- **The mode** of a way longer than `walk_max_m` (150 m) is **chosen**: on foot, by bike, by bus or
+  tram, by car (see [How people choose their mode](#how-people-choose-their-mode-and-what-they-learn)).
+  Shorter ways are walked.
+- **By car**: for those with a driving licence while a car of their household stands at home (people
+  from elsewhere came by train: their car is elsewhere). Where the layout has road traffic
+  (`traffic`), the car is one of its cars: it comes out near the door, drives the streets with
+  everybody else, parks in a space near the building as a driver of the road traffic plans it
+  (`planDrive`), and its people walk from there; it stays there until they come back for it. A drive
+  takes as long as the streets let it. Without road traffic the trip is not drawn: it takes the walk
+  to the car (30 m) and from the car park (60 m), loading and unloading (luggage, a pram, a
+  wheelchair), the drive at 30 km/h on a way 1.3 times the straight line, and a minute to park.
+- **By bike**: for those who have one (four in five; nobody with a rollator, a pram or a suitcase),
+  where the layout has bikes (`cycling`): the rider is one of its riders, on the bike lanes and paths,
+  and locks the bike to a lamp or a bike stand near the door. A child under 10 rides on the sidewalk.
+  To the station too: the bike waits there for the way back.
+- **A car or a bike that is out** comes along: whoever drove to work drives on from there and home,
+  and walks back to where it stands first when it is somewhere else.
+- **Bus or tram**: where a bus or tram line connects a stop within 300 m of the start with a stop
+  within 300 m of the destination, and it is not much slower than walking at their own speed (a slow
+  walker takes the bus sooner). People wait at the stop, board only their line, ride, get off at their
+  stop and walk on. Nobody waits longer than 20 clock minutes, or a little longer than the interval of
+  what they wait for (an hourly train is worth waiting for): then they walk (or go home instead of
+  taking the train).
 - **Train**: commuters go to the nearest platform and take the next train on either side. A
   long way to the platform is taken by bus like any other (see above): to a stop near the
   platform, e.g. the station's bus terminal, and on foot to the platform. Visitors and returning
   commuters get off arriving trains (up to 30 per train) and walk, or take the bus when it is far,
   to work, school, home or the shop. Riders whose stop is taken off the line get off at the next stop.
+
+### How people choose their mode, and what they learn
+
+Each mode a person has for a way costs them what its parts are expected to take, in minutes as people
+feel them (`core/modes.js`, `perceived`):
+
+- a minute on foot counts 1.6 minutes on board, a minute of waiting 2, a minute on the bike 1.3
+  (Wardman 2004; Abrantes and Wardman 2011);
+- fares, what the drive costs and parking fees count as time (12 € an hour);
+- a **constant** for what the minutes do not tell (walking needs nothing; a bike is fetched and
+  locked), and the person's **own liking** of the mode (people differ);
+- the **weather and the dark**: a minute on foot or at a stop counts 1.3 in rain (1.6 in heavy rain,
+  more on snow and ice, in frost and in the dark); of the cyclists of a mild dry day only the
+  weather's share still rides ([Seasons and weather](weather.md): half in rain, a fifth on snow);
+- the **person**: old people and those with a stick, a rollator, a pram or a suitcase walk and wait
+  less gladly; children and old people mind the dark more, on foot and on the bike; a group goes as
+  its most burdened member can.
+
+A logit over these costs chooses: the cheapest mode is taken most often, the others now and then. The
+constants are fitted to the shares of the modes by the length of the trip of MiD 2017, for somebody
+who has all four: of 100 trips of half a kilometre about 60 on foot, 13 by bike, 22 by car and 4 by
+bus or tram; of one and a half kilometres about 25, 22, 44 and 9.
+
+Nobody knows the traffic before they have been in it. People **plan** with what a trip takes on
+empty streets and with a timetable that holds, and **learn** what it really takes:
+
+- A **person** remembers for each of their ways and each mode how the last trips went against what
+  they expected, and whether they went **badly**: a jam (the drive took twice its plan), left behind
+  at the stop or given up waiting, soaked on foot or on the bike. A bad trip costs mood, and a mode
+  that keeps going badly counts as dearer; the mode taken last time counts as cheaper (habit).
+- The **town** remembers the same for everybody, by mode and hour of the day, on working days and at
+  weekends (`world.experience`): what one hears from the others. An hour's trips move what is
+  expected of that hour by a third, so one bad morning does not turn the town round. A person plans
+  with the town's experience until their own says otherwise; for the car also with the traffic news
+  (how the cars on the streets are doing now).
+
+So people who stand in a jam every morning come to expect it, are unhappy with the car, and some
+take the tram or the bike instead, until the streets carry those who are left: the shares settle at
+what the town's streets, stops and parking can take. It is a simple form of reinforcement learning
+(a softmax over learned expected costs), the day-to-day learning of traffic assignment (Horowitz
+1984; MATSim). The cars from beyond the layout learn the same way, as one crowd (see
+[Road traffic](streets-and-buses.md#road-traffic)), and the buses and trams run as often as the
+people who really take them need.
+
+**A layout's town is smaller than a real one**, so most of its ways would be walked. `stretch` says
+how many times as long its ways count in the choice, as if the town were of real size (Bf Neustadt:
+3, so a way of 300 m is weighed like one of 900 m); the walk to a stop and the waiting there count as
+they are. It changes the choice, not how long anything takes.
+
+**The Overview → Measured** shows the *Modal split* (the shares of all trips, and of the longer ways)
+and *What the town has learned* (how long a drive takes now against empty streets, bus and tram
+against their timetable, the share of drives that were a jam). A person's card shows what was weighed
+for the way they are on, and what they have learned on their ways. `town.modalSplit({purpose, from,
+to, long})` gives the shares to scripts, and the trips' CSV names the mode of each trip.
+
+#### Working it out ahead
+
+What a town learns takes it a week or two. `tools/mobility-learn.mjs` runs a layout for some days
+without the app and keeps what the town has learned in the layout (`experience`), so that the first
+morning in the app starts where the learning ends; in the app the learning goes on from there. Run it
+**after a layout's streets, lines, buildings or simulations were changed**:
+
+```bash
+node tools/mobility-learn.mjs web/layouts/ebl-neustadt.json --days 14 --write
+node tools/mobility-learn.mjs web/layouts/ebl-neustadt.json --check     # still the layout's own?
+```
+
+It shows each day's traffic (the cars' speed, how many stand, the drives that were a jam), the shares
+of the modes and what the town expects of the car and the bus. The experience is kept with a key of
+what it was learned for (`experience.for`); `--check` says when the layout was changed since, and so
+does a test for Bf Neustadt (`tests/js/modes.test.js`).
 
 While people are inside a building they are not drawn; the building lights its windows at night
 when people are in (`world.occupancy`).
@@ -178,7 +295,7 @@ colours: **to work** Türkis, **to school** Orange, **shopping** Gelb, **home** 
 **to the train** Rot. Other passengers at platforms and stops keep the mood colours (Türkis = happy,
 Gelb = so-so, Rot = annoyed). **Settings → View → Show → Colour of people** switches between both, or
 everybody by purpose or by mood. The **Overview → Measured → Town** counts the people of the town and
-how many are on their way, on the bus and by car; `town.townStats()` also counts who is at home, at
+how many are on their way, on the bus, by bike and by car; `town.townStats()` also counts who is at home, at
 work, at school, shopping, at stops and away, the captive adults (no licence or no car), and how
 often one of them gave up waiting at a stop or found it closed (a cancelled bus strands them: they have
 no car to take instead).
@@ -187,7 +304,7 @@ no car to take instead).
 
 Every trip of a resident is recorded from its door (or the train it came by) to the door it goes
 to, in clock minutes and in its parts: **on foot**, **waiting** at a stop, **at the doors** (getting
-on and off), **riding**, **by car**. The card of a person lists today's trips ("07:12 to work:
+on and off), **riding**, **by car**, **by bike**. The card of a person lists today's trips ("07:12 to work:
 23 min (on foot 9 min, waiting 6 min, riding 7 min)"). **Overview → Measured → Door to door** shows the
 mean minutes of all trips that reached their building; **Download the trips (CSV)** there gives every
 trip for the debriefing. `town.tripStats()` gives the mean by group to scripts (everybody, children,
@@ -201,9 +318,12 @@ every trip.
 | --- | --- | --- |
 | `people_per_100` | 12 | people shown per 100 residents |
 | `max_people` | 300 | upper limit (phones); scales residents and visitors alike. Bf Neustadt sets 3000, so that its 25 per 100 of 9,300 residents are all shown (with 300, one in forty was) |
-| `walk_max_m` | 150 | longest walk (prototype metres) before the bus is preferred |
-| `bus_share` | 0.8 | share of long ways taken by bus when a line fits |
-| `car_share` | 0.3 | of the people with a driving licence and a car, the share who drive their long ways in the town that day |
+| `walk_max_m` | 150 | ways up to this length (prototype metres) are walked; longer ones are chosen for |
+| `stretch` | 1 | how many times as long the ways count when people choose their mode: a layout's town is smaller than a real one (Bf Neustadt: 3) |
+| `modes` | | the tastes: a table like the people's, a row for `everybody` (`sharpness` 0.07 per min, `wait` 2, `eur_min` 0.2, `habit` 7 min, `learn` 0.3, `hearsay` 2 trips, `anger` 14 min, `jam` 2, `quit` 2.2) and one per mode: `walk` (`constant` −30 min, `minute` 1.6), `bike` (0, 1.3, `own` 0.8), `transit` (10, 1, `fare_eur` 0.6), `car` (−7, 1, `eur_km` 0.2), each with a `spread` of the people's own likings. A layout sets only the cells it changes: `"modes": {"car": {"constant": 0}}` |
+| `together` | true | households that share their cars; children taken to school, partners and schoolmates going together |
+| `bus_share` | 0.5 | 0: nobody takes the bus or the tram; 1: everybody does where a line fits; in between people choose (before the choice of the modes it was the share of long ways by bus) |
+| `car_share` | 0.5 | 0: nobody drives in the town; 1: everybody who can; in between people choose |
 | `catchment_m` | 1500 | local area (prototype metres): places this close to a home, or on a line from near it, are its residents' first |
 | `commuters_out` | 0.15 | share of workers who work elsewhere (by train) although there are jobs; those without a job in the town work elsewhere too |
 | `commuters_in` | 0.6 | share of the jobs, school places and shop visits left empty that people from elsewhere take (by train); a value above 1 from an older layout (people per 100 local jobs) is read as hundredths |

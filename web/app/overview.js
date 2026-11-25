@@ -3,7 +3,7 @@
 // tracking), and the state of what the simulations keep (assets, people, vehicles; core/states.js):
 // one figure for the whole layout, a search, and per kind its mean and a histogram, the worst and the
 // best kind first. What can be set is in Settings; the modules are switched in Examples → Sandbox.
-import { formatTime, MockFeed, objectPickable, overallState, RAIL_CONDITIONS, searchKinds, searchStates, terminalOf } from "../arail/index.js";
+import { formatTime, MockFeed, MODES, MODE_KEYS, objectPickable, overallState, RAIL_CONDITIONS, searchKinds, searchStates, terminalOf } from "../arail/index.js";
 import { download, h, morph, mount, section, toast } from "./ui.js";
 
 /** At most this many items found are listed. */
@@ -84,7 +84,17 @@ export class Overview {
     const town = w.simulations.find((x) => x.constructor.type === "town");
     if (town) {
       const st = town.townStats();
-      out.push({ id: "town", label: "Town", value: `${st.total} people`, note: `${st.walking} on their way · ${st.riding} on the bus · ${st.driving} by car` });
+      out.push({ id: "town", label: "Town", value: `${st.total} people`, note: `${st.walking} on their way · ${st.riding} on the bus · ${st.cycling} by bike · ${st.driving} by car` });
+      const split = town.modalSplit(), long = town.modalSplit({ long: true });
+      if (split.trips) {
+        out.push({ id: "modes", label: "Modal split", value: `${Math.round(split.shares.walk * 100)} % on foot`,
+          note: `${MODE_KEYS.filter((m) => m !== "walk").map((m) => `${MODES[m].label} ${Math.round(split.shares[m] * 100)} %`).join(" · ")} · of ${split.trips} trips${long.trips ? `; of the ${long.trips} longer ways ${Math.round(long.shares.walk * 100)} % on foot` : ""}` });
+      }
+      const jams = split.modes.car ? Math.round(split.bad.car * 100) : null;
+      if (w.experience.known) {
+        const now = (m) => w.experience.ratio(m, c.minutes, c.weekend());
+        out.push({ id: "learned", label: "What the town has learned", value: `Car ${now("car").toFixed(1)}×`, note: `how long a drive takes now against empty streets · bus and tram ${now("transit").toFixed(1)}× their timetable${jams != null ? ` · ${jams} % of the drives were a jam` : ""} · ${Math.round(w.experience.days)} days` });
+      }
       const all = this._tripStats(town)[0];
       out.push({ id: "trips", label: "Door to door", value: all ? `${Math.round(all.minutes)} min` : "–", note: all ? `mean of ${all.trips} trips` : "No trip finished yet",
         action: all ? h("button", { class: "btn small", type: "button", id: "townTripsCsv", onclick: () => download("town-trips.csv", town.tripsCSV(), "text/csv") }, "Download the trips (CSV)") : null });

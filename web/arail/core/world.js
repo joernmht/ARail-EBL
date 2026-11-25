@@ -23,6 +23,8 @@ import { ScenarioPlayer } from "./scenarios.js";
 import { TrainRegistry } from "./trains.js";
 import { Clock, parseTime } from "./clock.js";
 import { Weather, drawWeather } from "./weather.js";
+import { Experience } from "./modes.js";
+import { Walking } from "./walking.js";
 import { RoadNetwork } from "./network.js";
 import { Transit } from "./transit.js";
 import { ParkingSpaces } from "./parking.js";
@@ -88,6 +90,10 @@ export class World {
     this.clock = new Clock();
     /** The weather: the air, the ground and what they do to those who read them (core/weather.js). */
     this.weather = new Weather(this);
+    /** What the town has learned about its modes of transport, by hour (core/modes.js); the layout's `experience`. */
+    this.experience = new Experience();
+    /** People on foot among each other and the vehicles: gaps at the kerb, stepping aside (core/walking.js). */
+    this.walking = new Walking(this);
     this.services = new ServiceManager(this);
     this.disruptions = new DisruptionManager(this);
     this.scenarios = new ScenarioPlayer(this);
@@ -133,6 +139,7 @@ export class World {
     this.demand = 1;
     this.clock.configure(layout.clock);
     this.weather.configure(layout.weather);
+    this.experience.configure(layout.experience);
     this.rng = createRng(this.seed);
     this.services.reset();
     this.disruptions.reset();
@@ -212,6 +219,8 @@ export class World {
       services: L.services,
       clock: this.clock.toJSON(),
       ...(this.weather.toJSON() != null ? { weather: this.weather.toJSON() } : {}),
+      // what was worked out ahead (tools/mobility-learn.mjs); what the app learns on top is not saved
+      ...(this.layout.experience != null ? { experience: this.layout.experience } : {}),
       grid: L.grid,
       simulations: this._simulationEntries.map((e) => (e.sim ? e.sim.toJSON() : e.cfg)),
       objects: this.objects.map((o) => o.toJSON()),
@@ -351,9 +360,11 @@ export class World {
       this.time += dt;
       if (this.clock.advance(dt)) this.events.emit("clock.day", { day: this.clock.day });
       this.weather.step(dt);
+      this.experience.tick(this.clock);
       this.scenarios.step();
       this.disruptions.step();
       this.services.step(dt);
+      this.walking.begin();
       this.transit.step(dt);
       for (const o of this.objects) if (o.update !== idle) o.update(dt);
       for (const s of this.simulations) s.step(dt);

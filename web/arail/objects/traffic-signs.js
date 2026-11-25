@@ -252,6 +252,18 @@ export class TrafficLight extends LayoutObject {
   }
 
   /**
+   * How long a vehicle that comes at any time waits at the light of an approach group on average
+   * (s): red for the share r of the cycle C makes r² × C / 2 (drivers plan with it, sims/traffic.js).
+   */
+  expectedWait(group) {
+    const C = clamp(+this.spec.cycle_s || 60, 20, 180), split = clamp((+this.spec.split || 50) / 100, 0.2, 0.8);
+    // green and amber are driven through: all red, and the other street's share
+    const go = (group === 0 ? C * split : C * (1 - split)) - 2;
+    const red = clamp(1 - go / C, 0, 1);
+    return (red * red * C) / 2;
+  }
+
+  /**
    * The light of an approach group (0: the main street's axis, 1: across it) at simulated time t:
    * "green", "amber", "red" or "red-amber".
    */
@@ -364,7 +376,8 @@ export class ZebraCrossing extends LayoutObject {
 
   /**
    * Is somebody on the crossing, or about to step onto it? Asks the simulations with people on foot
-   * (`pedestrians()`: [{pos}]); cached for the simulated time.
+   * (`pedestrians()`: [{pos, agent}]; a walker of core/walking.js counts while it crosses or stands at
+   * the kerb to cross, not while it walks past along the street); cached for the simulated time.
    */
   busy() {
     const g = this.geometry, t = this.world.time;
@@ -375,6 +388,13 @@ export class ZebraCrossing extends LayoutObject {
     for (const sim of this.world.simulations || []) {
       if (sim.enabled === false || typeof sim.pedestrians !== "function") continue;
       for (const p of sim.pedestrians()) {
+        // a walker of core/walking.js says itself whether it crosses: on the street, at the kerb to cross, or
+        // just before it; not one who walks past along the street, nor one who lets the vehicles go for a moment
+        const a = p.agent;
+        if (a && a.onRoad !== undefined) {
+          const x = a._cross;
+          if (a.letting || !(a.onRoad || a.held || (x && x.s0 != null && a.s >= x.s0 - this.mm(1.5) && a.s < x.s1))) continue;
+        }
         const d = [p.pos[0] - g.center[0], p.pos[1] - g.center[1]];
         const along = Math.abs(d[0] * g.u[0] + d[1] * g.u[1]), across = Math.abs(d[0] * g.n[0] + d[1] * g.n[1]);
         if (along <= w && across <= reach) {

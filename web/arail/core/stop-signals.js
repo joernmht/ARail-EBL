@@ -12,6 +12,12 @@
  * that passed the stop line at amber have cleared it): while a tram stands there, else for 8 s (their
  * green); a tram opens its doors only then. Trams pass the lights. A stop says where its lights are
  * with `stopSignals()` (objects/tram.js).
+ *
+ * The strip is kept clear like a junction (StVO § 11): while the traffic stands at its far end (a
+ * queue from the next junction), nobody drives onto it, at green too. Vehicles that stand on it all
+ * the same (they came in from the side, or the queue grew behind them) stay where they are while
+ * people cross: after `stand_s` of standing the people walk between them. So neither a queue nor a
+ * vehicle on the strip keeps a tram's doors shut for good.
  * @module arail/core/stop-signals
  */
 import { dist2, dot2, pointInPolygon, sub2 } from "./math.js";
@@ -20,19 +26,30 @@ import { dist2, dot2, pointInPolygon, sub2 } from "./math.js";
  * Seconds: amber, red-amber, red kept after the last person has left the strip, green at least (RiLSA:
  * 5 s) and green at least before people ask for red again (not a tram), the people's green when no
  * tram stands there; a tram asks for red within `approach_m` (m) when it moves faster than
- * `moving_ms` (m/s); at amber those stop who can with `brake` (m/s²).
+ * `moving_ms` (m/s); at amber those stop who can with `brake` (m/s²); vehicles that have stood on the
+ * strip for `stand_s` (slower than `standing_ms`) stay there while people cross; the strip is kept
+ * clear while a vehicle stands within `exit_m` (m) of its far end.
  */
-export const STOP_SIGNAL = { amber_s: 3, redAmber_s: 1, clear_s: 2, minGreen_s: 5, minGreenPeople_s: 12, walk_s: 8, approach_m: 50, moving_ms: 0.5, brake: 3.5 };
+export const STOP_SIGNAL = { amber_s: 3, redAmber_s: 1, clear_s: 2, minGreen_s: 5, minGreenPeople_s: 12, walk_s: 8, approach_m: 50, moving_ms: 0.5, brake: 3.5, stand_s: 6, standing_ms: 0.3, exit_m: 8 };
 
-/** Who stops at a light: everybody but trams; at amber only those who still can (m/s² of `brake`). */
+/**
+ * Who stops at a light: everybody but trams, before its stop line; at amber only those who still can
+ * (m/s² of `brake`). A vehicle whose front is past the stop line drives on and clears the strip: one
+ * that turned into the street behind the line (out of a bus station beside the stop) would else
+ * stand on the strip for good, the people could not cross, and the tram would never open its doors.
+ */
 function obeysLight(sig, state) {
   return (self, front) => {
     if (self.kind === "tram") return false;
-    if (state === "red" || state === "red-amber") return true;
     const along = dot2(sub2(sig.line[0], front), sig.dir) * (sig.metrePerMM || 0);
+    if (along < -PAST_LINE_M) return false;
+    if (state === "red" || state === "red-amber") return true;
     return along >= ((self.v || 0) * (self.v || 0)) / (2 * STOP_SIGNAL.brake);
   };
 }
+
+/** A vehicle's front this far (m) beyond a stop line has passed it. */
+const PAST_LINE_M = 0.3;
 
 export class StopSignals {
   /** @param {import("./world.js").World} world */
@@ -116,11 +133,18 @@ export class StopSignals {
     const now = this.world.time;
     for (const sig of this.list()) {
       let st = this.states.get(sig.id);
-      if (!st) this.states.set(sig.id, (st = { state: "green", since: -Infinity, clear: 0, need: false, occupied: false, walk: false, walkFrom: null }));
+      if (!st) this.states.set(sig.id, (st = { state: "green", since: -Infinity, clear: 0, need: false, occupied: false, walk: false, walkFrom: null, stood: 0, frozen: [], blocked: false }));
       const rep = this.reports.get(sig.areaId) || { crossing: 0, waiting: 0 };
       const tram = this._tram(sig, transit);
       st.need = rep.crossing > 0 || rep.waiting > 0 || !!tram;
-      st.occupied = st.state !== "green" && this._occupied(sig, users);
+      // on the strip: vehicles that move keep the people off it; those that stand, only for a while
+      const on = st.state !== "green" ? this._on(sig, users) : [];
+      const standing = on.length > 0 && on.every((u) => (u.speed ?? u.vehicle.v ?? 0) < STOP_SIGNAL.standing_ms);
+      st.stood = standing ? st.stood + dt : 0;
+      st.frozen = st.state === "red" && standing && st.stood >= STOP_SIGNAL.stand_s ? on : [];
+      st.occupied = on.length > 0 && !st.frozen.length;
+      // kept clear: nobody drives onto it while the traffic stands at its far end
+      st.blocked = st.state === "green" && this._exitBlocked(sig, users);
       const held = now - st.since;
       if (st.state === "green") {
         if (st.need && held >= (tram ? STOP_SIGNAL.minGreen_s : STOP_SIGNAL.minGreenPeople_s)) this._set(st, "amber", now);
@@ -134,6 +158,7 @@ export class StopSignals {
         if (st.clear >= STOP_SIGNAL.clear_s) this._set(st, "red-amber", now);
       } else if (held >= STOP_SIGNAL.redAmber_s) this._set(st, "green", now);
       if (st.state !== "red") st.walk = false;
+      if (!st.walk) st.frozen = [];
     }
   }
 
@@ -171,7 +196,12 @@ export class StopSignals {
    * crossing? Anywhere from its rear to its front: a bus is longer than the crossing to an island.
    */
   _occupied(sig, users) {
-    const [x0, y0, x1, y1] = sig.box, step = 1 / sig.metrePerMM;
+    return this._on(sig, users).length > 0;
+  }
+
+  /** The road users (not trams) on the strip of a light: see `_occupied`. */
+  _on(sig, users) {
+    const [x0, y0, x1, y1] = sig.box, step = 1 / sig.metrePerMM, out = [];
     for (const u of users || []) {
       const v = u.vehicle;
       if (!v || v.kind === "tram" || v.phase === "block" || v.phase === "signal") continue;
@@ -179,8 +209,30 @@ export class StopSignals {
       const n = Math.max(1, Math.ceil(dist2(u.front, u.rear) / step));
       for (let k = 0; k <= n; k++) {
         const p = [u.rear[0] + ((u.front[0] - u.rear[0]) * k) / n, u.rear[1] + ((u.front[1] - u.rear[1]) * k) / n];
-        if (p[0] >= x0 && p[0] <= x1 && p[1] >= y0 && p[1] <= y1 && pointInPolygon(p, sig.zone)) return true;
+        if (p[0] >= x0 && p[0] <= x1 && p[1] >= y0 && p[1] <= y1 && pointInPolygon(p, sig.zone)) {
+          out.push(u);
+          break;
+        }
       }
+    }
+    return out;
+  }
+
+  /**
+   * Does the traffic stand at the far end of the strip (a vehicle, not a tram, standing with its rear
+   * within `exit_m` before or behind the end, in the strip's lanes)? Then there is no room behind the
+   * strip, and nobody drives onto it.
+   */
+  _exitBlocked(sig, users) {
+    const z = sig.zone, end = [(z[1][0] + z[2][0]) / 2, (z[1][1] + z[2][1]) / 2];
+    const half = dist2(z[1], z[2]) / 2 + 0.5 / sig.metrePerMM, reach = STOP_SIGNAL.exit_m / sig.metrePerMM;
+    const ux = sig.dir[0], uy = sig.dir[1];
+    for (const u of users || []) {
+      const v = u.vehicle;
+      if (!v || v.kind === "tram" || v.phase === "block" || v.phase === "signal") continue;
+      if ((u.speed ?? v.v ?? 0) >= 1 || u.dir[0] * ux + u.dir[1] * uy < 0.3) continue;
+      const dx = u.rear[0] - end[0], dy = u.rear[1] - end[1], along = dx * ux + dy * uy;
+      if (along > -reach && along < reach && Math.abs(dx * uy - dy * ux) <= half) return true;
     }
     return false;
   }
@@ -193,9 +245,16 @@ export class StopSignals {
   blockers() {
     const out = [];
     for (const sig of this.list()) {
-      const state = this.state(sig.id);
-      if (state === "green") continue;
-      const obeys = obeysLight(sig, state);
+      const st = this.states.get(sig.id), state = st?.state ?? "green";
+      // the vehicles standing on the strip stay there while the people walk between them
+      for (const u of st?.frozen || []) {
+        const d = u.dir, gap = 0.3 / sig.metrePerMM, rear = [u.front[0] + d[0] * gap, u.front[1] + d[1] * gap];
+        const who = u.vehicle;
+        out.push({ vehicle: { id: `signal:${sig.id}:held`, phase: "signal", v: 0, owner: null, obeys: (self) => self === who }, front: [rear[0] + d[0] * sig.depth, rear[1] + d[1] * sig.depth], rear, dir: d, speed: 0, approach: null });
+      }
+      if (state === "green" && !st?.blocked) continue;
+      // (kept clear at green: as at red, for those still before the stop line)
+      const obeys = obeysLight(sig, state === "green" ? "red" : state);
       sig.line.forEach((p, k) => {
         const front = [p[0] + sig.dir[0] * sig.depth, p[1] + sig.dir[1] * sig.depth];
         out.push({ vehicle: { id: `signal:${sig.id}:${k}`, phase: "signal", v: 0, owner: null, obeys }, front, rear: p, dir: sig.dir, speed: 0, approach: null });

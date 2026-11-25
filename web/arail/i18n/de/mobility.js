@@ -90,9 +90,6 @@ export const TEXTS = {
   "at the doors": "an den Türen",
   "riding": "fahrend",
   "by car": "mit dem Auto",
-  "Take the car": "Das Auto nehmen",
-  "share of those who can drive": "Anteil derer, die fahren können",
-  "Of the people with a driving licence and a car (see the settings of the passengers), the share who drive their long ways in the town today; the others walk or take the bus.": "Von den Menschen mit Führerschein und Auto (siehe die Einstellungen der Fahrgäste) der Anteil, der heute seine langen Wege in der Stadt fährt; die anderen gehen zu Fuß oder nehmen den Bus.",
   // ------------------------------------------------------------ the journeys' travellers
   "walk: {n} min (planned {n2} min)": "zu Fuß: {n} min (geplant {n2} min)",
   "wait: {n} min (planned {n2} min)": "warten: {n} min (geplant {n2} min)",
