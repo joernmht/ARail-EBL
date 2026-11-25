@@ -117,7 +117,7 @@ repaired, or such a signature); its train is then worth what a cancelled one is.
 | Work | the inspection 170 min, the brake pads 110, the brake test 20, the door's drive 75, a part changed 45, a second measurement 10 |
 | The lathe | 30 min to set up, 12 a millimetre; setting up again after a cut too shallow 15; above 3 mm the other wheelset as long again; a millimetre of diameter is about 30 000 km |
 | On call | fleet management answers in 4 to 12 min, maintenance development in 6 to 14; a return to operation comes 6 to 16 min after the release, 2 after a phone call |
-| A release sent back | the unit goes into the hall again when a track is free (or is repaired where it stands on the pit or the jacks); 20 min to set up for it again, then the repair, and after a brake hose the brake test again; a time said to the dispatcher for it counts by the new release |
+| A release sent back | the unit goes into the hall again when a track is free (or is repaired where it stands on the pit or the jacks); 20 min to set up for it again, then the repair, and after a brake hose the unit's brake test again (442 105's); a time said to the dispatcher for it counts by the new release |
 | Score | trains with their unit 35, the night's orders 20, nothing comes back 15, the people 30 |
 
 Played by the computer on 24 seeds of the level *normal*: nobody at the desk 19 points (nothing

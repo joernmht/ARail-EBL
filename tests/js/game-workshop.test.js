@@ -532,6 +532,22 @@ test("a release sent back: a time said to the dispatcher for that unit is judged
   assert.equal(h.mood("dispatch"), 97, "the dispatcher is where it was before the release");
 });
 
+test("a release sent back for a brake hose: the repair first, the unit's brake test right after it, also with work that may wait behind the test; and a track left free before asks about the unit again", () => {
+  const g = new WorkshopGame({ seed: 1 }), u = g.unit("105");
+  for (const t of u.tasks) Object.assign(t, { state: "done", done: t.work });
+  // (work that may wait, behind the brake test: open at the release)
+  u.tasks.push({ id: "door", unit: u.id, name: "the drive of door 3", where: ["1", "2", "3"], work: S(75), done: 0, state: "open", required: false, ordered: true, under: false, lathe: false, tester: false });
+  const hose = WORKSHOP_FINDINGS.find((f) => f.brakes);
+  u.findings.push({ ...hose, kind: hose.id, id: `${u.id}-${hose.id}`, unit: u.id, type: "extra", must_have: true, real_min: 30, state: "noted" });
+  g._left.set("2", new Set([u.id]));
+  assert.ok(g.release(u.id).ok);
+  run(g, u.rto_due - g.t + 1);
+  assert.equal(u.sent_back, 1);
+  const ids = u.tasks.filter((t) => t.state === "open").map((t) => t.id);
+  assert.deepEqual(ids, [`repair-${u.id}-${hose.id}`, "brake-test", "door"], "the repair, then the brake test, then what may wait");
+  assert.ok(!g._left.get("2").has(u.id), "left free before, the track asks about the unit again");
+});
+
 test("the view for a page that does not know the game: figures, tables, the moves as forms, the depot as a picture, the hall for the table", () => {
   const g = play(computer, { seed: 3, until: S(100) }), v = g.view();
   assert.deepEqual(v.figures.map((f) => f.label), ["Trains with a unit", "Released", ...Object.values(WORKSHOP_PEOPLE).map((p) => p.label)]);

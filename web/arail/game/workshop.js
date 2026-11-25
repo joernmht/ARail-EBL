@@ -1229,9 +1229,15 @@ export class WorkshopGame extends Game {
     task.work += S(WORK.reopen_min);
     // (on the lathe's track it is repaired from the lathe's pit: it does not move for it)
     if (HALL.includes(u.track) && !task.where.includes(u.track)) task.where = [...task.where, u.track];
-    // (a repair on the brakes after the brake test: the test is due again, and signed again)
+    // (a repair on the brakes after the unit's brake test: the test is due again, right after the repair, and signed again)
     const test = f.brakes ? u.tasks.find((t) => t.id === "brake-test" && t.state === "done") : null;
-    if (test) Object.assign(test, { state: "open", done: 0 });
+    if (test) {
+      Object.assign(test, { state: "open", done: 0 });
+      u.tasks.splice(u.tasks.indexOf(test), 1);
+      u.tasks.splice(u.tasks.indexOf(task) + 1, 0, test);
+    }
+    // (a track left free while it waited outside before: it is a unit to ask about again)
+    for (const left of this._left.values()) left.delete(u.id);
     // (a time said to the dispatcher for this unit rested on the release that came back: it is judged again)
     if (this.word?.unit === u.id && this.word.kept === true) {
       this.word.kept = null;
