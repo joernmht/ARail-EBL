@@ -475,7 +475,10 @@ export class WorkshopGame extends Game {
     this._mood("fleet", this.t > S(OUT_BY_MIN) ? MOOD.after_four : MOOD.released);
     if (this.word?.unit === u.id && this.word.kept == null && this.t <= this.word.t + S(GRACE_MIN)) {
       this.word.kept = true;
+      // (what the dispatcher's patience truly gained, below its top of 100: a release sent back takes back that)
+      const was = this.resources.get("mood-dispatch").value;
       this._mood("dispatch", MOOD.kept_word);
+      this.word.gave = this.resources.get("mood-dispatch").value - was;
       this.log(`${hm(this.t)} ${u.name} is out by the time said to ${PEOPLE.dispatch.name}.`, "request");
     }
     this._patience("fleet");
@@ -1232,7 +1235,8 @@ export class WorkshopGame extends Game {
     // (a time said to the dispatcher for this unit rested on the release that came back: it is judged again)
     if (this.word?.unit === u.id && this.word.kept === true) {
       this.word.kept = null;
-      this._mood("dispatch", -MOOD.kept_word);
+      this._mood("dispatch", -(this.word.gave ?? MOOD.kept_word));
+      this.word.gave = 0;
     }
     this._mood("fleet", MOOD.noted_must);
     this.log(`${hm(this.t)} ${p.name}: "${u.name}: ${f.what}, and you write it into the release? Not returned to operation: repair it first${test ? ", and test the brakes again" : ""}. You could have asked me when it was found."`, "fault");

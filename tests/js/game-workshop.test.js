@@ -519,6 +519,17 @@ test("a release sent back: a time said to the dispatcher for that unit is judged
   run(g, g.word.t - g.t + S(5));
   assert.equal(g.word.kept, false);
   assert.ok(g.irregulars.some((x) => x.kind === "promise-broken") && g.violations.some((v) => v.rule === "promise"));
+  // near the top of the dispatcher's patience, what is taken back is what was truly given
+  const h = new WorkshopGame({ seed: 1 }), v = h.unit("105");
+  for (const t of v.tasks) Object.assign(t, { state: "done", done: t.work });
+  v.findings.push({ ...h._extra(v, "a"), must_have: true, state: "noted" });
+  h.word = { unit: v.id, t: h.t + S(60), kept: null };
+  h.resources.get("mood-dispatch").value = 97;
+  assert.ok(h.release(v.id).ok);
+  assert.equal(h.mood("dispatch"), 100);
+  run(h, v.rto_due - h.t + 1);
+  assert.equal(v.sent_back, 1);
+  assert.equal(h.mood("dispatch"), 97, "the dispatcher is where it was before the release");
 });
 
 test("the view for a page that does not know the game: figures, tables, the moves as forms, the depot as a picture, the hall for the table", () => {
