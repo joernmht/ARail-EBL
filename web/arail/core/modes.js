@@ -62,7 +62,7 @@ const COLUMNS = {
   spread: { label: "Tastes differ", unit: "min", min: 0, max: 30, step: 0.5, help: "People differ in how they like the mode: the standard deviation of their constants." },
   eur_km: { label: "Costs", unit: "€ per km", min: 0, max: 5, step: 0.01 },
   fare_eur: { label: "Fare", unit: "€ per trip", min: 0, max: 20, step: 0.1 },
-  sharpness: { label: "How sure the choice is", unit: "per min", min: 0.01, max: 5, step: 0.01, help: "The scale of the logit: at 0.25 a mode that costs 4 minutes less is taken e (2.7) times as often." },
+  sharpness: { label: "How sure the choice is", unit: "per min", min: 0.01, max: 5, step: 0.005, help: "The scale of the logit: at 0.07 a mode that costs 14 minutes less is taken e (2.7) times as often." },
   wait: { label: "A minute of waiting", unit: "factor", min: 0.1, max: 10, step: 0.05 },
   eur_min: { label: "A minute is worth", unit: "€", min: 0.01, max: 5, step: 0.01 },
   habit: { label: "Habit", unit: "min", min: 0, max: 30, step: 0.5, help: "The mode taken last time on a way counts as this much cheaper." },
@@ -76,43 +76,46 @@ const COLUMNS = {
 /**
  * The tastes of the people: a row for everybody and one per mode, as the town's setting `modes`
  * (a table like the people's, core/mobility.js: a layout sets only the cells it changes). The
- * constants are fitted to the shares of the modes by the length of the trip of MiD 2017 (see
- * `tests/js/modes.test.js`); the rest are the values of the sources and estimates.
+ * constants and the sharpness are fitted to the shares of the modes by the length of the trip of MiD
+ * 2017 for somebody who has all four ({@link typicalParts}: of 100 trips of half a kilometre about
+ * 60 on foot, 13 by bike, 22 by car, 4 by bus or tram; of one and a half kilometres about 25, 22, 44
+ * and 9; of three about 3, 23, 59 and 15; `tests/js/modes.test.js` holds them to it); the rest are the values of the sources and
+ * estimates.
  */
 export const MODE_TABLE = Object.freeze([
   ["everybody", "Everybody", {
-    sharpness: cell(0.25, "Estimate"),
+    sharpness: cell(0.07, "Fitted to MiD 2017: how fast walking gives way to the bike between half a kilometre and one and a half"),
     wait: cell(2, "Wardman 2004; Abrantes and Wardman 2011: waiting counts about twice the time on board"),
     eur_min: cell(0.2, "12 € an hour, as the drivers of the road traffic weigh parking fees"),
-    habit: cell(3, "Estimate"),
+    habit: cell(7, "Estimate"),
     learn: cell(0.3, "Estimate"),
     hearsay: cell(2, "Estimate"),
-    anger: cell(8, "Estimate"),
-    jam: cell(1.5, "Estimate: half as long again as on empty streets"),
+    anger: cell(14, "Estimate"),
+    jam: cell(2, "Estimate: twice as long as on empty streets"),
     quit: cell(2.2, "Estimate"),
   }],
   ["walk", "On foot", {
-    constant: cell(-9.5, "Fitted to MiD 2017: seven of ten trips up to a kilometre are walked"),
+    constant: cell(-30, "Fitted to MiD 2017: six of ten trips of half a kilometre are walked, one in four of one and a half"),
     minute: cell(1.6, "Abrantes and Wardman 2011: walking counts 1.5 to 2 times the time on board"),
-    spread: cell(2, "Estimate"),
+    spread: cell(5, "Estimate"),
   }],
   ["bike", "Bike", {
-    constant: cell(4, "Fitted to MiD 2017: about one trip in six by bike, at any length up to 5 km"),
+    constant: cell(0, "The measure of the other constants"),
     minute: cell(1.3, "Estimate: exercise and exposure"),
     own: cell(0.8, "MiD 2017: 78 % of the households have a bike"),
-    spread: cell(5, "Estimate: some ride every day, many never"),
+    spread: cell(14, "Estimate: some ride every day, many never"),
   }],
   ["transit", "Bus and tram", {
-    constant: cell(4.5, "Fitted to MiD 2017: one trip in ten in a town, more on the longer ways"),
+    constant: cell(10, "Fitted to MiD 2017: 4 of 100 trips of half a kilometre, 9 of one and a half"),
     minute: cell(1, "The time on board is the measure of the others"),
     fare_eur: cell(0.6, "Estimate: a monthly ticket, per trip"),
-    spread: cell(3, "Estimate"),
+    spread: cell(7, "Estimate"),
   }],
   ["car", "Car", {
-    constant: cell(2.5, "Fitted to MiD 2017: one trip in eight up to a kilometre, two in five from one to two"),
+    constant: cell(-7, "Fitted to MiD 2017: one trip in five of half a kilometre, nearly half of one and a half"),
     minute: cell(1, "As the time on board"),
     eur_km: cell(0.2, "Estimate: fuel and wear a kilometre in town"),
-    spread: cell(4, "Estimate"),
+    spread: cell(10, "Estimate"),
   }],
 ].map(([key, label, cells]) => Object.freeze({
   key, label, cells: Object.freeze(Object.fromEntries(Object.entries(cells).map(([k, c]) => [k, Object.freeze({ key: k, ...COLUMNS[k], ...c })]))),
@@ -160,6 +163,39 @@ export function modeProblems(table) {
     }
   }
   return out;
+}
+
+/**
+ * The parts of a trip of `km` kilometres in a town by each mode, as somebody plans it who knows no
+ * more than the length (minutes): on foot at 1.34 m/s on a way 1.3 times the straight line; by bike
+ * at 16 km/h, a minute and a half to unlock and lock it; by car at 30 km/h, two minutes to and from
+ * it and to park; by bus or tram 200 m on foot, half the interval waiting (`waitMin`), the ride at
+ * 25 km/h. What the constants are fitted on, and what a town expects of a way before anybody has
+ * gone it (sims/town.js).
+ * @param {number} km the straight line
+ * @param {{waitMin?: number, taste?: object}} [o]
+ * @returns {Record<string, object>} mode → parts
+ */
+export function typicalParts(km, { waitMin = 1.25, taste = DEFAULT_TASTE } = {}) {
+  const way = km * 1.3 * 1000;
+  return {
+    walk: { walk: way / 80.4 },
+    bike: { bike: way / (16000 / 60), fixed: 1.5 },
+    transit: { walk: 2.5, wait: waitMin, ride: (km * 1000) / (25000 / 60), eur: taste.transit.fare_eur },
+    car: { drive: way / 500, fixed: 2.2, eur: (taste.car.eur_km * way) / 1000 },
+  };
+}
+
+/**
+ * The shares of the modes for a trip of `km` kilometres among those who have them (`has`: the modes
+ * a person has, all four by default), by the tastes: a logit over the costs of {@link typicalParts}.
+ * @returns {Record<string, number>} mode → share (0 for a mode not had)
+ */
+export function typicalShares(km, { taste = DEFAULT_TASTE, has = MODE_KEYS, waitMin = 1.25, weather = null } = {}) {
+  const parts = typicalParts(km, { waitMin, taste });
+  const options = has.map((mode) => ({ mode, cost: perceived(mode, parts[mode], { taste, weather }) }));
+  const p = choiceShares(options, taste.everybody.sharpness);
+  return Object.fromEntries(MODE_KEYS.map((m) => [m, p[options.findIndex((o) => o.mode === m)] ?? 0]));
 }
 
 /** How the weather, the dark and the person change what a minute outside feels like (see {@link exposure}). */

@@ -47,6 +47,8 @@ const BRAKE = 2.0;
 const GAP_M = 1.5;
 /** Two riders and a person closer than this sideways (m, plus the street's `conflict` × 1.5 m) are in each other's way. */
 const NEAR_M = 0.9;
+/** The farthest the town's own people walk from a door to a way for bikes, and from where they lock the bike (m). */
+const OWN_REACH_M = 120;
 /** Colours of the riders' clothes and bikes. */
 const RIDER_COLOURS = [CD.tuerkis, CD.orange, CD.brillantblau, grey(0.25), grey(0.6), mix(CD.rot, grey(0.5), 0.3), mix(CD.gelb, grey(0.4), 0.3)];
 
@@ -233,6 +235,49 @@ export class CyclingSimulation extends Simulation {
     this.riders.push(rider);
   }
 
+  /**
+   * What a ride between two places takes (s), as a person plans it before they choose the bike
+   * (sims/town.js): the shortest way for bikes at `kmh`. Null where there is no way for a bike.
+   */
+  planSeconds(from, to, kmh = 16) {
+    const net = this._network();
+    if (!this.enabled || !net || net.empty) return null;
+    const a = net.nearestNode(from, { mode: "bike" }), b = net.nearestNode(to, { mode: "bike" });
+    if (!a || !b || a === b || this.meters(dist2(a.pos, from)) > OWN_REACH_M || this.meters(dist2(b.pos, to)) > OWN_REACH_M) return null;
+    const route = net.route(a, b, { mode: "bike" });
+    return route ? this.meters(route.length) / (kmh / 3.6) : null;
+  }
+
+  /**
+   * A ride of one of the town's own people (sims/town.js): from where they are to a building, where
+   * the bike is locked to a street lamp or bike stand nearby. The rider comes on top of the riders
+   * from beyond the layout.
+   * @param {{person: object, from: number[], to: number[], kmh?: number, child?: boolean, name?: string,
+   *   onArrive: (at: {pos: number[], spot: object | null, rider: object}) => void}} o to: the door (layout mm);
+   *   onArrive: when the bike is locked: `pos` where the rider gets off, `spot` where the bike stands (null:
+   *   nowhere to lock it nearby: it leans somewhere out of sight)
+   * @returns {object | null} the rider, or null where no bike can be ridden
+   */
+  ride({ person, from, to, kmh = 16, child = false, name = null, onArrive }) {
+    const net = this._network();
+    if (!this.enabled || !net || net.empty) return null;
+    const a = net.nearestNode(from, { mode: "bike" }), b = net.nearestNode(to, { mode: "bike" });
+    if (!a || !b || a === b) return null;
+    const id = nextRiderId++, seq = ++this._seq;
+    const rider = {
+      id: `bike${id}`, seq, kind: "bike", person, child, compliant: true, colour: this.rng.pick(RIDER_COLOURS),
+      vmax: kmh / 3.6, v: 0, s: 0, mood: 0.85, met: new Set(), waited: 0, owner: person, onArrive, goal: { id: null, name, node: b, pos: to },
+    };
+    if (!this._route(rider, net, a, b)) return null;
+    this.riders.push(rider);
+    return rider;
+  }
+
+  /** The bike of one of the town's own people is taken from where it was locked (`ride`'s `spot`). */
+  unlock(rider) {
+    this.world.parking?.unlockBike(rider);
+  }
+
   /** A building to ride to, with the node next to it: {id, name, node, pos}. */
   _goal(net) {
     const list = this.world.objects.filter((o) => o.geometry && typeof o.entrances === "function" && typeof o.capacity === "function" && o.entrances().length);
@@ -303,9 +348,10 @@ export class CyclingSimulation extends Simulation {
       const sf = this._surface(u.vehicle);
       return sf.edge?.obstruct && (sf.where === "road" || sf.where === "lane") && sf.edge.kind === "road";
     });
+    // (the riders of the town's own people come on top: they chose the bike themselves)
     const target = this.targetCount(net);
     this._spawn -= dt;
-    if (this.riders.length < target && this._spawn <= 0) {
+    if (this.riders.reduce((n, r) => n + (r.owner ? 0 : 1), 0) < target && this._spawn <= 0) {
       this._enter(net);
       this._spawn = 2 / Math.max(1, net.boundaryNodes().length);
     }
@@ -413,6 +459,14 @@ export class CyclingSimulation extends Simulation {
     }
     rider.s = Math.min(L.length, rider.s + move);
     if (rider.s < L.length - this.mm(0.3)) return false;
+    // one of the town's own people: the bike is locked near the door, they walk on (`ride`)
+    if (rider.onArrive) {
+      const spot = this.world.parking?.lockBike(rider, rider.goal.pos, this.mm(OWN_REACH_M)) ?? null;
+      const then = rider.onArrive;
+      rider.onArrive = null;
+      then({ pos: spot?.pos ?? (rider._pose || this._pose(rider)).front, spot, rider });
+      return true;
+    }
     // arrived: lock the bike near the building for a while, or leave the layout
     if (rider.goal) {
       const spot = this.world.parking?.lockBike(rider, rider.goal.pos, this.mm(60));

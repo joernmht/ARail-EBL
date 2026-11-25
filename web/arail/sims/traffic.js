@@ -80,6 +80,8 @@ const GAP_M = 2.5; // distance to the vehicle ahead when standing (m)
 const PEOPLE_GAP_M = 2; // distance kept to a person on the street ahead (m)
 const WALK_MPS = 1.3; // walking speed of drivers and passengers (m/s)
 const MAX_WALK_M = 400; // the farthest a driver parks from the goal (m)
+const DOOR_M = 150; // the farthest the town's people walk from a door to where their car comes out (m)
+const OWN_STAY_MIN = 480; // the town's own people plan their parking for a working day (min)
 const EUR_PER_MIN = 0.2; // what a minute is worth to a driver (12 € an hour): weighs fees against time
 const PASS_AFTER_S = 2; // a car behind a bike waits this long before it looks for a chance to overtake
 const ONCOMING_M = 60; // overtaking needs the other lane free this far ahead (m)
@@ -487,6 +489,72 @@ export class TrafficSimulation extends Simulation {
     this.world.experience?.learn("car", car.began, car.weekend, ratio);
   }
 
+  /**
+   * What a drive between two places takes on empty streets (s), as a person plans it before they
+   * choose the car (sims/town.js): the fastest way at the speed limits drivers use, and its ends.
+   * Null where there is no way by car (no streets, a place too far from them).
+   * @param {number[]} from layout mm
+   * @param {number[]} to layout mm
+   */
+  planSeconds(from, to) {
+    const net = networkOf(this.world);
+    if (!this.enabled || !net || net.empty) return null;
+    const a = net.nearestNode(from, { mode: "car" }), b = net.nearestNode(to, { mode: "car" });
+    if (!a || !b || a === b || net.meters(dist2(a.pos, from)) > DOOR_M || net.meters(dist2(b.pos, to)) > MAX_WALK_M) return null;
+    const t = net.distance(a, b, "car");
+    return Number.isFinite(t) ? t / CRUISE + TRIP_ENDS_S : null;
+  }
+
+  /**
+   * A drive of the town's own people (sims/town.js): a car with them in it, from where they are (or
+   * from where their car is parked) to a parking space near a building, as the driver plans it
+   * (`planDrive`); where the building has no parking within reach, to the street before it. The car
+   * comes on top of the cars from beyond the layout: its people chose it themselves.
+   * @param {{people: object[], from: number[], to: string, purpose?: string, parked?: object | null,
+   *   onArrive: (at: {pos: number[] | null, parked: object | null, ratio: number}) => void}} o
+   *   people: the driver first; from: where they are (layout mm); to: a building's id; parked: where
+   *   their car stands (what an earlier drive gave `onArrive`); onArrive: when the car stands: `pos`
+   *   where they get out (null: at the door), `parked` its space (null: out of sight), `ratio` the
+   *   time the drive took to its plan
+   * @returns {object | null} the car, or null where no car can be driven (the caller counts the time instead)
+   */
+  drive({ people, from, to, purpose = "visit", parked = null, onArrive }) {
+    const net = networkOf(this.world);
+    if (!this.enabled || !net || net.empty || !people?.length) return null;
+    const entry = parked && this.parkedCars.includes(parked) ? parked : null;
+    const at = entry ? entry.spot?.pos ?? entry.facility.entry ?? entry.facility.exit : from;
+    const a = at ? net.nearestNode(at, { mode: "car" }) : null;
+    if (!a || (!entry && net.meters(dist2(a.pos, from)) > DOOR_M)) return null;
+    const who = purpose === "home" ? { home: to, resident: true } : {};
+    const plan = planDrive(this.world, { from: a, to, purpose, driver: who, stayMin: OWN_STAY_MIN });
+    let route = plan?.route ?? null, dest = plan?.entry.id ?? null;
+    if (!route) {
+      // no parking within reach of the building: to the street before its door
+      const door = entrancesOf(this.world, to)[0], b = door ? net.nearestNode(door.pos, { mode: "car" }) : null;
+      if (!b || b === a || net.meters(dist2(b.pos, door.pos)) > MAX_WALK_M) return null;
+      route = net.route(a, b, { mode: "car" });
+      dest = b.id;
+    }
+    const car = route ? this._car(net, route, dest, 0, { driver: people[0], passengers: people.slice(1) }) : null;
+    if (!car) return null;
+    if (entry) {
+      // out of its space: the same car
+      this.world.parking?.release(entry.facility.id, entry.car);
+      this.parkedCars = this.parkedCars.filter((x) => x !== entry);
+      Object.assign(car, { id: entry.car.id, colour: entry.car.colour });
+    }
+    Object.assign(car, { purpose, destId: to, destName: this.world.getObject(to)?.name ?? null, plan: plan ?? null, stay: OWN_STAY_MIN, tried: [], who, owner: people[0], onArrive });
+    this.cars.push(this._begin(car));
+    return car;
+  }
+
+  /** The drive of one of the town's own people is over: they get out (`drive`'s `onArrive`). */
+  _arrived(car, pos, parked) {
+    const ratio = this._finish(car), then = car.onArrive;
+    car.onArrive = null;
+    then?.({ pos: pos ?? null, parked: parked ?? null, ratio });
+  }
+
   /** A new car where a street ends at the edge of the layout (or anywhere on a ring): through the town or to a building in it. */
   _enter(net) {
     const ends = net.boundaryNodes();
@@ -803,6 +871,11 @@ export class TrafficSimulation extends Simulation {
         this._begin(car, true);
         return false;
       }
+      // one of the town's own people gives up: the car is left somewhere out of sight, they walk on
+      if (car.owner) {
+        this._arrived(car, null, null);
+        return true;
+      }
       // gives up: drives out of the layout
       car.plan = null;
       const ends = net.boundaryNodes().filter((n) => n !== from);
@@ -811,10 +884,17 @@ export class TrafficSimulation extends Simulation {
       this._begin(car, true);
       return false;
     }
-    this._finish(car);
     const terms = parkingTerms(f, { ...(car.who || {}), purpose: car.purpose, destId: car.destId, permits: car.permits });
     car.fee = Math.round(terms.fee(car.stay) * 100) / 100;
     car.why = terms.why;
+    if (car.owner) {
+      // the town's own people: the car stays until they come back for it (`drive` with `parked`)
+      const kept = { car, facility: f, slot: slot.slot, spot: slot.spot, until: Infinity, owner: car.owner };
+      this.parkedCars.push(kept);
+      this._arrived(car, slot.spot?.pos ?? f.exit ?? null, kept);
+      return true;
+    }
+    this._finish(car);
     const entry = { car, facility: f, slot: slot.slot, spot: slot.spot, until: Infinity, back: { door: plan.door } };
     this.parkedCars.push(entry);
     // the people walk to the building; their stay begins when they are there
@@ -922,6 +1002,11 @@ export class TrafficSimulation extends Simulation {
     if (car.s >= p.length - this.mm(0.5)) {
       // arrived: park at the goal, leave at the edge of the layout, or drive on to another place (ring roads)
       if (car.plan?.facility) return this._park(car, net);
+      if (car.owner) {
+        // no parking there: out of sight before the door
+        this._arrived(car, null, null);
+        return true;
+      }
       this._finish(car);
       const node = car.net === net ? net.nodes[car.dest] : net.nearestNode(car.destPos, { mode: "car" });
       if (!node || node.carDegree <= 1 || car.owner || this._background() > this.wanted(net)) return true;
@@ -999,7 +1084,7 @@ export class TrafficSimulation extends Simulation {
   card(hit) {
     const car = hit.ref, kmh = Math.round(car.v * 3.6);
     const rows = [["Speed", `${kmh} km/h`]];
-    if (car.driver?.name) rows.push(["Driver", car.driver.name]);
+    if (car.driver?.name) rows.push(["Driver", car.owner ? `${car.driver.name} (lives in the town)` : car.driver.name]);
     const n = car.passengers?.length ?? 0;
     rows.push(["Riding along", n ? car.passengers.map((p) => p.name).join(", ") : "nobody"]);
     const load = this._loadTime(car);

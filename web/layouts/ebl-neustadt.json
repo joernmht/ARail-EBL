@@ -82,7 +82,7 @@
   "consists": [{"id": "stadtbahn", "name": "Stadtbahn", "lines": ["S 10"], "vehicles": [{"type": "et442s"}]}],
   "simulations": [
     {"type": "passengers", "base_rate": 0.5, "max_per_area": 160},
-    {"type": "town", "people_per_100": 25, "max_people": 3000, "walk_max_m": 120, "bus_share": 0.6},
+    {"type": "town", "people_per_100": 25, "max_people": 3000, "walk_max_m": 120, "stretch": 3},
     {"type": "traffic", "cars_per_km": 8},
     {"type": "cycling", "riders_per_km": 4}
   ],
