@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { STEP_FREE_M, STOP_SIGNAL, TRAM, TRAM_STOP_TYPES, createWorld, tramRails } from "../../web/arail/index.js";
+import { STEP_FREE_M, STOP_SIGNAL, TRAM, TRAM_STOP_TYPES, createWorld, pointInPolygon, pointSegment, tramRails } from "../../web/arail/index.js";
 import { readJSON } from "./helpers.js";
 
 /** 25 m in H0 (mm): the tightest curve of tram tracks. */
@@ -438,6 +438,20 @@ test("Bf Neustadt: two tram lines from loop to loop, line 2 through the pedestri
   assert.ok(lines[1].circuit.points.some((p) => Math.abs(p[0] - 2550) < 1 && p[1] < -1200 && p[1] > -1800), "line 2 along Marktstraße, past St. Marien");
   // the rails run round: two rails a line, no crossovers
   for (const l of lines) assert.equal(tramRails(l, 1435 / 87, 230).length, 2);
+  // no tram runs through a building: its track, a tram's half width (1.3 m) to each side, stays outside
+  // every footprint (the loops and their necks included)
+  const open = new Set(["road", "area", "tabletop", "market-square", "label", "tree", "forest", "track", "platform", "tram-stop", "bus-stop", "traffic-light", "traffic-sign", "zebra-crossing", "rail-crossing", "underpass"]);
+  const solid = w.objects.filter((o) => !open.has(o.type) && o.footprint?.()?.length >= 3);
+  const halfTram = 1300 / 87;
+  for (const l of lines) {
+    for (const p of l.circuit.points) {
+      for (const o of solid) {
+        const fp = o.footprint();
+        const near = fp.some((a, i) => pointSegment(p, a, fp[(i + 1) % fp.length]).distance < halfTram);
+        assert.ok(!pointInPolygon(p, fp) && !near, `${l.id} at ${p.map(Math.round)} runs through ${o.id}`);
+      }
+    }
+  }
   // Brückenstraße crosses the main line at street level (half barriers): no tram tracks over it
   const crossing = w.getObject("rail-crossing-bruecke");
   assert.equal(crossing.crossingType.level, true);
