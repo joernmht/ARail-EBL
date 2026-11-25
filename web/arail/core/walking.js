@@ -44,12 +44,13 @@ import { pointSegment, polylineAt, segmentDistance } from "./math.js";
  * apart along it, up to `slots` beside each other, the next ones `row_m` behind them (`rows` at
  * most); a driver slower than `slow_mps` (a queue that creeps) lets people cross who have stood at the
  * kerb for `seen_s`, where the vehicle can still stop; a vehicle within
- * `turn_m` that has waited `turn_s` for people crossing goes before those who come to the kerb now.
+ * `turn_m` that has waited `turn_s` for people crossing goes before those who come to the kerb now:
+ * the crossing is the vehicles' for `let_s`, then the people's for `people_s` at least.
  */
 export const WALKING = Object.freeze({
   kerb_m: 0.4, sample_m: 0.5, gap_s: 2, hurried_gap_s: 0.5, patience_s: 15, give_up_s: 90, standing_mps: 0.5, body_m: 0.35, round_m: 1.2, round: 3, row_m: 0.7,
   horizon_m: 70, way_m: 2, brake: 3, keep_m: 0.4, pass_m: 0.6, shift_mps: 0.7, ahead_m: 4, near_m: 1.1, close_m: 0.7, lane_m: 0.45, body_w_m: 0.5, beside_m: 0.9, edge_m: 0.75, cell_m: 3, slower_mps: 0.15,
-  slot_m: 0.5, slots: 9, rows: 40, turn_s: 6, turn_m: 12, slow_mps: 3, seen_s: 3,
+  slot_m: 0.5, slots: 9, rows: 40, turn_s: 6, turn_m: 12, let_s: 6, people_s: 10, slow_mps: 3, seen_s: 3,
 });
 
 /** Half the width of a vehicle by its kind (m): what its body takes of a crossing. */
@@ -70,6 +71,8 @@ export class Walking {
     this._cells = new Map();
     this._users = [];
     this._time = null;
+    /** Whose turn it is at the crossings where vehicles have waited for people: place → {until: the vehicles' turn, again: no new one before}. */
+    this._turns = new Map();
   }
 
   mm(m) {
@@ -87,6 +90,7 @@ export class Walking {
     this._cells = new Map();
     this._users = null;
     this._time = w.time;
+    if (this._turns.size > 200) for (const [k, t] of this._turns) if (t.again < w.time) this._turns.delete(k);
     const size = this.mm(WALKING.cell_m);
     for (const sim of w.simulations || []) {
       if (sim.enabled === false || typeof sim.pedestrians !== "function") continue;
@@ -110,12 +114,12 @@ export class Walking {
     return (this._users = out);
   }
 
-  /** The walkers near a point (as they were a step ago): those in the grid cells around it. */
-  near(p) {
+  /** The walkers near a point (as they were a step ago): those in the grid cells around it (`reach` cells to each side). */
+  near(p, reach = 1) {
     const size = this.mm(WALKING.cell_m), out = [];
     const x = Math.floor(p[0] / size), y = Math.floor(p[1] / size);
-    for (let i = x - 1; i <= x + 1; i++) {
-      for (let j = y - 1; j <= y + 1; j++) {
+    for (let i = x - reach; i <= x + reach; i++) {
+      for (let j = y - reach; j <= y + reach; j++) {
         const cell = this._cells.get(`${i},${j}`);
         if (cell) for (const q of cell) out.push(q);
       }
@@ -162,8 +166,19 @@ export class Walking {
         w.onRoad = !!x.go && w.s >= x.s0;
       } else w.onRoad = false;
       if (!w.held) w.kerb = 0;
+      /**
+       * Lets the vehicles go: for a moment, as it is their turn, or because one of them is in the way
+       * (a zebra crossing does not count it as about to cross: the vehicles drive on and clear it).
+       */
+      w.letting = w.held && !!x && (x.letUntil > this.world.time || !!x.blocked);
       // the people ahead and those who come; at the kerb and across the street in the place taken there
-      if (x && x.slot != null && w.s < x.s1) v = v > 0 ? this._among(w, v, dt, x.slot) : (this._ease(w, x.slot, dt), v);
+      if (x && x.slot != null && w.s < x.s1) {
+        // to its place at the kerb: the queue's order keeps people apart there (keeping behind whoever
+        // stands ahead as well would leave one of an earlier row stuck behind one of a later row, for good).
+        // On the street itself nobody stops behind another: slower, at most by half, so the street is cleared.
+        if (v > 0 && w.s >= x.s0) v = Math.max(v / 2, this._among(w, v, dt, x.slot));
+        else this._ease(w, x.slot, dt);
+      }
       else if (v > 0) v = this._among(w, v, dt);
       else this._ease(w, w.form?.lat ?? 0, dt);
     }
@@ -190,8 +205,8 @@ export class Walking {
   _crossing(w, net) {
     const path = w.path, step = this.mm(WALKING.sample_m);
     let c = w._cross;
-    if (!c || c.path !== path) c = w._cross = { path, scanned: Math.max(0, w.s - step), s0: null, s1: null, go: false, slot: null, row: 0, zebra: null };
-    if (c.s1 != null && w.s >= c.s1) Object.assign(c, { s0: null, s1: null, go: false, slot: null, row: 0, zebra: null });
+    if (!c || c.path !== path) c = w._cross = { path, scanned: Math.max(0, w.s - step), s0: null, s1: null, go: false, slot: null, row: 0, zebra: null, letUntil: 0 };
+    if (c.s1 != null && w.s >= c.s1) Object.assign(c, { s0: null, s1: null, go: false, slot: null, row: 0, zebra: null, letUntil: 0 });
     const until = Math.min(path.length, w.s + this.mm(WALKING.ahead_m));
     while (c.scanned < until && c.s1 == null) {
       const s = Math.min(path.length, c.scanned + step);
@@ -216,22 +231,32 @@ export class Walking {
 
   /**
    * A place at the kerb for a walker who arrives there: beside those who wait already (`x.slot`, mm
-   * to the right of the walk's line, which is along the kerb where the walk crosses the street), the
-   * nearest free one; when all are taken, behind them (`x.row`).
+   * to the right of the walk's line, which is along the kerb where the walk crosses the street), or
+   * behind them (`x.row`): at the end of the shortest of the queues there, the nearest of them. Never
+   * before somebody who waits already: that one could not move up, and the newcomer could not pass.
    */
   _slot(w, x) {
     const W = WALKING, gap = this.mm(W.slot_m), base = w.form?.lat ?? 0;
-    for (let row = 0; row < W.rows; row++) {
-      for (let k = 0; k < W.slots; k++) {
-        const lat = base + (k % 2 ? (k + 1) / 2 : -k / 2) * gap;
-        if (this._taken(w, lat, row)) continue;
-        x.slot = lat;
-        x.row = row;
-        return;
+    const p = w.line || w.pos, d = w.dir;
+    // how many wait in each queue: the last row taken of each place along the kerb
+    const last = new Map();
+    if (p && d) {
+      for (const o of this.near(p, 3)) {
+        const a = o.agent ?? o, c = a._cross;
+        if (a === w || !c || c.slot == null || !(a.held || a.s < c.s0)) continue;
+        const rx = o.pos[0] - p[0], ry = o.pos[1] - p[1];
+        if (Math.abs(rx * d[0] + ry * d[1]) > this.mm(4 + W.rows * W.row_m) || (o.dir?.[0] ?? 0) * d[0] + (o.dir?.[1] ?? 0) * d[1] < 0.5) continue;
+        const k = Math.round((-rx * d[1] + ry * d[0] - (a.lat || 0) + c.slot - base) / gap);
+        last.set(k, Math.max(last.get(k) ?? -1, c.row || 0));
       }
     }
-    x.slot = base;
-    x.row = 0;
+    let best = null;
+    for (let n = 0; n < W.slots; n++) {
+      const k = n % 2 ? (n + 1) / 2 : -n / 2, row = (last.get(k) ?? -1) + 1;
+      if (!best || row < best.row) best = { k, row };
+    }
+    x.slot = base + best.k * gap;
+    x.row = Math.min(W.rows, best.row);
   }
 
   /** Does somebody else wait at the walker's kerb in this place (the others' places as they took them)? */
@@ -265,6 +290,12 @@ export class Walking {
     const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
     if (length < 1e-6) return true;
     const waited = w.kerb || 0, anyway = waited > W.give_up_s;
+    // it is the vehicles' turn at this crossing (see below): for a few seconds, then the people's again
+    const now = this.world.time, place = `${Math.round((a[0] + b[0]) / 2 / mm(3))},${Math.round((a[1] + b[1]) / 2 / mm(3))}`;
+    const turn = this._turns.get(place);
+    x.blocked = false;
+    x.letUntil = turn && turn.until > now ? turn.until : 0;
+    if (x.letUntil) return false;
     const across = (length * metres) / Math.max(0.3, w.speed) + (w.form?.depth_s || 0);
     const margin = waited > W.patience_s ? W.hurried_gap_s : W.gap_s;
     const horizon = mm(W.horizon_m), step = mm(W.way_m), body = mm(W.body_m);
@@ -278,14 +309,24 @@ export class Walking {
       // (a vehicle that stands sees the walker and stays: vehicles brake for people; its body may be in the way)
       if (speed < W.standing_mps) {
         if (segmentDistance(a, b, u.rear, u.front) < half + body + mm(W.round * W.round_m)) standing.push({ u, half });
-        // one that has let people cross already goes next: who comes now lets it (not at a zebra crossing, and not for ever)
-        if (!zebra && !anyway && u.vehicle?.hold === "people" && (u.vehicle.yielded || 0) > W.turn_s && waited < W.patience_s) {
+        // one that has let people cross for a while goes next: who comes to the kerb now lets the vehicles go for a
+        // moment, at a zebra crossing too (a stream of people would else hold them for good), but not for ever
+        const hold = u.vehicle?.hold;
+        if ((hold === "people" || hold === "zebra") && (u.vehicle.yielded || 0) > W.turn_s && !(turn && turn.again > now)) {
           const to = this._reach(u, a, b, half + body, mm(W.turn_m), step);
-          if (to != null) return false;
+          if (to != null) {
+            // the vehicles' turn, for everybody who comes to this crossing; then the people's for at least as long
+            this._turns.set(place, { until: now + W.let_s, again: now + W.let_s + W.people_s });
+            x.letUntil = now + W.let_s;
+            return false;
+          }
         }
         continue;
       }
-      if (bodyDistance(a, b, u, half) < body) return false;
+      if (bodyDistance(a, b, u, half) < body) {
+        x.blocked = true;
+        return false;
+      }
       // (who has waited very long takes any gap: the vehicles brake for people; but nobody walks into a vehicle)
       if (anyway) continue;
       // how far along its way it meets the walker's line
@@ -316,6 +357,7 @@ export class Walking {
         return false; // from there, once the walker stands there
       }
     }
+    x.blocked = true;
     return false;
   }
 
@@ -368,7 +410,7 @@ export class Walking {
     let list = net._zebraPlaces;
     if (!list) {
       list = net._zebraPlaces = [];
-      for (const e of net.edges) for (const z of e.zebras || []) list.push({ pos: polylineAt(e.points, z.s, e.lengths).point, half: z.width / 2 });
+      for (const e of net.edges || []) for (const z of e.zebras || []) list.push({ pos: polylineAt(e.points, z.s, e.lengths).point, half: z.width / 2 });
     }
     const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], reach = this.mm(3);
     return list.some((z) => Math.hypot(z.pos[0] - mid[0], z.pos[1] - mid[1]) < z.half + reach);

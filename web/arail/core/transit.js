@@ -1473,7 +1473,7 @@ export class Transit {
     /** Why the bus or tram is held now ("light", "stop", "yield", "room", "zebra", "rail", "single", "end"), or null. */
     bus.hold = stopAt < this.mm(1.5) ? why : null;
     /** How long it has stood for people crossing (s): after a while those who come to the kerb let it go first (core/walking.js). */
-    bus.yielded = bus.hold === "people" ? (bus.yielded || 0) + dt : 0;
+    bus.yielded = bus.hold === "people" || bus.hold === "zebra" ? (bus.yielded || 0) + dt : 0;
     bus.v = vT > bus.v ? Math.min(vT, bus.v + ACCEL * dt) : Math.max(vT, bus.v - HARD * dt, 0);
     let move = Math.min(this.mm(bus.v * dt), d, stopAt);
     // never into the vehicle ahead

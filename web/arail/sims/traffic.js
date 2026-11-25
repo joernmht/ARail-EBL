@@ -1006,7 +1006,7 @@ export class TrafficSimulation extends Simulation {
     /** Why the car is held now ("light", "stop", "yield", "room", "zebra", "rail"), or null. */
     car.hold = stopAt < this.mm(1.5) ? why : null;
     /** How long it has stood for people crossing (s): after a while those who come to the kerb let it go first (core/walking.js). */
-    car.yielded = car.hold === "people" ? (car.yielded || 0) + dt : 0;
+    car.yielded = car.hold === "people" || car.hold === "zebra" ? (car.yielded || 0) + dt : 0;
     car.v = vT > car.v ? Math.min(vT, car.v + ACCEL * dt) : Math.max(vT, car.v - HARD * dt, 0);
     let move = Math.min(this.mm(car.v * dt), stopAt);
     // never into the vehicle ahead
