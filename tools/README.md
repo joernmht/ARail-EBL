@@ -110,6 +110,11 @@ Options: `--days N` (14), `--seed N`, `--date YYYY-MM-DD` (weekends then have no
 `--weather NAME` (a preset, or `typical` for the date), `--layers ID,ID`, `--from-scratch` (forget
 the experience the layout has), `--write`, `--json FILE`, `--check`.
 
+`--write` puts the experience on one line in the place of the one the layout had (also one the app
+exported over many lines), else before its simulations, and leaves the rest of the file as it is;
+it writes nothing where the file would not read as the same layout afterwards. `--check` compares
+the layout as it is loaded: an experience learned with `--layers` is checked with the same `--layers`.
+
 ## Humping trains
 
 `hump.mjs` (Node.js) humps random trains over the standard [hump yard](../docs/hump-yard.md) and

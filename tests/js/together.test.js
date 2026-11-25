@@ -174,6 +174,34 @@ test("somebody led by another goes alone when nobody comes for them", () => {
   assert.ok(kid.trips.length || kid.record, "its own trip");
 });
 
+test("a group's trip that is broken off ends for those who came along as it does for their leader", () => {
+  for (const [how, end] of [["_setInside", "other"], ["_setAway", "other"], ["_setAway", "train"]]) {
+    const world = createWorld(layout({ car_share: 0, bus_share: 0 }, { traffic: false, cycling: false, bus: false }), { seed: 11 });
+    world.step(0.1);
+    const t = townOf(world);
+    // until a group is on its way
+    let lead = null;
+    world.speed = 2.5;
+    for (let i = 0; i < 4e5 && !lead && world.clock.minutes < 12 * 60; i++) {
+      world.step(0.1);
+      lead = t.agents.find((a) => a.party?.leader === a && a.record && a.trip && a.party.members.some((m) => m !== a && m.state === "with" && m.record)) ?? null;
+    }
+    assert.ok(lead, "a group on its way");
+    const along = lead.party.members.filter((m) => m !== lead), before = lead.trips.length;
+    // (a trip made before, that ended otherwise: theirs must not end as that one did)
+    lead.trips.push({ end: "arrived" });
+    if (end === "train") lead.trip.station = "somewhere";
+    if (how === "_setInside") t._setInside(lead, lead.house.building);
+    else t._setAway(lead);
+    assert.equal(lead.trips[lead.trips.length - 1].end, end);
+    assert.equal(lead.trips.length, before + 2);
+    for (const m of along) {
+      assert.equal(m.trips[m.trips.length - 1].end, end, `${how}: as the leader's`);
+      assert.ok(!m.party && !m.with && m.state !== "with");
+    }
+  }
+});
+
 test("the choice of the mode: nobody drives or rides where it is switched off; where a line fits and it must, everybody rides", () => {
   const off = createWorld(layout({ car_share: 0, bus_share: 0 }, { cycling: false }), { seed: 5 });
   off.step(0.1);

@@ -42,7 +42,7 @@ world.step(0.1);
 if (flag("check")) {
   const key = experienceKey(world), had = input.experience?.for ?? null;
   if (!had) fail(`${file} has no experience. Run: node tools/mobility-learn.mjs ${file} --write`);
-  if (had !== key) fail(`The experience of ${file} was learned for another state of the layout (${had}, now ${key}). Run: node tools/mobility-learn.mjs ${file} --write`);
+  if (had !== key) fail(`The experience of ${file} was learned for another state of the layout (${had}, now ${key}): its streets, its lines or the settings of a simulation have changed${opt("layers") ? "" : ", or it was learned with --layers (then check with the same --layers)"}. Run: node tools/mobility-learn.mjs ${file}${opt("layers") ? ` --layers ${opt("layers")}` : ""} --write`);
   console.log(`The experience of ${file} is the layout's own (${key}, ${input.experience.days} days).`);
   process.exit(0);
 }
@@ -67,7 +67,7 @@ console.log(`${((Date.now() - t0) / 1000).toFixed(0)} s. Learned for the layout 
 if (opt("json")) writeFileSync(resolve(opt("json")), `${JSON.stringify(result, null, 2)}\n`);
 if (flag("write")) {
   const next = layoutWithExperience(text, result.experience);
-  if (!next) fail(`${file}: no place for the experience found (no top-level "simulations" on a line of its own). Use --json FILE and put its "experience" into the layout.`);
+  if (!next) fail(`${file}: no place for the experience found (no "simulations" in the layout), or the file would not read as the same layout with it. Nothing was written. Use --json FILE and put its "experience" into the layout.`);
   writeFileSync(path, next);
   console.log(`Kept in ${file} ("experience").`);
 } else console.log("Not kept (--write keeps it in the layout).");

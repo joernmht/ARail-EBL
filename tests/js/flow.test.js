@@ -53,6 +53,10 @@ test("a junction: only ways that touch make a vehicle wait", () => {
   assert.equal(mustYield({ kind: "car", seq: 5 }, turning, 100, [coming({ ...way("n", "s"), turn: "straight" }, 400)]), true);
   assert.equal(mustYield({ kind: "car", seq: 5 }, { ...j, turn: "straight" }, 400, [coming({ ...way("n", "w"), turn: "left" }, 100)]), false, "and is waited for by nobody");
   assert.equal(mustYield({ kind: "car", seq: 5 }, { ...j, turn: "straight" }, 400, [coming({ ...way("n", "s"), turn: "straight" }, 100)]), false, "ways that do not touch: no waiting, however close");
+  // only for the oncoming one: before one from the side street the closer goes first, turning left or not
+  assert.equal(mustYield({ kind: "car", seq: 5 }, turning, 100, [coming({ ...way("w", "e"), turn: "straight" }, 400)]), false, "closer than the one from the left");
+  assert.equal(mustYield({ kind: "car", seq: 5 }, turning, 400, [coming({ ...way("w", "e"), turn: "straight" }, 100)]), true, "the one from the left is closer");
+  assert.equal(mustYield({ kind: "car", seq: 5 }, { ...way("w", "e"), turn: "straight", pos: [0, 0], r: 50 }, 100, [coming({ ...left, turn: "left" }, 400)]), false, "and the one going straight does not go first just because the other turns left");
 });
 
 test("in a street network: a junction's ways come with the directions of their arms", () => {
@@ -258,6 +262,16 @@ test("the cars from beyond the layout learn: an hour known for its jams sees few
   assert.ok(traffic.share() < 0.25, "the longer the drives take, the fewer");
   near(traffic.expectedRatio(), (5 + traffic.liveRatio()) / 2, 1e-9, "what was learned and the traffic news, each half");
   assert.ok(traffic.liveRatio() >= 1);
+  // where a town is simulated, its own settings say when drivers give up and what a jam is (the table modes, row everybody)
+  const share = traffic.share();
+  world.simulations.push({ constructor: { type: "town" }, enabled: true, step() {}, taste: { everybody: { quit: 8, jam: 4 } } });
+  assert.ok(traffic.share() > share * 2, "patient drivers: more of them still come");
+  const car = { t0: world.time - 30, free: 10, began: 8 * 60, weekend: false };
+  traffic._finish(car);
+  assert.equal(traffic.jams, 0, "three times the plan is no jam where a jam begins at four");
+  world.simulations.pop();
+  traffic._finish({ t0: world.time - 30, free: 10, began: 8 * 60, weekend: false });
+  assert.equal(traffic.jams, 1);
   // a drive is planned with the wait at the lights of one who comes at any time
   const lights = createWorld({ objects: [{ id: "l", type: "traffic-light", position: [0, 0], cycle_s: 60, split: 50 }], simulations: [] }).getObject("l");
   near(lights.expectedWait(0), ((1 - 28 / 60) ** 2 * 60) / 2, 1e-9);

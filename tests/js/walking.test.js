@@ -167,17 +167,27 @@ test("at the kerb: people wait beside each other, the next ones behind them, and
 test("on the sidewalk: past a slower one where there is room, to the right when somebody comes, never through each other", () => {
   const s = scene({ street: [900, 901] });
   const slow = s.walker("a", 4, 1.0), fast = s.walker("b", 0, 1.7);
-  let closest = Infinity;
-  s.run(25, () => (closest = Math.min(closest, metres(Math.hypot(slow.pos[0] - fast.pos[0], slow.pos[1] - fast.pos[1])))));
+  let closest = Infinity, leftmost = 0;
+  s.run(25, () => {
+    closest = Math.min(closest, metres(Math.hypot(slow.pos[0] - fast.pos[0], slow.pos[1] - fast.pos[1])));
+    leftmost = Math.max(leftmost, metres(fast.pos[1]));
+  });
   assert.ok(fast.s > slow.s, "the faster one is past");
+  // (walking along +x, the left is +y: the right of a direction d is (d[1], -d[0]), as for the streets)
+  assert.ok(leftmost >= WALKING.pass_m - 0.05, `on the left (${leftmost.toFixed(2)} m)`);
   assert.ok(closest >= WALKING.pass_m - 0.05, `beside, not through (${closest.toFixed(2)} m)`);
   assert.ok(Math.abs(metres(fast.lat)) < 0.05, "and back on its line");
   // two who come towards each other each keep to their right
   const t = scene({ street: [900, 901] });
   const there = t.walker("a", 0, 1.3), back = t.walker("b", 0, 1.3, { path: { points: [[mm(30), 0], [0, 0]], lengths: [0, mm(30)], length: mm(30), hidden: [] } });
-  let apart = Infinity;
-  t.run(20, () => (apart = Math.min(apart, metres(Math.hypot(there.pos[0] - back.pos[0], there.pos[1] - back.pos[1])))));
+  let apart = Infinity, sides = null;
+  t.run(20, () => {
+    const d = metres(Math.hypot(there.pos[0] - back.pos[0], there.pos[1] - back.pos[1]));
+    if (d < apart) sides = [metres(there.pos[1]), metres(back.pos[1])];
+    apart = Math.min(apart, d);
+  });
   assert.ok(apart >= 2 * WALKING.keep_m - 0.1, `they pass each other (${apart.toFixed(2)} m)`);
+  assert.ok(sides[0] < -0.25 && sides[1] > 0.25, `each on their right: the one along +x at -y, the one coming at +y (${sides.map((y) => y.toFixed(2))})`);
   // no room to pass (somebody comes): behind the slower one at their pace
   const u = scene({ street: [900, 901] });
   const front = u.walker("a", 3, 0.9), behind = u.walker("b", 0, 1.8);

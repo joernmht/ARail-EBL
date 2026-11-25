@@ -185,7 +185,7 @@ export class Walking {
     w.s = Math.min(path.length, w.s + mm(v) * dt);
     const at = polylineAt(path.points, w.s, path.lengths), lat = w.lat || 0;
     w.dir = at.dir;
-    w.pos = lat ? [at.point[0] - at.dir[1] * lat, at.point[1] + at.dir[0] * lat] : at.point;
+    w.pos = lat ? [at.point[0] + at.dir[1] * lat, at.point[1] - at.dir[0] * lat] : at.point;
     w.line = at.point;
     return w.s >= path.length;
   }
@@ -246,7 +246,7 @@ export class Walking {
         if (a === w || !c || c.slot == null || !(a.held || a.s < c.s0)) continue;
         const rx = o.pos[0] - p[0], ry = o.pos[1] - p[1];
         if (Math.abs(rx * d[0] + ry * d[1]) > this.mm(4 + W.rows * W.row_m) || (o.dir?.[0] ?? 0) * d[0] + (o.dir?.[1] ?? 0) * d[1] < 0.5) continue;
-        const k = Math.round((-rx * d[1] + ry * d[0] - (a.lat || 0) + c.slot - base) / gap);
+        const k = Math.round((rx * d[1] - ry * d[0] - (a.lat || 0) + c.slot - base) / gap);
         last.set(k, Math.max(last.get(k) ?? -1, c.row || 0));
       }
     }
@@ -269,7 +269,7 @@ export class Walking {
       // (at the same kerb: about level with the walker along its line, and facing the same way)
       const rx = o.pos[0] - p[0], ry = o.pos[1] - p[1];
       if (Math.abs(rx * d[0] + ry * d[1]) > this.mm(4) || (o.dir?.[0] ?? 0) * d[0] + (o.dir?.[1] ?? 0) * d[1] < 0.5) continue;
-      const side = -rx * d[1] + ry * d[0] - (a.lat || 0) + c.slot;
+      const side = rx * d[1] - ry * d[0] - (a.lat || 0) + c.slot;
       if (Math.abs(side - lat) < gap * 0.6) return true;
     }
     return false;
@@ -285,7 +285,7 @@ export class Walking {
   _clear(w, x) {
     const path = w.path, W = WALKING, mm = (m) => this.mm(m), metres = this.world.scale / 1000;
     const at0 = polylineAt(path.points, x.s0, path.lengths), at1 = polylineAt(path.points, x.s1, path.lengths);
-    const line = (lat) => [[at0.point[0] - at0.dir[1] * lat, at0.point[1] + at0.dir[0] * lat], [at1.point[0] - at1.dir[1] * lat, at1.point[1] + at1.dir[0] * lat]];
+    const line = (lat) => [[at0.point[0] + at0.dir[1] * lat, at0.point[1] - at0.dir[0] * lat], [at1.point[0] + at1.dir[1] * lat, at1.point[1] - at1.dir[0] * lat]];
     const [a, b] = line(x.slot ?? 0);
     const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
     if (length < 1e-6) return true;
@@ -351,7 +351,7 @@ export class Walking {
       for (const sign of [1, -1]) {
         const lat = (x.slot ?? 0) + sign * k * mm(W.round_m);
         // (not from a place that is on a carriageway itself: the corner of a junction)
-        if (net?.carriageway([back.point[0] - back.dir[1] * lat, back.point[1] + back.dir[0] * lat])) continue;
+        if (net?.carriageway([back.point[0] + back.dir[1] * lat, back.point[1] - back.dir[0] * lat])) continue;
         if (!free(lat) || this._taken(w, lat, 0)) continue;
         x.slot = lat;
         return false; // from there, once the walker stands there
@@ -438,7 +438,7 @@ export class Walking {
       const rx = o.pos[0] - p[0], ry = o.pos[1] - p[1];
       const along = rx * d[0] + ry * d[1];
       if (along < -beside || along > ahead) continue;
-      const side = -rx * d[1] + ry * d[0]; // to the right of the walker
+      const side = rx * d[1] - ry * d[0]; // to the right of the walker: right of a direction d is (d[1], -d[0]), as in core/network.js
       if (Math.abs(side) > 2 * beside) continue;
       const facing = (o.dir?.[0] ?? 0) * d[0] + (o.dir?.[1] ?? 0) * d[1];
       if (facing < -0.3) {

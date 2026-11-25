@@ -145,6 +145,16 @@ test("what the town learns: by mode and hour, an hour's trips when it is over, d
   const running = x.ratio("car", 8 * 60 + 30);
   near(running, (1 * LEARNING.today + 20 * 3) / (LEARNING.today + 20), 1e-9);
   assert.equal(x.table.car.weekday[8], 1, "not learned yet");
+  // a drive told of while still on the way is told of again in the place of that: one trip, its last word counts
+  const y = new Experience();
+  y.tick(clock);
+  y.learn("car", 8 * 60 + 10, false, 3);
+  y.learn("car", 8 * 60 + 10, false, 6, 3);
+  y.learn("car", 8 * 60 + 10, false, 4.5, 6);
+  near(y.ratio("car", 8 * 60 + 30), (1 * LEARNING.today + 4.5) / (LEARNING.today + 1), 1e-9, "counted once, with what it took in the end");
+  assert.equal(y.trips.car, 1);
+  y.learn("car", 3 * 60, false, 5, 3);
+  assert.equal(y.trips.car, 1, "its hour is closed: nothing to put right");
   // the hour after it is still open (trips are noted for the hour they began in); two hours on it is learned
   clock.minutes = 9 * 60 + 5;
   x.tick(clock);
@@ -249,7 +259,19 @@ test("working the experience out ahead: a town is run for some days, what it lea
   const second = layoutWithExperience(first, { ...result.experience, days: 9 });
   assert.equal(JSON.parse(second).experience.days, 9);
   assert.equal(second.split("\n").length, first.split("\n").length);
-  assert.equal(layoutWithExperience(`{"simulations":[]}`, result.experience), null, "no place found: the caller says so");
+  // a layout as the app exports it (the experience over many lines, every indent): the whole old one goes, nothing else
+  const exported = JSON.stringify({ ...JSON.parse(first), experience: { ...result.experience, days: 2 } }, null, 2);
+  for (const spread of [exported, JSON.stringify(JSON.parse(exported), null, 4), JSON.stringify(JSON.parse(exported))]) {
+    const third = layoutWithExperience(spread, result.experience);
+    assert.deepEqual(JSON.parse(third), JSON.parse(first), "the same layout, with the new experience");
+    assert.equal((third.match(/"experience"/g) || []).length, 1);
+  }
+  assert.deepEqual(JSON.parse(layoutWithExperience(`{"simulations":[]}`, result.experience)), { experience: result.experience, simulations: [] });
+  // a text with the word in a string or deeper down is not taken for the layout's own
+  const tricky = `{\n  "name": "the \\"experience\\": {",\n  "view": {"experience": 1},\n  "simulations": []\n}\n`;
+  assert.deepEqual(JSON.parse(layoutWithExperience(tricky, result.experience)), { ...JSON.parse(tricky), experience: result.experience });
+  assert.equal(layoutWithExperience(`{"objects": []}`, result.experience), null, "no place found: the caller says so");
+  assert.equal(layoutWithExperience(`{"simulations": [}`, result.experience), null, "no layout: nothing to write");
   // a world loaded with it starts where the learning ended
   const next = createWorld({ ...layout, experience: result.experience }, { seed: 5 });
   assert.ok(next.experience.given && next.experience.for === key);
@@ -282,6 +304,6 @@ test("Bf Neustadt: its experience is worked out for the layout as it is", () => 
   assert.deepEqual(experienceProblems(layout.experience), []);
   const world = createWorld(layout);
   world.step(0.1);
-  assert.equal(layout.experience.for, experienceKey(world), "the layout was changed since: run  node tools/mobility-learn.mjs web/layouts/ebl-neustadt.json --write");
+  assert.equal(layout.experience.for, experienceKey(world), "its streets, its lines or the settings of a simulation were changed since: run  node tools/mobility-learn.mjs web/layouts/ebl-neustadt.json --days 8 --write");
   assert.ok(layout.experience.days >= 7, "at least a week of learning");
 });

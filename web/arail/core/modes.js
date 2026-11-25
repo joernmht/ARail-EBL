@@ -439,11 +439,17 @@ export class Experience {
    * @param {number} minutes time of day the trip began (clock minutes)
    * @param {boolean} weekend
    * @param {number} ratio the time it took to the time planned
+   * @param {number | null} [was] the ratio this same trip was noted with before (it was still on the
+   *   way then): the new one takes its place while its hour is open, the trip is not counted again
    */
-  learn(mode, minutes, weekend, ratio) {
+  learn(mode, minutes, weekend, ratio, was = null) {
     if (!this.table[mode] || !Number.isFinite(ratio)) return;
     const h = ((Math.floor(minutes / 60) % HOURS) + HOURS) % HOURS, key = `${mode}|${weekend ? "weekend" : "weekday"}|${h}`;
     let bin = this.open.get(key);
+    if (was != null) {
+      if (bin) bin.sum += clamp(ratio, RATIO[0], RATIO[1]) - clamp(was, RATIO[0], RATIO[1]);
+      return;
+    }
     if (!bin) this.open.set(key, (bin = { mode, kind: weekend ? "weekend" : "weekday", hour: h, sum: 0, n: 0 }));
     bin.sum += clamp(ratio, RATIO[0], RATIO[1]);
     bin.n++;

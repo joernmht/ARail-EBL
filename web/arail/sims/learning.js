@@ -98,16 +98,82 @@ function splitSince(town, from) {
 
 /**
  * A layout file's text with an experience in it: the layout's top-level `experience` on one line,
- * in the place of the one it had, else before its simulations; the rest of the text as it is (a
- * layout file is kept by hand, an object a line). Null where the text has no place for it.
+ * in the place of the one it had (however that was written: on one line or over many), else before
+ * its simulations; the rest of the text as it is (a layout file is kept by hand, an object a line).
+ * Null where the text is no layout with a place for it, or where the text made would not read as
+ * the same layout with just this experience: nothing is to be written then.
  * @param {string} text the layout file
  * @param {object} experience as `runLearning` gives it
  * @returns {string | null}
  */
 export function layoutWithExperience(text, experience) {
-  const line = `  "experience": ${JSON.stringify(experience).replace(/,"/g, ', "').replace(/":/g, '": ')},`;
-  const had = /^ {2}"experience": .*$/m;
-  if (had.test(text)) return text.replace(had, line);
-  const before = /^ {2}"simulations": /m;
-  return before.test(text) ? text.replace(before, (m) => `${line}\n${m}`) : null;
+  const parse = (t) => {
+    try {
+      const o = JSON.parse(t);
+      return o && typeof o === "object" && !Array.isArray(o) ? o : null;
+    } catch {
+      return null;
+    }
+  };
+  const layout = parse(text);
+  if (!layout) return null;
+  const value = JSON.stringify(experience).replace(/,"/g, ', "').replace(/":/g, '": ');
+  const had = topLevelKey(text, "experience"), before = had ? null : topLevelKey(text, "simulations");
+  let next = null;
+  if (had) next = text.slice(0, had.valueStart) + value + text.slice(had.valueEnd);
+  else if (before) {
+    // (on a line of its own where the simulations are, with their indent)
+    const lineStart = text.lastIndexOf("\n", before.keyStart) + 1, indent = text.slice(lineStart, before.keyStart);
+    next = `${text.slice(0, before.keyStart)}"experience": ${value},${/^\s*$/.test(indent) && lineStart > 0 ? `\n${indent}` : " "}${text.slice(before.keyStart)}`;
+  }
+  // only a text that reads as the same layout with this experience
+  const made = next && parse(next), rest = (o) => JSON.stringify({ ...o, experience: undefined });
+  return made && JSON.stringify(made.experience) === JSON.stringify(experience) && rest(made) === rest(layout) ? next : null;
+}
+
+/**
+ * Where a key of the outermost object stands in a JSON text, and its value: found by reading the
+ * text (strings, brackets), not by its layout on the lines.
+ * @returns {{keyStart: number, valueStart: number, valueEnd: number} | null}
+ */
+function topLevelKey(text, name) {
+  const n = text.length;
+  // the end of the string that opens at i (the index after its closing quote)
+  const stringEnd = (i) => {
+    for (i++; i < n; i++) {
+      if (text[i] === "\\") i++;
+      else if (text[i] === '"') return i + 1;
+    }
+    return n;
+  };
+  // the end of the value that begins at i
+  const valueEnd = (i) => {
+    if (text[i] === '"') return stringEnd(i);
+    if (text[i] !== "{" && text[i] !== "[") {
+      while (i < n && !/[,}\]\s]/.test(text[i])) i++;
+      return i;
+    }
+    for (let depth = 0; i < n; i++) {
+      const c = text[i];
+      if (c === '"') i = stringEnd(i) - 1;
+      else if (c === "{" || c === "[") depth++;
+      else if ((c === "}" || c === "]") && --depth === 0) return i + 1;
+    }
+    return n;
+  };
+  let i = text.indexOf("{");
+  if (i < 0) return null;
+  for (i++; i < n; ) {
+    while (i < n && /[\s,]/.test(text[i])) i++;
+    if (text[i] !== '"') return null;
+    const keyStart = i, keyEnd = stringEnd(i);
+    i = keyEnd;
+    while (i < n && /\s/.test(text[i])) i++;
+    if (text[i] !== ":") return null;
+    for (i++; i < n && /\s/.test(text[i]); ) i++;
+    const end = valueEnd(i);
+    if (text.slice(keyStart + 1, keyEnd - 1) === name) return { keyStart, valueStart: i, valueEnd: end };
+    i = end;
+  }
+  return null;
 }

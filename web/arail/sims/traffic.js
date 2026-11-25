@@ -43,7 +43,7 @@ import { APPROACH_M, approachPrio, blockerAfter, boxFaces, entering, followSpeed
 import { hiddenAt, joinPaths } from "../core/network.js";
 import { Person, Population } from "../core/people.js";
 import { carLegTime, drawProfile, mobilityOf, walkingSpeed } from "../core/mobility.js";
-import { carShare } from "../core/modes.js";
+import { DEFAULT_TASTE, carShare } from "../core/modes.js";
 import { NEAR_MISS_BRAKE, peopleAhead } from "../core/walking.js";
 import { parkingTerms } from "../objects/parking.js";
 import { hasShops } from "../objects/building-kit.js";
@@ -104,8 +104,6 @@ const OVERDUE = 3;
 /** The traffic news count the cars that have been on their way this long (s); a car counts at most this many times its plan. */
 const LIVE_AFTER_S = 12;
 const LIVE_MAX = 6;
-/** A drive that takes this many times its plan was a jam (the figures of the card and the Overview). */
-const JAM = 2;
 
 /** Kilometres of street for cars per network: {scale, km} (see `targetCount`). */
 const STREET_KM = new WeakMap();
@@ -260,6 +258,16 @@ export class TrafficSimulation extends Simulation {
   }
 
   /**
+   * How drivers take a slow drive: the town's own settings where a town is simulated (its table of
+   * the modes, row everybody: `quit`, the ratio at which half give up the car, and `jam`, the ratio
+   * from which a drive counts as a jam), else the defaults (core/modes.js).
+   */
+  _taste() {
+    const town = this.world.simulations?.find((sim) => sim.constructor.type === "town" && sim.enabled !== false);
+    return town?.taste?.everybody ?? DEFAULT_TASTE.everybody;
+  }
+
+  /**
    * The share of the people who would drive on empty streets and do so now: fewer the longer the
    * town's drives take at this hour, as the town has learned (core/modes.js `carShare`,
    * `world.experience`); a few more in rain and cold, when fewer cycle.
@@ -269,7 +277,7 @@ export class TrafficSimulation extends Simulation {
     const ratio = this.expectedRatio();
     // a third of the cyclists the weather keeps off the bike take the car instead (estimate)
     const wet = w.weather?.on ? 1 + 0.3 * (1 - w.weather.cycleShare()) * BIKE_TO_CAR : 1;
-    return carShare(ratio) * wet;
+    return carShare(ratio, this._taste().quit) * wet;
   }
 
   /**
@@ -464,7 +472,7 @@ export class TrafficSimulation extends Simulation {
    */
   _begin(car, more = false) {
     const clock = this.world.clock;
-    if (!more || car.t0 == null) Object.assign(car, { t0: this.world.time, free: 0, began: clock.minutes, weekend: clock.weekend(), overdue: OVERDUE });
+    if (!more || car.t0 == null) Object.assign(car, { t0: this.world.time, free: 0, began: clock.minutes, weekend: clock.weekend(), overdue: OVERDUE, told: null });
     car.free += this._freeSeconds(car);
     return car;
   }
@@ -479,14 +487,19 @@ export class TrafficSimulation extends Simulation {
     const ratio = (this.world.time - car.t0) / car.free;
     this._learn(car, ratio);
     this.drives++;
-    if (ratio > JAM) this.jams++;
+    if (ratio >= this._taste().jam) this.jams++;
     car.ratio = ratio;
     car.t0 = null;
     return ratio;
   }
 
+  /**
+   * The town hears how long a drive takes against its plan. A drive that was told of while it was
+   * still on the way (`car.told`) is told of again in the place of that, not as one more drive.
+   */
   _learn(car, ratio) {
-    this.world.experience?.learn("car", car.began, car.weekend, ratio);
+    this.world.experience?.learn("car", car.began, car.weekend, ratio, car.told ?? null);
+    car.told = ratio;
   }
 
   /**

@@ -136,7 +136,7 @@ export const STREETS = [
         ["d3", "decision", "Stop sign?"],
         ["a3", "action", "Stand at the line once", "TrafficSimulation._drive"],
         ["m1", "merge"],
-        ["d4", "decision", "Somebody whose way touches its own in the junction, or coming with priority (at the same priority: closer, or coming the other way while it turns left)?"],
+        ["d4", "decision", "Somebody whose way touches its own in the junction, or coming with priority (at the same priority: coming the other way while it turns left, else closer)?"],
         ["a4", "action", "Wait, at the same priority at most 4 s", "mustYield"],
         ["d5", "decision", "Room behind the junction?"],
         ["a5", "action", "Wait before it: keep the junction clear (StVO § 11); out of a ring of such waits one drives in after 8 s", "blockerAfter"],
@@ -199,7 +199,7 @@ export const STREETS = [
     ],
     rules: [
       "Lights: the main street green for split × cycle, amber 3 s, all red 2 s, then the street across (red-amber 1 s, green, amber 3 s, all red 2 s).",
-      "Priorities at a junction: 2 green or priority road, 1 none, 0 give way, Stop or red; the higher goes first; at the same priority who turns left waits for who comes the other way (StVO § 9), else the closer one goes first; ties by kind (tram, bus, car, bike) and the order in which their simulation made them.",
+      "Priorities at a junction: 2 green or priority road, 1 none, 0 give way, Stop or red; the higher goes first; at the same priority who turns left waits for who comes the other way (StVO § 9: the arms they come from lie at least 135° apart; not for one from a side street), else the closer one goes first; ties by kind (tram, bus, car, bike) and the order in which their simulation made them.",
       "Ways through a junction that do not touch need no waiting (movesConflict): two from the same arm follow each other, two into the same arm merge and touch; else each way is a chord from its lane in (on the right of its arm) to its lane out, and they touch where the chords cross: a left turn across the oncoming traffic, the street across, but not two going straight past each other, nor a right turn beside traffic from the left that turns off. Where a direction is not known, they touch.",
       "Nobody drives into a junction without room behind it (StVO § 11), nor onto a zebra or level crossing (§ 19); vehicles that wait for each other in a circle squeeze past each other after 8 s; out of a ring of vehicles each waiting for the room the next one leaves behind a junction (the queues round a block, up to 64 vehicles), one drives into its junction after 8 s, for 4 s, still behind the vehicle ahead.",
       "Zebra crossings: vehicles stop while people are on it, stand at the kerb to cross or are about to step on (not for those who walk past along the street, nor for those who let the vehicles go for a moment); trams need not (StVO § 26); no parking on it or 5 m before it (StVO § 12).",

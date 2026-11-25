@@ -319,7 +319,7 @@ its own**: two going straight past each other, a right turn beside the traffic t
 from the same arm one behind the other do not wait for each other; turning left across the oncoming
 traffic, crossing the other street and merging into the same street do. Of two whose ways touch, the
 one with the higher priority goes first; at the same priority who turns left waits for who comes
-the other way (StVO § 9), else the one closer to the junction goes; ties go by the kind (tram, bus,
+the other way (StVO § 9; not for one from a side street), else the one closer to the junction goes; ties go by the kind (tram, bus,
 car, bike) and then by the order in which their simulation made them, so the same layout always runs
 the same way. Nobody drives into a junction, onto a zebra crossing or onto a level crossing without
 room behind it (StVO § 11, § 19). Vehicles that wait for each other's room in a ring (the queues
@@ -405,7 +405,8 @@ lights on it) and timed, and the town learns for each hour of the day how many t
 takes (`world.experience`, see [How people choose their mode](day-and-night.md#how-people-choose-their-mode-and-what-they-learn)).
 The more it takes at an hour, and the worse the traffic news are now (how the cars on the streets
 are doing against their plans), the fewer set out: all of them on empty streets, half where a drive
-takes 2.2 times its plan, a tenth whatever happens (through them the town learns when the streets
+takes 2.2 times its plan (`quit` of the town's table of the modes, where a town is simulated; its
+`jam` says from how many times its plan a drive counts as a jam), a tenth whatever happens (through them the town learns when the streets
 are free again). So the cars settle at what the streets carry, and a street closed or a new tram stop
 changes it over the days. A few more drive in rain and cold, when fewer cycle. The Overview shows
 what the town has learned.

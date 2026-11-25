@@ -1783,7 +1783,7 @@ export class TownSimulation extends Simulation {
 
   _setInside(a, id) {
     // those who came along are where their leader is now
-    if (a.party?.leader === a) this._dissolve(a, id);
+    if (a.party?.leader === a) this._dissolve(a, id, "other");
     // a trip that ended otherwise (taken off a stop, sent home): recorded as such
     if (a.record) this._closeRecord(a, "other");
     this._leave(a);
@@ -1802,8 +1802,9 @@ export class TownSimulation extends Simulation {
   }
 
   _setAway(a) {
-    if (a.party?.leader === a) this._dissolve(a, a.house?.building ?? null);
-    if (a.record) this._closeRecord(a, a.trip?.station ? "train" : "other");
+    const end = a.trip?.station ? "train" : "other";
+    if (a.party?.leader === a) this._dissolve(a, a.house?.building ?? null, end);
+    if (a.record) this._closeRecord(a, end);
     this._leave(a);
     a.state = "away";
     a.pos = null;
@@ -1813,10 +1814,13 @@ export class TownSimulation extends Simulation {
 
   /**
    * A group's trip is over: those who came along are in the building too (off the stop or the bus
-   * where they still were), each with the trip in their record; the group is no more.
+   * where they still were), each with the trip in their record; the group is no more. Their trips
+   * end as the leader's does: as its record was closed where it arrived, else (`open`: its record
+   * is still open, the caller closes it so) as the trip that is broken off.
    */
-  _dissolve(leader, id) {
+  _dissolve(leader, id, open = "other") {
     const party = leader.party, r = leader.record;
+    const end = r ? open : leader.trips[leader.trips.length - 1]?.end ?? "other";
     const along = this._along(leader);
     this._alone(leader);
     if (!party) return;
@@ -1825,8 +1829,7 @@ export class TownSimulation extends Simulation {
     for (const m of along) {
       this._alone(m);
       if (m.record && r) Object.assign(m.record, { mode: r.mode, way: null });
-      // (the leader's record is closed by now where it arrived: theirs ends the same way)
-      if (m.record) this._closeRecord(m, leader.trips[leader.trips.length - 1]?.end ?? "other");
+      if (m.record) this._closeRecord(m, end);
       m.person = null;
       m.vehicle = null;
       this._setWalking(m); // (so that `_setInside` counts it in, not out)
@@ -2184,7 +2187,7 @@ export class TownSimulation extends Simulation {
     }
     const s = Math.max(0, Math.min(path.length, leader.s - mmOf(back)));
     const at = polylineAt(path.points, s, path.lengths);
-    m.pos = [at.point[0] - at.dir[1] * lat, at.point[1] + at.dir[0] * lat];
+    m.pos = [at.point[0] + at.dir[1] * lat, at.point[1] - at.dir[0] * lat];
     m.dir = at.dir;
     m.lat = lat;
     m.held = leader.held;

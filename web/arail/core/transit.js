@@ -400,12 +400,17 @@ export function mustYield(self, j, d, users, prio = 1) {
     const p = a.prio ?? 1;
     if (p > prio) return true;
     if (p !== prio) continue;
-    // the same priority: who turns left waits for who comes the other way (StVO § 9), else the one closer goes first
-    const left = (j.turn === "left" ? 1 : 0) - (theirs?.turn === "left" ? 1 : 0);
+    // the same priority: who turns left waits for who comes the other way (StVO § 9: the arms they come from lie
+    // opposite each other), else the one closer goes first
+    const oncoming = theirs && j.a0 != null && theirs.a0 != null && Math.abs(Math.atan2(Math.sin(j.a0 - theirs.a0), Math.cos(j.a0 - theirs.a0))) > ONCOMING_RAD;
+    const left = oncoming ? (j.turn === "left" ? 1 : 0) - (theirs.turn === "left" ? 1 : 0) : 0;
     if (left > 0 || (left === 0 && (a.d < d || (a.d === d && firstOf(u.vehicle, self))))) return true;
   }
   return false;
 }
+
+/** Two vehicles come towards each other through a junction when the arms they come from lie this far apart at least (radians: 135°). */
+const ONCOMING_RAD = (3 * Math.PI) / 4;
 
 /** How far (radians) the lane into a junction lies to the right of its arm's axis, and the lane out of it to the left (seen from the junction). */
 const LANE_ANGLE = 0.08;
