@@ -92,7 +92,9 @@ example.
    module **Rail operations** on as well, drivers call in sick and units fail.
 6. Talk about the **Results**: who arrived when, how late, how many trains were missed or cancelled;
    **Download results (CSV)** for the debriefing.
-7. Again: **Start all again** and set the clock back to before the first departure.
+7. Again: **Start all again**. It sets the clock back to five minutes before the first departure, if
+   that is past, and with it the rest of the simulation: the other people are placed as at that time,
+   and the weather is that of the hour.
 
 The travellers are kept with the layout (in the browser, and in the file with Build → Export
 layout), so a prepared exercise can be handed out as a layout file.

@@ -18,6 +18,11 @@ const FRAME_SILENCE = 500;
 /** A frame the worker has not answered for this long (ms) is given up: the next one is sent. */
 const FRAME_LOST = 3000;
 /**
+ * A frame the worker could not search is skipped; after this many in a row the worker is given up
+ * (it would find nothing any more), and the main thread searches.
+ */
+const FRAME_ERRORS = 5;
+/**
  * Not asked for markers for this long (ms; the picture frozen, the flyover, a layout loading): what
  * was in the worker then is old, and neither applied nor shown when the camera view goes on.
  */
@@ -64,11 +69,16 @@ export class VideoDetection {
     this.watched = null;
     /** A frame of the watched video not searched yet (always true without requestVideoFrameCallback). */
     this.newFrame = true;
+    /** Setting the worker up failed once and was asked again (it fails for good the second time). */
+    this.initRetried = false;
+    /** Frames in a row the worker could not search (FRAME_ERRORS: given up). */
+    this.frameErrors = 0;
   }
 
   /**
    * Start the worker (once), set up as the app's detector: until it is ready, frames are searched on
-   * the main thread.
+   * the main thread. Setting it up (also anew) that fails is asked once more before the worker is given
+   * up; a frame it cannot search is skipped (FRAME_ERRORS in a row: given up).
    * @param {import("../arail/core/detector.js").MarkerDetector} detector
    */
   start(detector) {
@@ -88,14 +98,27 @@ export class VideoDetection {
       if (msg.type === "ready") {
         clearTimeout(timeout);
         if (this.state === "starting") this.state = "ready";
+        this.initRetried = false;
         // also answering a worker set up anew: a bitmap path that failed stays off
         this.bitmaps = !!msg.bitmaps && typeof createImageBitmap === "function" && !this.bitmapsFailed;
       } else if (msg.type === "markers") {
+        this.frameErrors = 0;
         if (this.pending?.id === msg.id) this.result = msg;
         else msg.bitmap?.close?.();
+      } else if (msg.type === "error" && (msg.of === "init" || msg.id == null)) {
+        // setting it up failed (a script of a dictionary not loaded: the network): asked once more, then
+        // given up (the time to start, WORKER_TIMEOUT, goes on)
+        if (this.initRetried) {
+          clearTimeout(timeout);
+          fail();
+        } else {
+          this.initRetried = true;
+          worker.postMessage({ type: "init", ...JSON.parse(this.settings) });
+        }
       } else if (msg.type === "error") {
-        clearTimeout(timeout);
-        fail();
+        // a frame it could not search: skipped, the next one is sent
+        if (this.pending?.id === msg.id) this.pending = this.result = null;
+        if (++this.frameErrors >= FRAME_ERRORS) fail();
       }
     };
     worker.onerror = (e) => {

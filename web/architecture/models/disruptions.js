@@ -109,7 +109,7 @@ export const DISRUPTIONS = [
     }],
     parameters: [
       { key: "scenarios[].steps[].at", default: "0", meaning: "Simulated seconds after Play (a pause stops the time)." },
-      { key: "set, message, call, start, stop, emit", default: "", meaning: "What a step does: demand, speed, the date (set.date), the time of day (set.time) or the weather (set.weather: a preset, typical, off or an object), as World.setDate, setTime and setWeather, checked first (Clock.isDate, isTime, Weather.isWeather) so that a step that fails changes none of them; a message, a train or bus called, a disruption started or stopped, an event sent (e.g. terminal.request.*)." },
+      { key: "set, message, call, start, stop, emit", default: "", meaning: "What a step does: demand, speed, the date (set.date), the time of day (set.time) or the weather (set.weather: a preset, typical, off or an object), as World.setDate, setTime and setWeather, checked first (Clock.isDate, isTime, Weather.isWeather) so that a step that fails changes nothing of its set, demand and speed too; a date without its year is in the clock's year when the step runs: 02-29 in a year without it fails and names the year (Clock.dateProblem), and the layout check, which cannot know that year, takes it; a message, a train or bus called, a disruption started or stopped, an event sent (e.g. terminal.request.*)." },
     ],
     events: {
       emits: [

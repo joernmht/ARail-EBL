@@ -200,6 +200,39 @@ test("the board: it draws the shift on the table without a word, and a fault, a 
   assert.ok(done && !b.board.shown().includes(done));
 });
 
+test("the board: a van is marked as one to choose only while its menu sends it somewhere, the base only while a technician on call can be called", () => {
+  const g = gameWith("azs"), { world, board } = boardOf(g), azs = g.fault("azs"), view = viewOf(world, board.bounds("all"));
+  board.active = true;
+  /** The vans drawn with a ring to choose them by, and those whose menu in the picture beside the table has a move. */
+  const ringed = () => g.teams.filter((tm) => {
+    let n = 0;
+    const polygon = view.polygon.bind(view);
+    view.polygon = (pts, o) => {
+      if (o?.order === 7) n++;
+      return polygon(pts, o);
+    };
+    board._team(view, g, tm);
+    delete view.polygon;
+    return n > 0;
+  }).map((tm) => tm.id);
+  const menus = () => g.teams.filter((tm) => g.view().sketch.items.find((it) => it.id === `team-${tm.id}`).menu?.length).map((tm) => tm.id);
+  // nobody has looked yet: any free van may go
+  assert.deepEqual([ringed(), menus()], [["T1", "T2"], ["T1", "T2"]]);
+  // a signalling fault, and no danger: the track team has no move, and no ring
+  Object.assign(azs, { known: true, cause: { ...azs.cause, trade: "signalling" } });
+  const signalling = g.teams.filter((tm) => tm.trade === "signalling").map((tm) => tm.id);
+  assert.ok(signalling.length === 1);
+  assert.deepEqual([ringed(), menus()], [signalling, signalling]);
+  // the base: chosen while a technician on call can still be called; once both are called it has no menu, and is not chosen
+  const at = view.project(DISTRICT_TABLE.base.at[0], DISTRICT_TABLE.base.at[1], 20), base = () => g.view().sketch.items.find((it) => it.id === "base");
+  assert.deepEqual([board.hit(view, at), base().menu.length], [{ item: "base" }, 2]);
+  g.act("callIn", "signalling");
+  assert.deepEqual([board.hit(view, at), base().menu.length], [{ item: "base" }, 1]);
+  g.act("callIn", "track");
+  assert.equal(base(), undefined);
+  assert.notDeepEqual(board.hit(view, at), { item: "base" });
+});
+
 test("the board: the track a team works in shows its closure, asked and then closed", () => {
   const g = gameWith("azs"), { world, board } = boardOf(g), azs = g.fault("azs");
   g.act("send", "T1", "azs");

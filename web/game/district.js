@@ -335,7 +335,7 @@ export class DistrictBoard {
   }
 
   _canCall(g) {
-    return Object.values(g.onCall ?? {}).includes("available") && g.faults.some((f) => (f.state === "open" || f.state === "secured") && (f.holds || f.safety));
+    return g.callable().length > 0 && g.faults.some((f) => (f.state === "open" || f.state === "secured") && (f.holds || f.safety));
   }
 
   /** The track a team works in: a band on its rails, pulsing while the closure is asked for, steady once it is closed. */
@@ -371,7 +371,8 @@ export class DistrictBoard {
   _team(view, g, tm) {
     const v = this.van(tm), m = (x) => view.m(x), beat = view.pulse ?? 1, [x, y] = v.at;
     const chosen = this.picked === `team-${tm.id}`, offered = this.active && this.offers.some((o) => o.target === `team-${tm.id}` && !o.disabled);
-    const free = this.active && tm.state === "ready" && g.faults.some((f) => f.state === "open" || f.state === "secured");
+    // (free to choose: it has a move, a fault in its menu)
+    const free = this.active && g.faults.some((f) => g.sendable(tm, f));
     if (chosen || offered || free) {
       const strong = chosen || offered;
       view.polygon(circle([x, y], atLeast(view, [x, y], m(3.6), 8) * (strong ? 1.2 + 0.3 * beat : 1)), { fill: rgba(TONE.choice, chosen ? 0.6 : strong ? 0.25 + 0.3 * beat : 0.16), stroke: rgba(TONE.choice, strong ? 1 : 0.6), width: strong ? 2 : 1.2, order: 7, emissive: true });
@@ -417,9 +418,12 @@ export class DistrictBoard {
       near(`fault-${f.id}`, [s.at[0], s.at[1], s.z ?? 0], HIT_PX.fault, [0, 2.5, 5]);
     }
     for (const tm of g.teams) near(`team-${tm.id}`, this.van(tm).at, HIT_PX.van, [0, 1.5]);
+    // the base while a technician on call can still be called from it: else it has no menu
     const b = this.table.base;
-    near("base", [b.at[0], b.at[1] + view.m(8)], HIT_PX.base);
-    near("base", b.at, HIT_PX.base, [0, 4]);
+    if (g.callable().length) {
+      near("base", [b.at[0], b.at[1] + view.m(8)], HIT_PX.base);
+      near("base", b.at, HIT_PX.base, [0, 4]);
+    }
     if (!best) return null;
     const offer = this.offers.find((o) => o.target === best.id);
     return offer ? { target: offer.target } : { item: best.id };

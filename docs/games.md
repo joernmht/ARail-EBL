@@ -244,7 +244,8 @@ passenger information, fault reports to the maintenance dispatcher (the maintena
 team), and closures and reopenings for works. With a train dispatcher seated it takes the
 dispatcher's orders: a train waits for another at most so many minutes (for its passengers, or to
 let it go first: a freight train then no longer waits for a late train planned before it), and a
-train that is still to come takes another platform track. In the career mode the role is open after the
+train that is still to come takes another platform track, unless its entry route is set already (then
+it comes where that route leads, and the dispatcher is told). In the career mode the role is open after the
 apprenticeship in railway operations or, for career changers, after the signaller's function training
 (in a lab like the EBL); from it, among other ways, the dispatcher of an operations centre, the
 instructor or the emergency manager become possible.
@@ -288,7 +289,8 @@ same moves, so the score, the stars and a saved session are the same.
 
 **T** (or *Play on the table*, behind the side bar's button) switches the table off and on; the
 choice is kept in the browser. Whether the table's markers are in view, and why a camera cannot be
-used, is said in the line at the top. The table is there wherever the live picture runs (not in a narrow window, where less
+used, is said in the line at the top (where the markers cannot be searched in the browser, choosing
+the photo or the camera again tries once more). The table is there wherever the live picture runs (not in a narrow window, where less
 motion is asked for, or where the device is too slow: there the panel is the picture, as before).
 
 **How the station lies on the table.** `TABLE` in `web/game/table.js` gives every section of the
@@ -324,7 +326,8 @@ the dispatcher's vans come, whoever sits at the dispatcher's sees the trains tha
   Night*), a platform track closed for a team is kept free of the layout's own trains.
 
 **How to play.** Click a fault, then the van to send (the vans that can go pulse); or a van first,
-then where it goes. A click on the base offers the technicians on call. The district's map stands
+then where it goes (a van is marked while there is a fault it can be sent to). A click on the base
+offers the technicians on call, while one can still be called. The district's map stands
 small in the lower right corner, as the signaller's panel does: it has the names and the minutes,
 what is chosen says below it what is known of it, and its moves are buttons there. The decisions
 (the closure, a repair for good or a quick one, guarding a danger) are asked at the bottom as
@@ -477,7 +480,9 @@ new game gets on the table with a board of its own (`show`, `draw`, `hit`, `plac
 station are off, the board (`TableBoard`, one of the world's simulations) is the planner of the
 platform tracks, and the world runs at the game's speed. A train of the game that stands at a
 platform is told to the world's services as a control system's train is (`feedArrived`, with a
-vehicle of its own, `TABLE_TRAIN`, that says where its doors are): the people get on there. The
+vehicle of its own, `TABLE_TRAIN`, that says where its doors are): the people get on there. A
+train of the world's own timetable still standing there from before the table was taken gives the
+platform to the game's train (`ServiceManager.free`). The
 level crossing of Brückenstraße, on the line to Talsee, closes for the game's trains (from 250 m
 before a train reaches it until its end has passed; a freight train held at signal F stands across
 it) and no longer by the clock: the town's cars wait at its barriers (`TableBoard.trainsNear`,
@@ -488,7 +493,7 @@ board leaves the world, and the backdrop gets its modules and its own timetable 
 The code: `web/game/table.js` (the station on the layout, the board: drawing, what is clicked, the
 world's services; Node tests in `tests/js/game-table.test.js`), `web/game/live.js` (the table's
 camera, the table's photo, the lab's photo and the device's camera with the markers found in a
-worker), the play page (`tablePick`, `setSource`; browser tests in `tests/e2e/table.spec.js`).
+worker, which goes when the table is seen from above again or left), the play page (`tablePick`, `setSource`; browser tests in `tests/e2e/table.spec.js`).
 
 ## How a game looks
 
@@ -511,7 +516,8 @@ and for the heads of the other pages of the games:
     seat's tools (its moves, its desk, handing it to the computer), where you work, the messages
     (a bell that counts the new ones), what the roles gave each other, the sound, the live
     picture, only the picture, and the way back to the line. A click does what an icon says, or
-    opens what is behind it beside the rail; the icon's name is its tooltip.
+    opens what is behind it beside the rail (Escape, a click elsewhere, or the focus leaving the
+    rail closes it again); the icon's name is its tooltip.
   - **The band at the bottom**, as a visual novel has it, there while somebody speaks or asks. It
     lets the picture through (the board's colour at 76 %, its text a little lighter, so it stays
     readable whatever the picture shows). A text longer than the band scrolls in the band.
@@ -519,14 +525,17 @@ and for the heads of the other pages of the games:
   **No information stands in a box on the picture.** It is in the line at the top or at the side,
   in the rail; the band at the bottom is only for who speaks. A new message comes into the line
   at the top, below the figures, one at a time (a newer one takes its place, and it goes by
-  itself); all of them are under the bell, each on its own card with its time, the new ones
-  marked. Something in the game's picture that a figure is about, or that needs attention, is not
+  itself or when another seat is shown; one longer than the line is cut off, and its tooltip has
+  all of it); all of them are under the bell, each on its own card with its time, the new ones
+  marked (a session taken up again starts with none new). Something in the game's picture that a figure is about, or that needs attention, is not
   written out: it **pulses** in its colour (red for a problem, orange for a worry: the failed
   signal, a fault where a danger is not guarded), and a click on it says what is known of it. The
   pictures themselves carry no labels either: the live picture draws none (`View` with `labels:
   false`), and the still ones are taken without them and without the marker plates (signs that
   are part of the world, such as a station's name board, stay). `tests/e2e/play.spec.js` and
-  `tests/js/game-shots.test.js` check this. **H** leaves only the picture.
+  `tests/js/game-shots.test.js` check this (of the game's own picture, only what it draws itself
+  may hold text: its heading, the names on its shapes, what is chosen in it; `tests/e2e/picture.js`).
+  **H** leaves only the picture.
 - **A place for every game, a picture for every topic.** Every game has a **place** on the lab's
   layout (`web/game/places.js`: the signal box of Bf Neustadt, the line, the district, the trains,
   the station from the dispatcher's desk, the lab, the terminal, the station forecourt, the town,
@@ -577,9 +586,9 @@ and for the heads of the other pages of the games:
   (**Space** reads on): the year's faults, the delay minutes, the coalition partner's "Not a second
   time." A mission can also tell a **story** as data (`story` in its JSON): lines somebody says at
   a moment of a phase, or `on` something that does not go to plan. In *Your first shift* the train
-  dispatcher talks a beginner through the first trains; then the timetable is theirs, and the
-  dispatcher calls only when a train stands at a signal, leaves late, goes to another track or
-  misses its connection.
+  dispatcher talks a beginner through the first trains and then leaves the timetable to them;
+  otherwise the dispatcher calls, from the first train on, only when a train stands at a signal,
+  leaves late, goes to another track or misses its connection.
   While somebody speaks in a shift, its clock waits for the answer (**OK** or **Space**), so no
   line is passed over, at any speed.
   The portraits are **placeholders**, silhouettes in `web/game/cast/` (office, suit,

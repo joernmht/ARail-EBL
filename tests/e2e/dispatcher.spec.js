@@ -141,7 +141,7 @@ test("a decision that is a number: the slider with its ends and where it stands,
   expect(await page.evaluate(() => {
     const s = window.__play.session;
     s.step(1);
-    return [...s.seat("signaller-relay").game.holds].map(([id, h]) => [id, h.for, h.until]);
+    return [...s.seat("signaller-relay").game.holds].map(([, h]) => [h.train, h.for, h.until]);
   })).toEqual([["GZ 47", "IC 2045", 580 + 120]]);
   expect(errors).toEqual([]);
 });

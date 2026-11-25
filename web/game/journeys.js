@@ -398,7 +398,9 @@ export class JourneysPanel {
   /**
    * Every traveller starts again at its departure time; the clock goes back to five minutes before
    * the first one, if it is past it, to watch them from their departure (Settings sets the time by
-   * presets only).
+   * presets only). That sets the rest of the simulation to that time too (`world.setTime`: the
+   * weather settles, and every simulation hears `clock.set`: the town, the market and the traffic
+   * place their people anew), and the toast says so.
    */
   restartAll() {
     const sim = this.sim;
@@ -408,7 +410,7 @@ export class JourneysPanel {
     if (first < this.world.clock.minutes) {
       const back = Math.max(0, first - 5);
       this.world.setTime(back);
-      toast(`All start again; the clock is set back to ${hm(back)}.`, 6000);
+      toast(`All start again; the clock is set back to ${hm(back)}, and with it the rest of the simulation: the other people are placed as at that time.`, 8000);
     } else toast("All start again.", 6000);
     this.update();
   }

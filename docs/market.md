@@ -17,7 +17,7 @@ Switch them on or off in **Examples → Sandbox**; the situation *Christmas mark
 | --- | --- |
 | *(the base)* | the market's table module with the paved square: on Bf Neustadt the Festplatz am Wall (module Am Wall), on the lab example the Marktplatz with Lindenallee leading to it and the Altbau Am Markt on its south side (module M) |
 | **Striezelmarkt** (`striezelmarkt`) | 22 stalls with their signs, two arches over the entrances reading *Striezelmarkt*, the Christmas tree, the ferris wheel (Riesenrad), the carousel (Kinderkarussell) and the mini train (Kindereisenbahn); the scenario *Evening at the Striezelmarkt* |
-| **Market visitors** (`market-visitors`) | the visitor simulation `market`; the scenario *Closing time at the Striezelmarkt*. Needs the Striezelmarkt: without stalls and rides the visitors have nothing to do |
+| **Market visitors** (`market-visitors`) | the visitor simulation `market`; the scenario *Closing time at the Striezelmarkt*. Needs the Striezelmarkt: without stalls and rides nobody comes, and while the market is open the visitors say so once (*Market visitors: no market square has stalls or rides, so nobody comes.*) |
 
 **The season.** A Christmas market is there from 26 November to 23 December, as the Striezelmarkt (the market simulation's `from` and `until`). On a date outside it (Settings → Date and weather, a scenario or a situation) the square is empty: no stalls, no tree, no arches, no rides, nobody comes; the clock without a date makes every day a market day.
 

@@ -1,9 +1,15 @@
 // The video tools' logic that needs no browser (tools/video/story-box.mjs): what the terminal box of
-// a short video shows at a frame (typewriter.mjs), and which captured picture each frame of a
-// recorded page shows (screen.mjs). See docs/short-videos.md.
+// a short video shows at a frame and in which frames it is drawn (typewriter.mjs, which stops at once
+// without lines), and which captured picture each frame of a recorded page shows (screen.mjs). See
+// docs/short-videos.md.
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
-import { BOX, ERASE_CPS, blink, resample, rowsAt, tooLong } from "../../tools/video/story-box.mjs";
+import { BOX, ERASE_CPS, blink, boxFrames, resample, rowsAt, tooLong } from "../../tools/video/story-box.mjs";
+import { ROOT } from "./helpers.js";
 
 const fps = 10, cps = 10;
 const at = (cues, f) => rowsAt(cues, f, { fps, cps });
@@ -72,6 +78,29 @@ test("video box: a line longer than the box is found", () => {
   const long = { text: "x".repeat(BOX.columns + 1), start: 0 };
   assert.equal(tooLong([{ text: "short", start: 0 }, long]), long);
   assert.equal(tooLong([{ text: "x".repeat(BOX.columns), start: 0 }]), null);
+});
+
+test("video box: drawn from the first line to the end of the video; without lines, nothing to draw", () => {
+  const cues = [{ text: "A real lab", start: 12, end: 40 }, { text: "But what if", start: 30, end: 90 }];
+  assert.deepEqual(boxFrames(cues, 300), { first: 12, last: 300 });
+  assert.deepEqual(boxFrames(cues), { first: 12, last: 90 }, "without the video's length: to the last line's end");
+  assert.equal(boxFrames([], 300), null);
+});
+
+test("typewriter: cues without lines stop it at once, with a message; no frame is left to lay over the video", () => {
+  const dir = mkdtempSync(join(tmpdir(), "arail-typewriter-"));
+  try {
+    writeFileSync(join(dir, "cues.json"), JSON.stringify({ size: [1280, 720], fps: 30, cps: 20, frames: 300, cues: [] }));
+    mkdirSync(join(dir, "text"));
+    writeFileSync(join(dir, "text", "f0000.png"), "an old frame");
+    const p = spawnSync(process.execPath, [join(ROOT, "tools/video/typewriter.mjs"), join(dir, "cues.json"), join(dir, "text")], { encoding: "utf8" });
+    assert.equal(p.status, 1, p.stdout + p.stderr);
+    assert.match(p.stderr, /no lines to type/);
+    assert.doesNotMatch(p.stdout, /NaN|frames with the box/);
+    assert.deepEqual(readdirSync(join(dir, "text")), [], "the old frames removed");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("screen recording: each frame shows the last picture taken before its time", () => {

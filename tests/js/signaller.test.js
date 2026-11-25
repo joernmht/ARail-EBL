@@ -480,4 +480,12 @@ test("irregularities: a train announced late, and the failed signal, at the norm
   assert.deepEqual([late.train, late.min], ["RB 33", "4"]);
   assert.ok(late.t <= 720 - 120 + 1, "told when the neighbouring station announces it");
   assert.deepEqual(g.irregulars.filter((x) => x.kind === "signal-failed").map((x) => x.signal), ["N2"]);
+  // repaired provisionally, it fails again: that is told again
+  const status = (state, more = {}) => g.receive({ flow: "repair-status", from: "maintenance-dispatcher", to: null, t: g.t, payload: { fault: "N2", state, ...more } });
+  status("done", { provisional: true });
+  run(g, 30);
+  assert.equal(g.irregulars.filter((x) => x.kind === "signal-failed").length, 1, "not while it holds");
+  status("relapsed");
+  run(g, 5);
+  assert.deepEqual(g.irregulars.filter((x) => x.kind === "signal-failed").map((x) => [x.signal, x.key]), [["N2", "failed:N2:0"], ["N2", "failed:N2:1"]]);
 });

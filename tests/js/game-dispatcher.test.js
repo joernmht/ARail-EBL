@@ -126,7 +126,7 @@ test("the signaller: a train waits for another by the dispatcher's order, at mos
   assert.ok(held.of("RB 34").departed - 900 < 60, "RB 33 is on time: nothing to wait for");
   const g = new SignallerGame({ seed: 1, level: "training", late: { "RB 33": 240 }, wired: ["dispatching-order"] });
   g.receive({ flow: "dispatching-order", from: "train-dispatcher", to: null, t: 0, payload: { hold: "RB 34", for: "RB 33", minutes: 5 } });
-  assert.deepEqual([...g.holds], [["RB 34", { for: "RB 33", until: 1200 }]]);
+  assert.deepEqual(g.holdsOf("RB 34"), [{ train: "RB 34", for: "RB 33", until: 1200 }]);
   g.receive({ flow: "dispatching-order", from: "train-dispatcher", to: null, t: 0, payload: { hold: "RB 34", for: "RB 33", minutes: 0 } });
   assert.equal(g.holds.size, 0, "a train that stops and does not wait leaves as it is ready");
   // an undertaking's wish is the dispatcher's to grant when one is seated: it is not taken here
@@ -134,12 +134,56 @@ test("the signaller: a train waits for another by the dispatcher's order, at mos
   assert.equal(g.holds.size, 0);
   const direct = new SignallerGame({ seed: 1, level: "training" });
   direct.receive({ flow: "connection-request", from: "ru-control-dispatcher", to: null, t: 0, payload: { hold: "RB 34", for: "RB 33", minutes: 4 } });
-  assert.equal(direct.holds.get("RB 34").until, 900 + 240);
+  assert.equal(direct.holdsOf("RB 34")[0].until, 900 + 240);
   // another track for a train that is still to come: where a route leads, and not once it is there
   const moved = run([{ at: 600, payload: { train: "RB 33", track: "G1" } }, { at: 600, payload: { train: "RB 34", track: "G1" } }, { at: 1000, payload: { train: "RB 35", track: "G3" } }, { at: 1560, payload: { train: "RB 36", track: "G2" } }]);
   assert.deepEqual(["RB 33", "RB 34", "RB 35", "RB 36"].map((id) => [moved.of(id).plan, moved.of(id).track]), [["G1", "G1"], ["G3", "G3"], ["G3", "G3"], ["G3", "G3"]]);
   assert.ok(!moved.g.irregulars.some((x) => x.kind === "wrong-track"), "the plan is the dispatcher's: a train on the track ordered is on its track");
   assert.ok(moved.g.logs.some((l) => /The dispatcher orders: RB 33 to G1 instead of G2\./.test(l.text)));
+  // a second order about another train does not undo the first: GZ 47 goes before the intercity, and is held for a
+  // while for RB 31 as well; once its wait for the intercity is over, it does not wait for it again
+  const both = run([{ at: 300, payload: { hold: "GZ 47", for: "IC 2045", minutes: 0 } }, { at: 310, payload: { hold: "GZ 47", for: "RB 31", minutes: 1 } }]);
+  assert.deepEqual(both.g.logs.filter((l) => /The dispatcher orders: GZ 47/.test(l.text)).length, 2);
+  assert.ok(both.of("GZ 47").passed < both.of("IC 2045").passed && both.of("GZ 47").passed - 580 < 120, `${both.of("GZ 47").passed}`);
+  const pair = new SignallerGame({ seed: 1, level: "training", wired: ["dispatching-order"] });
+  for (const payload of [{ hold: "GZ 47", for: "IC 2045", minutes: 0 }, { hold: "GZ 47", for: "RB 31", minutes: 1 }, { hold: "GZ 47", for: "RB 31", minutes: 2 }]) pair.receive({ flow: "dispatching-order", from: "train-dispatcher", to: null, t: 0, payload });
+  assert.deepEqual(pair.holdsOf("GZ 47").map((h) => [h.for, h.until]), [["IC 2045", 580], ["RB 31", 580 + 120]], "a second word on the same two trains takes the place of the first");
+  assert.deepEqual(pair.state().holds.map((h) => [h.train, h.for]), [["GZ 47", "IC 2045"], ["GZ 47", "RB 31"]]);
+  // a track ordered once the train's entry route is set into another (a signaller who sets it early): it comes where
+  // its route leads, and the dispatcher is told so; a route from the signal for a train before it does not count
+  const early = new SignallerGame({ seed: 1, level: "training", wired: ["dispatching-order"] }), pilot = new SignallerGame.player();
+  const order = (train, track) => early.receive({ flow: "dispatching-order", from: "train-dispatcher", to: null, t: early.t, payload: { train, track } });
+  while (early.t < 300) {
+    pilot.think(early);
+    early.step(1);
+  }
+  assert.ok(early.routeFrom("A"), "a route from A, for the trains before RB 33");
+  order("RB 33", "G1");
+  assert.equal(early.trains.find((tr) => tr.id === "RB 33").plan, "G1");
+  order("RB 33", "G2");
+  while (early.t < 600) {
+    pilot.think(early);
+    early.step(1);
+  }
+  assert.equal(early.routeFrom("A"), null);
+  assert.equal(early.setRoute("A-G2").ok, true);
+  order("RB 33", "G1");
+  const rb33 = early.trains.find((tr) => tr.id === "RB 33");
+  assert.equal(rb33.plan, "G2");
+  assert.ok(early.logs.some((l) => /The dispatcher orders RB 33 to G1, but its route from A into G2 is set: it comes on G2\./.test(l.text)));
+  const told = early.outbox.filter((m) => m.flow === "delay-notice" && m.payload.stage === "routed");
+  assert.deepEqual(told.map((m) => [m.payload.train, m.payload.track, m.payload.ordered, m.to]), [["RB 33", "G2", "G1", ["train-dispatcher"]]]);
+  while (!early.over) {
+    pilot.think(early);
+    early.step(1);
+  }
+  assert.deepEqual([rb33.track, early.irregulars.filter((x) => x.kind === "wrong-track").length], ["G2", 0]);
+  // the dispatcher's chart takes the track the signaller says it comes on
+  const desk = new DispatcherGame({ seed: 1, wired: ["dispatching-order"] });
+  assert.deepEqual(desk.act("track", "RB 33", "G1"), { ok: true });
+  desk.receive({ flow: "delay-notice", from: "signaller-relay", to: ["train-dispatcher"], t: desk.t, payload: told[0].payload });
+  assert.equal(desk.train("RB 33").plan, "G2");
+  assert.ok(desk.logs.some((l) => /The signaller: the route of RB 33 into G2 was set before the order came; it comes on G2, not G1\./.test(l.text)));
 });
 
 test("alone: the computer's dispatcher plays by the rules of the line and passes; nobody at the desk mostly does not; the same seed, the same morning", () => {
@@ -208,7 +252,7 @@ test("what is asked: a wait as a number of minutes, who goes first as minutes or
   assert.deepEqual(g.about.get("first-GZ 47"), ["GZ 47", "IC 2045"]);
   assert.equal(g.act("decide", "first-GZ 47", 2.2), true);
   assert.deepEqual([g.train("GZ 47").order.minutes, g.train("GZ 47").order.until, g.outbox.at(-1).payload], [2, 580 + 120, { hold: "GZ 47", for: "IC 2045", minutes: 2 }]);
-  assert.ok(g.world.holds.has("GZ 47"), "the order is the signaller's to keep");
+  assert.deepEqual(g.world.holdsOf("GZ 47").map((h) => h.for), ["IC 2045"], "the order is the signaller's to keep");
   // the freight undertaking phones about its driver's time: a promise, a try, or a refusal
   until(() => g.open.some((d) => d.id === "hours"));
   const hours = g.open.find((d) => d.id === "hours");

@@ -21,13 +21,14 @@ import { cutBody, cutForces, energyHeight } from "./physics.js";
  * two trains (s), how far before the crest a train's front starts (m), how far beyond the crest the
  * locomotive pushes a cut that does not run free (m), the space between two cuts that counts as a
  * gap (m), the impact limits (m/s), trace (s, v and energy height of every cut every `trace_s`), the
- * longest run (s), and `pull_below_m`: a track with less room than this at its entrance is pushed up
- * and, if still too full, pulled out as a train (null: only by hand, `pushUp` and `pullOut`).
+ * longest run (s), `pull_below_m`: a track with less room than this at its entrance is pushed up
+ * and, if still too full, pulled out as a train (null: only by hand, `pushUp` and `pullOut`), and
+ * `rerail_s`: a derailed cut is taken away once it has stood this long (null: only by hand, `rerail`).
  */
 export const SIM_DEFAULTS = Object.freeze({
   dt: 0.05, seed: 1, season: "summer", wind_mps: null, train_gap_s: 120, start_m: 15, push_over_m: 25, gap_m: 1,
   impact_mps: SPEEDS.impact_mps, careful_mps: SPEEDS.careful_mps, trace: false, trace_s: 0.5, max_s: 4 * 3600, control: {},
-  pull_below_m: null,
+  pull_below_m: null, rerail_s: null,
 });
 
 /** Closer than this (m), two cuts touch. */
@@ -84,9 +85,16 @@ export class HumpSimulation {
     return this._movers;
   }
 
-  /** Nothing waiting, nothing pushed, nothing moving. */
+  /**
+   * Nothing waiting, nothing pushed, nothing moving, and nothing that would move on the next step: no
+   * retarder still opening (a cut braked to a stand in it starts again once it is open), no standing
+   * cut that gravity starts again (`_accelerations`).
+   */
   get idle() {
-    return !this.pushing && !this.queue.length && this.bodies.every((b) => b.v === 0);
+    if (this.pushing || this.queue.length || this.bodies.some((b) => b.v !== 0)) return false;
+    for (const st of this._retarders.values()) if (st.level > 0) return false;
+    for (const x of this._accelerations().values()) if (x.a > 0) return false;
+    return true;
   }
 
   /** A note in the log. */
@@ -176,6 +184,8 @@ export class HumpSimulation {
       this._nextPull = this.t + 1;
       this._pullFull();
     }
+    const rerail = this.options.rerail_s;
+    if (rerail != null) for (const c of this.bodies) if (c.derailed && this.t - (c.rec.stop?.t ?? this.t) >= rerail) this.rerail(c.id);
   }
 
   /**
@@ -205,14 +215,16 @@ export class HumpSimulation {
   /**
    * Push the cuts standing in a classification track up to its end, buffer to buffer (Beidrücken):
    * the gaps between them and the room before the end are closed, but no cut is pushed past one
-   * still rolling in the track. Instant, like pulling out.
+   * still rolling in the track. Instant, like pulling out. A cut moved stands where it was pushed
+   * (its stop record: a cut that stood across the entrance is in the track now, no longer short of
+   * it), and a cut in its group retarder on its way there aims at the wagons where they stand now.
    * @param {string} name
    * @returns {number} the room gained at the entrance (m): how far the last cut was moved
    */
   pushUp(name) {
     const leaf = this.yard.trackSegment(name), tr = leaf.track;
     const here = this.bodies.filter((b) => b.route[b.route.length - 1] === leaf.id && b.s >= tr.s0 - 1e-6).sort((a, b) => b.s - a.s);
-    let edge = leaf.s1, gained = 0;
+    let edge = leaf.s1, gained = 0, moved = false;
     for (const b of here) {
       if (b.v > 0) {
         edge = Math.min(edge, b.s - b.body.length_m); // a cut still rolling: the ones behind it stay behind it
@@ -220,13 +232,80 @@ export class HumpSimulation {
         continue;
       }
       gained = Math.max(0, edge - b.s); // the last one moved is the one at the entrance
-      if (edge > b.s) b.s = edge;
+      if (edge > b.s) {
+        b.s = edge;
+        moved = true;
+        this._stop(b);
+      }
       if (b.s >= leaf.s1 - 1e-9) b.held = true; // at the end, its stop holds it
       edge = b.s - b.body.length_m;
     }
     this.pushedUp_m = (this.pushedUp_m || 0) + gained;
     this.note("track.pushed-up", { track: tr.name, m: round(gained) });
+    this._release();
+    if (moved) this._retarget(tr.name);
     return gained;
+  }
+
+  /** Where a standing cut stands, as its stop record: the track it is wholly in, or null (stopped short of it). */
+  _stop(c) {
+    const seg = this.yard.segments.get(c.route[c.route.length - 1]);
+    const inTrack = this._inTrack(c) && c.s - c.body.length_m >= seg.track.s0 - 1e-6;
+    c.rec.stop = { t: round(this.t), s: round(c.s), track: inTrack ? seg.track.name : null };
+  }
+
+  /**
+   * The wagons standing in a track have moved or left (pushed up, pulled out): a cut in its group
+   * retarder on its way there aims at where they stand now, its needed speeds worked out again (not at
+   * the rear of wagons that are gone). A cut already past its retarder rolls on as it was let go.
+   * @param {string} name
+   */
+  _retarget(name) {
+    for (const c of this.bodies) {
+      if (c.track !== name || !(c.v > 0) || !c.inRetarder) continue;
+      const r = this.yard.retarders.find((x) => x.id === c.inRetarder);
+      if (!r || r.kind === "main") continue; // the main retarder aims at the group retarder, not at the wagons
+      const need = this.control.need(this, c, r);
+      c.need.set(r.id, need);
+      const rec = c.rec.retarders[r.id];
+      if (rec) rec.need_mps = Math.max(need.at(r.s1), need.floor);
+    }
+  }
+
+  /**
+   * The breakdown crew takes a derailed cut away (it leaves the yard, noted `cut.rerailed`; the figures
+   * still count it as derailed): the switch it stood in is free again, and the cuts that stood against
+   * it are no longer held (`_release`).
+   * @param {string} id
+   * @returns {boolean} whether it was taken away: only a derailed cut
+   */
+  rerail(id) {
+    const c = this.bodies.find((b) => b.id === id);
+    if (!c?.derailed) return false;
+    c.state = "departed";
+    this.bodies = this.bodies.filter((b) => b !== c);
+    this.note("cut.rerailed", { cut: c.id });
+    this._release();
+    return true;
+  }
+
+  /**
+   * Holds that have lost their reason, once the wagons a cut stood against have moved or left (pushed
+   * up, pulled out, a derailed cut taken away): a cut stays held only at the end of its track, derailed,
+   * or touching a row of cuts that is held; the others stand free again and roll on where gravity starts
+   * them. Without this, cuts held in front of a track pulled out stood there for good, and the cuts
+   * behind them up to the crest: the train was blocked and the yard stood still.
+   */
+  _release() {
+    const touching = (x, n) => x.s >= n.s - n.body.length_m - TOUCH_M;
+    for (const c of [...this.bodies].sort((a, b) => b.s - a.s)) {
+      if (!c.held || c.derailed) continue;
+      const seg = this.yard.segments.get(c.route[c.route.length - 1]);
+      if (!seg.children.length && c.s >= seg.s1 - 1e-9) continue; // its track's stop holds it
+      let held = false;
+      for (let x = c, n = this._leader(c); n && touching(x, n) && !held; x = n, n = this._leader(n)) held = n.held;
+      if (!held) c.held = false;
+    }
   }
 
   /**
@@ -333,24 +412,28 @@ export class HumpSimulation {
     return !!seg.track && c.s >= seg.track.s0;
   }
 
-  /** Forces, contacts, motion, switches passed, impacts and stops of the free cuts. */
-  _move(dt) {
-    const yard = this.yard, fo = this._forceOptions(), bodies = this.bodies;
+  /**
+   * The forces on every free cut and its acceleration where it is now, changing nothing: a held cut
+   * does not move; a standing one starts only when gravity overcomes its resistance and what it takes
+   * to start; cuts that touch move together while the one behind would be faster (their accelerations
+   * pooled).
+   * @returns {Map<object, {f: object, F: number, a: number}>} for every free cut
+   */
+  _accelerations() {
+    const fo = this._forceOptions(), bodies = this.bodies, out = new Map();
     for (const c of bodies) {
       if (c.held) {
-        c.F = 0;
-        c.a = 0;
-        c.f = { drive: 0, resist: 0, retard: 0, eff_t: c.body.eff_t };
+        out.set(c, { f: { drive: 0, resist: 0, retard: 0, eff_t: c.body.eff_t }, F: 0, a: 0 });
         continue;
       }
-      const f = cutForces(yard, c.route, c.body, c.s, c.v, fo);
-      c.f = f;
-      if (c.v > 0) c.F = f.drive - f.resist - f.retard;
+      const f = cutForces(this.yard, c.route, c.body, c.s, c.v, fo);
+      let F;
+      if (c.v > 0) F = f.drive - f.resist - f.retard;
       else {
         const hold = f.resist + f.retard + (c.body.mass_t * G * START_EXTRA) / 1000;
-        c.F = f.drive > hold ? f.drive - f.resist - f.retard : Math.min(0, f.drive - hold);
+        F = f.drive > hold ? f.drive - f.resist - f.retard : Math.min(0, f.drive - hold);
       }
-      c.a = c.F / f.eff_t;
+      out.set(c, { f, F, a: F / f.eff_t });
     }
     // cuts that touch move together while the one behind would be faster (pool the accelerations)
     const follower = new Map();
@@ -363,7 +446,8 @@ export class HumpSimulation {
       if (followed.has(head) || !follower.has(head)) continue;
       const stack = [];
       for (let c = head; c; c = follower.get(c)) {
-        let g = { cuts: [c], F: c.F, m: c.f.eff_t, held: c.held };
+        const x = out.get(c);
+        let g = { cuts: [c], F: x.F, m: x.f.eff_t, held: c.held };
         while (stack.length) {
           const top = stack[stack.length - 1];
           if (g.F / g.m <= (top.held ? 0 : top.F / top.m) + 1e-12) break;
@@ -372,8 +456,15 @@ export class HumpSimulation {
         }
         stack.push(g);
       }
-      for (const g of stack) for (const c of g.cuts) c.a = g.held ? 0 : g.F / g.m;
+      for (const g of stack) for (const c of g.cuts) out.get(c).a = g.held ? 0 : g.F / g.m;
     }
+    return out;
+  }
+
+  /** Forces, contacts, motion, switches passed, impacts and stops of the free cuts. */
+  _move(dt) {
+    const bodies = this.bodies;
+    for (const [c, x] of this._accelerations()) Object.assign(c, x);
     for (const c of bodies) {
       if (c.held) continue;
       const v0 = c.v, v1 = v0 + c.a * dt;
@@ -424,9 +515,7 @@ export class HumpSimulation {
     for (const c of bodies) {
       if (c.v === 0 && c.state === "running") {
         c.state = "stopped";
-        const seg = yard.segments.get(c.route[c.route.length - 1]);
-        const inTrack = this._inTrack(c) && c.s - c.body.length_m >= seg.track.s0 - 1e-6;
-        c.rec.stop = { t: round(this.t), s: round(c.s), track: inTrack ? seg.track.name : null };
+        this._stop(c);
         this.note("cut.stopped", { cut: c.id, s: round(c.s), track: c.rec.stop.track });
       } else if (c.v > 0 && c.state === "stopped") c.state = "running";
     }
@@ -546,7 +635,11 @@ export class HumpSimulation {
     const leaf = this.yard.trackSegment(name);
     const contents = this.trackContents(name);
     const here = this._standing(leaf);
-    for (const b of here) b.state = "departed";
+    for (const b of here) {
+      b.state = "departed";
+      // (one that stood across the entrance leaves with the track's train: it ended in the track, not short of it)
+      if (b.rec.stop) b.rec.stop.track = leaf.track.name;
+    }
     this.bodies = this.bodies.filter((b) => b.state !== "departed");
     const out = {
       track: leaf.track.name, t: round(this.t), cuts: here.map((b) => b.id), wagons: here.flatMap((b) => b.wagons),
@@ -554,19 +647,21 @@ export class HumpSimulation {
     };
     this.departures.push(out);
     this.note("track.pulled", { track: out.track, wagons: out.wagons.length });
+    this._release();
+    if (here.length) this._retarget(out.track);
     return out;
   }
 
   /**
    * Where a cut set into a classification track by locomotive comes to stand: behind the wagons
    * standing there (at the track's end if it is empty); null when it does not fit, or while a cut
-   * still rolls in the track.
+   * still rolls towards the track (in it, or still in the switch zone on its way there).
    * @param {object} leaf the track's segment
    * @param {number} length_m the cut's length
    * @param {object} [but] a cut not counted (the one that is moved)
    */
   _place(leaf, length_m, but = null) {
-    if (this.bodies.some((b) => b !== but && b.v > 0 && b.route[b.route.length - 1] === leaf.id)) return null;
+    if (this.bodies.some((b) => b !== but && b.v > 0 && (b.track === leaf.track.name || b.route[b.route.length - 1] === leaf.id))) return null;
     const here = this._standing(leaf).filter((b) => b !== but);
     const edge = here.length ? Math.min(...here.map((b) => b.s - b.body.length_m)) : leaf.s1;
     return edge - length_m < leaf.track.s0 - 1e-6 ? null : edge;
@@ -580,7 +675,7 @@ export class HumpSimulation {
    * @param {string} id the cut
    * @param {string} name the track
    * @returns {boolean} whether it was moved: not a cut that rolls, is pushed or has left, not into a
-   *   track without room for it or with a cut still rolling in it
+   *   track without room for it or with a cut still rolling towards it (in it or on its way there)
    */
   moveCut(id, name) {
     const c = this.bodies.find((b) => b.id === id), leaf = this.yard.trackSegment(name);
@@ -599,8 +694,8 @@ export class HumpSimulation {
    * that must not be humped, RID label 15): one cut, behind the wagons standing there. Instant.
    * @param {{id?: string, train?: string, wagons: object[]}} cut wagon specs (see makeWagon; `noHump` is not asked again)
    * @param {string} name the track
-   * @returns {object | null} the cut, or null when the track has no room for it or a cut still rolls in it (nothing
-   *   changes then: no cut, no random number drawn)
+   * @returns {object | null} the cut, or null when the track has no room for it or a cut still rolls towards it, in
+   *   it or on its way there (nothing changes then: no cut, no random number drawn)
    */
   setOut({ id, train = "", wagons }, name) {
     const leaf = this.yard.trackSegment(name);

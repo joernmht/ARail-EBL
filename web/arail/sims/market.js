@@ -349,6 +349,8 @@ export class MarketSimulation extends Simulation {
     this._venues = null;
     this._venueKey = null;
     this._wasOpen = null;
+    /** Said that there is no market to go to (`_noMarket`). */
+    this._toldNoMarket = false;
     const on = (name, fn) => world.events.on(name, fn);
     this._off = [
       on("passenger.exited", (e) => this._exited(e)),
@@ -734,6 +736,18 @@ export class MarketSimulation extends Simulation {
 
   /* ---------------------------------------------------------------- the step */
 
+  /**
+   * Open, but no market square has stalls or rides (the module with the market is off, say): nobody
+   * comes, and it says so once (a scenario message), again only after there was a market.
+   */
+  _noMarket(open) {
+    if (this.venues().length) this._toldNoMarket = false;
+    else if (open && !this._toldNoMarket) {
+      this._toldNoMarket = true;
+      this.world.events.emit("scenario.message", { scenario: null, text: "Market visitors: no market square has stalls or rides, so nobody comes." });
+    }
+  }
+
   step(dt) {
     if (!this.enabled || !(dt > 0)) return;
     const open = this.isOpen();
@@ -750,6 +764,7 @@ export class MarketSimulation extends Simulation {
       }
     }
     this._wasOpen = open;
+    this._noMarket(open);
     this._spawn(dt);
     this._giveUp();
     for (const venue of this.venues()) this._rides(venue);

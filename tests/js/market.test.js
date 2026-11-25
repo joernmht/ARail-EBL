@@ -251,6 +251,26 @@ test("scenarios set the time of day; the Striezelmarkt's evening", () => {
   assert.ok(layout.scenarios.some((s) => s.id === "striezelmarkt-evening") && !layout.scenarios.some((s) => s.id === "market-closing"));
 });
 
+test("the visitors without the market: closing time at the Striezelmarkt says that nobody comes, once", () => {
+  // the module Market visitors on, the Striezelmarkt off: the square has no stalls and no rides
+  const world = lab(["market-visitors"]), said = [];
+  world.events.on("scenario.message", ({ text }) => said.push(text));
+  world.scenarios.play("market-closing");
+  run(world, 5);
+  assert.equal(marketOf(world).visitors.length, 0);
+  const none = "Market visitors: no market square has stalls or rides, so nobody comes.";
+  assert.deepEqual(said, ["A busy evening at the Striezelmarkt.", none]);
+  world.setTime("19:00");
+  run(world, 5);
+  assert.equal(said.filter((t) => t === none).length, 1, "once");
+  // closed, nobody is missed; with the market there, nothing is said
+  const morning = lab(["market-visitors"], "07:00"), quiet = lab(MARKET, "18:00"), heard = [];
+  for (const w of [morning, quiet]) w.events.on("scenario.message", ({ text }) => heard.push(text));
+  run(morning, 5);
+  run(quiet, 5);
+  assert.deepEqual(heard, []);
+});
+
 test("editing the layout while the market runs: queues and tables stay consistent, the stalls keep serving", () => {
   const world = lab(MARKET, "18:00");
   const market = marketOf(world);

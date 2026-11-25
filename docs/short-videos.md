@@ -129,7 +129,9 @@ the chair's presentations (`visuals/arail-shots/`), to cut into talks.
 3. **Write the plan.** Copy `tools/video/plans/story-template.json` (the hook, the turn, one idea
    and the question, about 25 s). Each part names its shot (`frames`, `first`, `count`), its slow move
    (`crop` from one box to another), its fade from the part before (`fade`), and its lines (`say`:
-   text, the second it starts at within the part, its `row`, `style`). Set `out`.
+   text, the second it starts at within the part, its `row`, `style`). Set `out`, and `overlay`, the
+   folder the lines are typed into (`build/video/<name>-text`); `arail-compose <plan> --check` says at
+   once whether every part lies within the frames its shot renders.
 4. **Build it:** `sh tools/video/story.sh <plan> [shots-dir]`. It writes the lines' cues, types the
    box frame by frame, composes the video and, with a folder, each shot on its own.
 5. **Watch it, then tighten it:** too long a gap between two lines, a view that lingers, a line

@@ -960,16 +960,20 @@ test("the board: the week on the lab's table; sites, vans from the people's home
     awake.step(0.5);
   }
   assert.equal(awake.district().areas.west.awake, true);
-  // the storm is the world's weather while it blows, and the weather it was comes back
+  // the storm is the world's weather while it blows, and the weather it was comes back: all of it,
+  // also what the layout set on top of its preset
   const stormy = new WorksGame({ seed: SEEDS.find((seed) => new WorksGame({ seed }).storm.strong) });
-  const before = world.weather.mode === "fixed" ? world.weather.preset : world.weather.mode;
+  assert.ok(world.weather.set({ preset: "fog", state: { temperature_c: 3, wind_mps: 7 } }));
+  const setting = () => ({ mode: world.weather.mode, preset: world.weather.preset, state: { ...world.weather.state } });
+  const before = setting();
   board.show(stormy);
   while (stormy.now < STORM.from + 0.5) stormy.step(0.5);
   board.step();
-  assert.deepEqual([stormy.district().storm, world.weather.mode, world.weather.preset], ["strong", "fixed", "thunderstorm"]);
+  assert.deepEqual([stormy.district().storm, world.weather.mode, world.weather.preset, world.weather.state], ["strong", "fixed", "thunderstorm", {}]);
   while (stormy.now < STORM.to + 0.5) stormy.step(0.5);
   board.step();
-  assert.equal(world.weather.mode === "fixed" ? world.weather.preset : world.weather.mode, before);
+  assert.deepEqual(setting(), before);
+  assert.deepEqual(before, { mode: "fixed", preset: "fog", state: { temperature_c: 3, wind_mps: 7 } });
   // without a game nothing is there to click; taken out of its world, the board is gone
   board.show(null);
   assert.deepEqual([board.hit(view, [640, 400]), board.placeOf("work-tamp")], [null, null]);
