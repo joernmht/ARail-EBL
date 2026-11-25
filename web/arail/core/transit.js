@@ -12,9 +12,12 @@
  * `services.auto_interval` false) every 240 s (trams 300 s).
  *
  * Buses drive along the circuit on the right lane, trams on their track (the right one of two),
- * with acceleration, braking and the speed limit of the street, keep their distance to the vehicle
- * ahead (other buses and trams, the cars and bikes of the simulations), obey traffic lights, Stop
- * and give way, wait at closed level crossings and (buses) at zebra crossings with people on them,
+ * with acceleration, braking and the speed limit of the street, follow the vehicle ahead by its
+ * speed and the gap (`followSpeed`: other buses and trams, the cars and bikes of the simulations),
+ * obey traffic lights, Stop and give way, wait at closed level crossings and (buses) at zebra
+ * crossings with people on them, stop for people on the street ahead (core/walking.js), keep
+ * crossings clear when the queue behind them leaves no room, leave a stop before the time of the
+ * timetable once everybody is on and off (not at the first stop),
  * stop at each stop with the front at the end of the stop (`BUS.extent`, `TRAM.extent`, so the
  * doors are where the passenger simulation expects them) and emit the usual events with
  * `{vehicle, dock, area}`: `vehicle.arriving` (about 60 m before), `vehicle.arrived` (doors

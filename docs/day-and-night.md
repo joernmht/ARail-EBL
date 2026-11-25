@@ -228,7 +228,8 @@ feel them (`core/modes.js`, `perceived`):
   more on snow and ice, in frost and in the dark); of the cyclists of a mild dry day only the
   weather's share still rides ([Seasons and weather](weather.md): half in rain, a fifth on snow);
 - the **person**: old people and those with a stick, a rollator, a pram or a suitcase walk and wait
-  less gladly; a group goes as its most burdened member can.
+  less gladly; children and old people mind the dark more, on foot and on the bike; a group goes as
+  its most burdened member can.
 
 A logit over these costs chooses: the cheapest mode is taken most often, the others now and then. The
 constants are fitted to the shares of the modes by the length of the trip of MiD 2017, for somebody

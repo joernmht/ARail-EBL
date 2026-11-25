@@ -399,7 +399,7 @@ export const STREETS = [
       "Cars follow a rider where they cannot pass at 1.5 m within their lane, and overtake after 2 s when the other lane is free for 60 m and no junction is near; not a rider who stands (in a queue, at a light), and not where they would still be on the other lane at the lights of a tram stop.",
       "Two bikes per street lamp; a rider locks the bike within 60 mm of the building and stays 20 to 240 clock minutes (children 30 to 120).",
       "The town's own people (ride): at their own speed, keeping the rules; the riders from beyond the layout are as many as before, theirs come on top. The bike is locked within 120 m of the door (none there: it leans somewhere out of sight) and stays until its rider comes back; when the streets change and no way is left, the rider gets off where they are.",
-      "Riders follow the vehicle ahead by its speed (followSpeed, core/transit.js; 1.5 m at a stand) and, on the road or a bike lane, stop 1.2 m before people on the carriageway ahead (peopleAhead).",
+      "Riders follow the vehicle ahead by its speed (followSpeed, core/transit.js; 1.5 m at a stand) and, on the road or a bike lane, stop 1.2 m before people on the carriageway ahead (peopleAhead). Why a rider is held is kept on it (hold: light, stop, yield, zebra, rail, people), and how long it has stood for people who cross (yielded): after 6 s those who come to the kerb let it go first, as they do for cars and buses (Walking._clear).",
     ],
   },
 ];

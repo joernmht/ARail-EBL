@@ -22,12 +22,17 @@
  *
  * Every person has a profile of characteristics (core/mobility.js), drawn once from their own
  * random stream: pupils are children, seniors old; it sets how fast they walk and get on, the room
- * they take, and whether they can drive: a long way (longer than `walk_max_m`) is taken by car
- * (`car_share`) by those with a driving licence and a car, by bus or tram (`bus_share`) by the
- * others where a line serves it. A car trip is not drawn (the road traffic has cars of its own):
- * it takes the walks to and from the car, the time to load and unload (luggage, a pram, a
- * wheelchair), the drive and parking. Each trip is recorded from door to door, in its parts (on
- * foot, waiting, at the doors, riding, by car): `tripStats()` by group, `tripsCSV()`.
+ * they take, and whether they can drive. For a long way (longer than `walk_max_m`) a person
+ * chooses the mode (core/modes.js): on foot, by bike, by bus or tram where a line serves it, by
+ * car for those with a driving licence while a car of the household stands at home; by what each
+ * is expected to take, the weather, the person, and what they and the town have learned. A car
+ * trip and a bike trip are driven on the streets where the road traffic and the cycling are
+ * simulated (`TrafficSimulation.drive`, `CyclingSimulation.ride`), else they take their time
+ * undrawn: the walks to and from the car, the time to load and unload (luggage, a pram, a
+ * wheelchair), the drive and parking. People of a household go together where their ways are the
+ * same (a parent takes a child to school, couples and families go shopping). Each trip is
+ * recorded from door to door, in its parts (on foot, waiting, at the doors, riding, by car, by
+ * bike): `tripStats()` by group, `tripsCSV()`.
  *
  * Everything degrades gracefully: without roads people walk straight, without bus lines
  * they walk, without platforms nobody commutes by train, without a passenger simulation
@@ -295,11 +300,11 @@ class Agent extends Person {
 export class TownSimulation extends Simulation {
   static type = "town";
   static label = "Town (day and night)";
-  static description = "Residents go to work, school and shopping and come home, on foot, by bus and by train, following the clock.";
+  static description = "Residents go to work, school and shopping and come home, on foot, by bike, by bus, tram and car and by train, alone and together, following the clock. They choose how they go by what they have learned.";
   static params = [
     { key: "people_per_100", label: "People shown", type: "number", unit: "per 100 residents", min: 1, max: 100, step: 1, default: 12 },
     { key: "max_people", label: "Max. people", type: "number", min: 0, max: 2000, step: 10, default: 300 },
-    { key: "walk_max_m", label: "Longest walk", type: "number", unit: "m", min: 20, max: 3000, step: 10, default: 150, help: "Longer ways are taken by bus when a line connects both ends." },
+    { key: "walk_max_m", label: "Longest walk", type: "number", unit: "m", min: 20, max: 3000, step: 10, default: 150, help: "A way up to this is walked. For a longer one people choose: on foot, by bike, by bus or tram, by car." },
     {
       key: "bus_share", label: "Bus and tram", type: "number", unit: "0 never, 1 always", min: 0, max: 1, step: 1, default: 0.5,
       help: "0: nobody takes the bus or the tram; 1: everybody does where a line fits. In between people choose for themselves (see the choice of the mode).",
@@ -1997,12 +2002,12 @@ export class TownSimulation extends Simulation {
     }
   }
 
-  /** Is an away agent due to come (back) by train now? */
   /** Left behind at a stop (full, no wheelchair place, a step too high): the trip went badly. */
   _denied({ agent }) {
     if (agent instanceof Agent && agent.record) agent.record.denied = true;
   }
 
+  /** Is an away agent due to come (back) by train now? */
   _dueByTrain(a, now) {
     const step = a.plan[a.next];
     if (!step || !step.byTrain) return false;

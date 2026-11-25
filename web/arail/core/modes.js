@@ -204,8 +204,8 @@ export const EXPOSURE = Object.freeze({
   rain: 1.3, heavy_rain: 1.6, snow: 1.3, frost: 1.15, heat: 1.15, hot_c: 30, dark: 1.1,
   /** A minute on foot on snow that lies, on ice. */
   snow_ground: 1.15, ice: 1.4,
-  /** A minute on the bike in the dark; children and old people mind the dark more. */
-  bike_dark: 1.15, timid_dark: 1.5,
+  /** A minute on the bike in the dark; children and old people mind the dark more, on foot and on the bike. */
+  bike_dark: 1.15, timid_dark: 1.15,
 });
 
 /**
@@ -238,8 +238,8 @@ export function exposure(weather, dark = false) {
  * A child rides a bike but drives no car; nobody rides a bike with a rollator, a wheelchair, a pram
  * or a suitcase; old people and those with an aid walk and wait less gladly.
  * @param {{age?: string, aid?: string, luggage?: string} | null} profile core/mobility.js
- * @returns {{walk: number, wait: number, bike: number, canBike: boolean}} factors of the minutes on foot,
- *   at a stop and on the bike
+ * @returns {{walk: number, wait: number, bike: number, dark: number, canBike: boolean}} factors of the minutes
+ *   on foot, at a stop and on the bike, and of those on foot and on the bike in the dark
  */
 export function personFactors(profile) {
   const p = profile || {};
@@ -248,6 +248,7 @@ export function personFactors(profile) {
   const old = p.age === "old" ? 1.2 : 1;
   return {
     walk: aid * load * old, wait: p.age === "old" || aid > 1 ? 1.2 : 1, bike: old * (p.age === "child" ? 1.1 : 1),
+    dark: p.age === "old" || p.age === "child" ? EXPOSURE.timid_dark : 1,
     canBike: !(aid > 1) && p.luggage !== "heavy" && p.luggage !== "bulky",
   };
 }
@@ -268,10 +269,11 @@ export function personFactors(profile) {
  */
 export function perceived(mode, parts, { taste = DEFAULT_TASTE, weather = null, person = null, own = 0 } = {}) {
   const T = taste, W = weather || { walk: 1, wait: 1, bike: 1, dark: false }, P = person || { walk: 1, wait: 1, bike: 1 };
-  const walkMin = T.walk.minute * W.walk * P.walk;
+  const timid = W.dark ? P.dark ?? 1 : 1;
+  const walkMin = T.walk.minute * W.walk * P.walk * timid;
   let g = (parts.walk || 0) * walkMin + (parts.wait || 0) * T.everybody.wait * W.wait * P.wait + (parts.ride || 0) * T.transit.minute
     + (parts.drive || 0) * T.car.minute + (parts.fixed || 0) + (parts.eur || 0) / T.everybody.eur_min;
-  if (parts.bike) g += parts.bike * T.bike.minute * P.bike * (W.dark ? EXPOSURE.bike_dark : 1);
+  if (parts.bike) g += parts.bike * T.bike.minute * P.bike * (W.dark ? EXPOSURE.bike_dark : 1) * timid;
   g += (T[mode]?.constant ?? 0) + own;
   if (mode === "bike" && W.bike < 1) g -= Math.log(W.bike) / T.everybody.sharpness;
   return g;

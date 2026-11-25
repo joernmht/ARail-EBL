@@ -85,7 +85,12 @@ test("what a trip costs: minutes as people feel them, the weather, the person, m
   const ice = exposure(weather({ temperature_c: -3, ice: true }, 0.1), true);
   assert.ok(ice.walk > rain.walk && ice.dark, "frost, ice and the dark");
   // the person: old people and those with an aid or luggage walk less gladly; no bike with a rollator or a suitcase
-  assert.deepEqual(personFactors({ age: "adult", aid: "none", luggage: "none" }), { walk: 1, wait: 1, bike: 1, canBike: true });
+  assert.deepEqual(personFactors({ age: "adult", aid: "none", luggage: "none" }), { walk: 1, wait: 1, bike: 1, dark: 1, canBike: true });
+  // children and old people mind the dark more, on foot and on the bike
+  const child = personFactors({ age: "child" }), night = { walk: 1, wait: 1, bike: 1, dark: true };
+  assert.ok(child.dark > 1);
+  assert.ok(perceived("walk", { walk: 10 }, { weather: night, person: child }) > perceived("walk", { walk: 10 }, { weather: night }));
+  near(perceived("walk", { walk: 10 }, { person: child }), perceived("walk", { walk: 10 }), 1e-9, "by day as everybody");
   const old = personFactors({ age: "old", aid: "rollator", luggage: "none" });
   assert.ok(old.walk > 2 && old.wait > 1 && !old.canBike);
   assert.equal(personFactors({ age: "adult", aid: "none", luggage: "heavy" }).canBike, false);
