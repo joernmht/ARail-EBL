@@ -140,7 +140,7 @@ test("her ways: walks over the sidewalks and through the underpass, the bus over
   assert.ok(near(p.walks.platform.points.at(-1), p.points.spot));
   const platform = s.world.stopAreas().find((a) => a.id === "platform-1"), [sp, tp] = platform.fromLayout(p.points.spot);
   assert.ok(sp > 0 && sp < platform.L && Math.abs(tp) < platform.W / 2 && tp * platform.docks[0].side < 0, "on the platform, away from the edge of her track");
-  // to the bus: back along the platform (seen), the underpass, then along the street to the bay
+  // to the bus: back along the platform (seen), the underpass, then over the square and the street to the bay
   const back = p.walks.bus;
   assert.ok(back.hidden[0][0] > 0, "she is seen walking back along the platform");
   assert.ok(near(back.points.at(-1), p.points.bay));

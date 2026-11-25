@@ -30,7 +30,7 @@ at 08:10 to Altstadt, there at 08:46.
 | 4. RB 31 is 20 minutes late | At 07:38 the display changes and the platform shows the delay (a level crossing fault near Bergheim); RB 31 will leave at 08:02. |
 | 5. The connection in Talsee is lost | Her app: RB 31 reaches Talsee at 08:24, the RE 3 leaves at 08:10; the next one is in Altstadt at 09:46, 60 minutes late, after the start of her exam. |
 | 6. Her app finds a bus | The express bus 270 (PlusBus) from the bus station Neustadt Bf at 07:48, in Altstadt at 08:58; her ticket of the transport association is valid on it. The way to the bus is drawn on the layout. |
-| 7. To the bus station | Back through the underpass and across the Bahnhofsplatz to bay C of the ZOB, the bus station on the Bahnhofsplatz. The bus station's bays are kept free for her bus from now on. |
+| 7. To the bus station | Back through the underpass, along the station front and Bahnhofstraße to bay C of the ZOB, the bus station on the Bahnhofsplatz. The bus station's bays are kept free for her bus from now on. |
 | 8. Bus 270 leaves with Ada | The bus comes up Schulstraße and along Am Stützpunkt and Bahnhofstraße into the bus station, stops at bay C, Ada and the other travellers get on, and it leaves the way it came. |
 | 9. Meanwhile: RB 31 comes in | At 08:02, 20 minutes late, RB 31 stops at track G1: the people waiting there get on, others get off. Whoever changes in Talsee now waits there an hour. |
 | 10. Ada in Altstadt: her journey in numbers | Her whole way on the layout (walked dashed, by bus solid) and a card: planned 07:42 → 08:46, real 07:48 → 08:58 by bus (12 minutes late), had she waited 08:02 → 09:46 (60 minutes late). |

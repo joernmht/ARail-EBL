@@ -145,7 +145,7 @@ export class JourneyStory extends Story {
     },
     {
       id: "walk", title: "To the bus station", seconds: 18,
-      text: "{Traveller} goes back through the underpass and along the street to {busStation}, {bay}: four minutes on foot.",
+      text: "{Traveller} goes back through the underpass and on to {busStation}, {bay}: four minutes on foot.",
     },
     {
       id: "bus", title: "Bus {busLine} leaves with {Traveller}", seconds: 32,
