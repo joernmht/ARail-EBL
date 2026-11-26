@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { STEP_FREE_M, STOP_SIGNAL, TRAM, TRAM_STOP_TYPES, createWorld, tramRails } from "../../web/arail/index.js";
+import { STEP_FREE_M, STOP_SIGNAL, TRAM, TRAM_STOP_TYPES, createWorld, pointInPolygon, pointSegment, tramRails } from "../../web/arail/index.js";
 import { readJSON } from "./helpers.js";
 
 /** 25 m in H0 (mm): the tightest curve of tram tracks. */
@@ -421,7 +421,7 @@ test("Bf Neustadt: two tram lines from loop to loop, line 2 through the pedestri
     assert.equal(l.vehicle, "tram");
     assert.deepEqual(l.problems, []);
   }
-  // both turn in loops at both ends (Lindenstraße; Busbahnhof and Markt), never on stub tracks;
+  // both turn in loops at both ends (Lindenstraße; Busbahnhof and Am Wall), never on stub tracks;
   // single track only on the necks before the loops; no curve is tighter than 25 m
   assert.ok(lines.every((l) => l.reversals.length === 0));
   assert.ok(lines.every((l) => l.single.length === 4));
@@ -430,14 +430,36 @@ test("Bf Neustadt: two tram lines from loop to loop, line 2 through the pedestri
   assert.ok(loops.every((o) => o.roadInfo().tramTracks === "single-oneway"));
   const xs1 = lines[0].circuit.points.map((p) => p[0]), ys2 = lines[1].circuit.points.map((p) => p[1]);
   assert.ok(Math.min(...xs1) < -3300 && Math.max(...xs1) > 4600, "line 1 from loop to loop");
-  assert.ok(Math.min(...ys2) < -1900, "line 2 round the Markt's loop, down to the Wall");
+  assert.ok(Math.min(...ys2) < -2800, "line 2 over Wallstraße round its loop Am Wall");
   // line 2 runs through the pedestrian zone Marktstraße: two tracks through the curve from
   // Bahnhofstraße, one past the Markt; no car drives there
   const zone = ["road-marktstrasse", "road-marktstrasse-sued"].map((id) => w.getObject(id).roadInfo());
   assert.deepEqual(zone.map((z) => [z.kind, z.car, z.tram, z.tramTracks]), [["pedestrian", false, "street", "double"], ["pedestrian", false, "street", "single"]]);
-  assert.ok(lines[1].circuit.points.some((p) => Math.abs(p[0] - 2550) < 1 && p[1] < -700 && p[1] > -1100), "line 2 along Marktstraße");
+  assert.ok(lines[1].circuit.points.some((p) => Math.abs(p[0] - 2550) < 1 && p[1] < -1200 && p[1] > -1800), "line 2 along Marktstraße, past St. Marien");
   // the rails run round: two rails a line, no crossovers
   for (const l of lines) assert.equal(tramRails(l, 1435 / 87, 230).length, 2);
+  // no tram runs through a building: its track, a tram's half width (1.3 m) to each side, stays outside
+  // every footprint (the loops and their necks included), checked every 10 mm along the line
+  const open = new Set(["road", "area", "tabletop", "market-square", "label", "tree", "forest", "track", "platform", "tram-stop", "bus-stop", "traffic-light", "traffic-sign", "zebra-crossing", "rail-crossing", "underpass"]);
+  const halfTram = 1300 / 87;
+  const solid = w.objects.filter((o) => !open.has(o.type) && o.footprint?.()?.length >= 3).map((o) => {
+    const fp = o.footprint(), xs = fp.map((p) => p[0]), ys = fp.map((p) => p[1]);
+    return { o, fp, box: [Math.min(...xs) - halfTram, Math.min(...ys) - halfTram, Math.max(...xs) + halfTram, Math.max(...ys) + halfTram] };
+  });
+  for (const l of lines) {
+    const P = l.circuit.points;
+    for (let i = 1; i < P.length; i++) {
+      const [a, b] = [P[i - 1], P[i]], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 10));
+      for (let k = 0; k <= n; k++) {
+        const p = [a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n];
+        for (const { o, fp, box } of solid) {
+          if (p[0] < box[0] || p[0] > box[2] || p[1] < box[1] || p[1] > box[3]) continue;
+          const near = fp.some((c, j) => pointSegment(p, c, fp[(j + 1) % fp.length]).distance < halfTram);
+          assert.ok(!pointInPolygon(p, fp) && !near, `${l.id} at ${p.map(Math.round)} runs through ${o.id}`);
+        }
+      }
+    }
+  }
   // Brückenstraße crosses the main line at street level (half barriers): no tram tracks over it
   const crossing = w.getObject("rail-crossing-bruecke");
   assert.equal(crossing.crossingType.level, true);

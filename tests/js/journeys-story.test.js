@@ -97,10 +97,10 @@ test("the journeys story of Bf Neustadt: a layer of the layout, its steps name t
   assert.deepEqual(JourneyStory.params.map((p) => [p.key, p.default]), [
     ["traveller", "Ada"], ["home", "plattenbau-1"], ["track", "track-g1"], ["bus_terminal", "bus-terminal-1"], ["bus_street", "road-schulstrasse"], ["delay_min", 20],
   ]);
-  assert.equal(s.home().id, "plattenbau-1");
+  assert.equal(s.home().id, "haus-lange-strasse-n-15");
   assert.equal(s.dock().dock.id, "platform-1:right");
   assert.equal(s.station().id, "station-1");
-  assert.equal(s.bay().dock.id, "bus-terminal-1:bay2", "the last bay");
+  assert.equal(s.bay().dock.id, "bus-terminal-1:bay3", "the last bay");
   assert.deepEqual(s.steps.map((x) => x.title), [
     "Ada sets off", "The departure board", "On platform 1", "RB 31 is 20 minutes late", "The connection in Talsee is lost", "Her app finds a bus",
     "To the bus station", "Bus 270 leaves with Ada", "Meanwhile: RB 31 comes in", "Ada in Altstadt: her journey in numbers", "Her rights as a passenger",
@@ -110,7 +110,7 @@ test("the journeys story of Bf Neustadt: a layer of the layout, its steps name t
     assert.doesNotMatch(`${st.title} ${st.text}`, /\{\w+\}/, "every placeholder is filled");
     assert.ok(st.text.split(/(?<=[.!?])\s+/).length <= 3, `at most three sentences: ${st.text}`);
   }
-  assert.match(s.steps[0].text, /WBS 70 Bahnhofstraße at 07:30/);
+  assert.match(s.steps[0].text, /Lange Straße 29 at 07:30/);
   assert.match(s.steps[1].text, /Bahnhof Neustadt .* RB 31 to Talsee at 07:42 from platform 1/);
   assert.match(s.steps[4].text, /Talsee at 08:24, but the RE 3 leaves at 08:10\. .* at 09:46, 60 minutes late/);
   assert.match(s.steps[5].text, /Neustadt Bf at 07:48, in Altstadt at 08:58/);
@@ -140,7 +140,7 @@ test("her ways: walks over the sidewalks and through the underpass, the bus over
   assert.ok(near(p.walks.platform.points.at(-1), p.points.spot));
   const platform = s.world.stopAreas().find((a) => a.id === "platform-1"), [sp, tp] = platform.fromLayout(p.points.spot);
   assert.ok(sp > 0 && sp < platform.L && Math.abs(tp) < platform.W / 2 && tp * platform.docks[0].side < 0, "on the platform, away from the edge of her track");
-  // to the bus: back along the platform (seen), the underpass, then along the street to the bay
+  // to the bus: back along the platform (seen), the underpass, then over the square and the street to the bay
   const back = p.walks.bus;
   assert.ok(back.hidden[0][0] > 0, "she is seen walking back along the platform");
   assert.ok(near(back.points.at(-1), p.points.bay));
@@ -163,7 +163,7 @@ function polylinePoint(path, s) {
 test("the journeys story step by step: Ada, her phone, the track and the bay kept free, the bus, the late train", () => {
   const { world, s } = journeys();
   const area = world.stopAreas().find((a) => a.id === "platform-1"), dock = area.docks[0];
-  const bus = world.stopAreas().find((a) => a.id === "bus-terminal-1"), [bayA, bayB] = bus.docks;
+  const bus = world.stopAreas().find((a) => a.id === "bus-terminal-1"), [bayA, bayB, bayC] = bus.docks;
   // at home: nothing kept free, Ada at her front door
   assert.deepEqual(kept(world), []);
   assert.equal(s.adaAt().walking, false);
@@ -192,9 +192,10 @@ test("the journeys story step by step: Ada, her phone, the track and the bay kep
   assert.equal(s.scene.phone, "lost");
   s.goTo(at("alternative"));
   assert.equal(s.scene.route, "plan");
-  // to the bus station: its last bay is kept for her bus, and bay A, which her bus drives through, silently
+  // to the bus station: its last bay is kept for her bus, and bays A and B, which her bus drives through, silently
   s.goTo(at("walk"));
-  assert.deepEqual(kept(world), ["story-train@bus-terminal-1:bay1: ", "story-train@bus-terminal-1:bay2: ", "story-train@platform-1:right: RB 31 to Talsee about 20 min late"]);
+  assert.deepEqual(kept(world), ["story-train@bus-terminal-1:bay1: ", "story-train@bus-terminal-1:bay2: ", "story-train@bus-terminal-1:bay3: ", "story-train@platform-1:right: RB 31 to Talsee about 20 min late"]);
+  assert.equal(world.disruptions.effectsFor(bus, bayC).reserved, true);
   assert.equal(world.disruptions.effectsFor(bus, bayB).reserved, true);
   assert.equal(world.disruptions.effectsFor(bus, bayA).reserved, true);
   assert.equal(world.disruptions.effectsFor(bus).closed, false, "the bus station stays open");
@@ -279,9 +280,9 @@ test("the story's train and bus tell the world when they stop and leave: passeng
   assert.deepEqual(events, []);
   s.goTo(at("bus"));
   frames(world, 62); // 12.4 of 32 s: the bus at the bay
-  assert.deepEqual(events, ["vehicle.arrived bus bus-terminal-1:bay2"]);
+  assert.deepEqual(events, ["vehicle.arrived bus bus-terminal-1:bay3"]);
   frames(world, 200);
-  assert.deepEqual(events.slice(1), ["vehicle.departing bus bus-terminal-1:bay2", "vehicle.departed bus bus-terminal-1:bay2"]);
+  assert.deepEqual(events.slice(1), ["vehicle.departing bus bus-terminal-1:bay3", "vehicle.departed bus bus-terminal-1:bay3"]);
   events.length = 0;
   s.goTo(at("train"));
   const before = waiting("platform-1");
@@ -309,7 +310,7 @@ test("the story's train and bus tell the world when they stop and leave: passeng
   frames(world, 62);
   s.skip();
   frames(world, 1);
-  assert.deepEqual(events, ["vehicle.arrived bus bus-terminal-1:bay2", "vehicle.departing bus bus-terminal-1:bay2", "vehicle.departed bus bus-terminal-1:bay2"]);
+  assert.deepEqual(events, ["vehicle.arrived bus bus-terminal-1:bay3", "vehicle.departing bus bus-terminal-1:bay3", "vehicle.departed bus bus-terminal-1:bay3"]);
 });
 
 test("timetable trains and buses keep off the story's track and bays; Clear passengers keeps them free", () => {
@@ -324,7 +325,7 @@ test("timetable trains and buses keep off the story's track and bays; Clear pass
     since.bays = s.index === at("walk") || s.index === at("bus") ? since.bays + 0.1 : 0;
     // one there when the story begins to keep it comes in (at most 6 s) and leaves (6 s), as at a closed track
     if (since.track > 13) assert.equal(on("platform-1:right"), null, `${s.current.id}: a timetable train at track G1`);
-    if (since.bays > 13) assert.ok(!on("bus-terminal-1:bay1") && !on("bus-terminal-1:bay2"), `${s.current.id}: a timetable bus in the bus station`);
+    if (since.bays > 13) assert.ok(!on("bus-terminal-1:bay1") && !on("bus-terminal-1:bay2") && !on("bus-terminal-1:bay3"), `${s.current.id}: a timetable bus in the bus station`);
   }
   assert.equal(s.index, at("arrive"), "Play went through the story");
   // Clear passengers takes off the scene's disruptions; the next world step starts them again
@@ -369,7 +370,7 @@ test("each step sets the world's clock to its time when it is more than a few mi
 test("the camera: her walk from home seen from the street, facing her front door; the rest facing the station's front", () => {
   const { s } = journeys();
   const yaw = () => Math.round(s.view().yaw_deg);
-  assert.equal(yaw(), -90, "her house's door faces the station: the camera looks from there");
+  assert.equal(yaw(), 90, "her house's door faces Lange Straße, away from the station: the camera looks from there");
   for (const id of ["board", "platform", "walk", "bus", "train", "arrive"]) {
     s.goTo(at(id));
     assert.equal(yaw(), 90, id);

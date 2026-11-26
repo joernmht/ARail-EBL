@@ -22,7 +22,7 @@ export const PLACES = {
   tracks: [3000, 330],
   works: [2500, 222],
   asset: [-1750, 485],
-  station: [2930, -107],
+  station: [2930, -141],
   platform: [2900, 416],
   trains: [3300, 268],
   project: [7250, 322],

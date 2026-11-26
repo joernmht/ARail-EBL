@@ -386,7 +386,7 @@ test("the flow fields a square keeps stay few; opening hours that are no time of
   assert.ok(validateLayout(json, registry).some((x) => /\(market\): close "23\.30" is no time of day/.test(x)), validateLayout(json, registry).join("\n"));
 });
 
-test("Bf Neustadt, the app's own layout, has the Striezelmarkt on by default, behind St. Marien", () => {
+test("Bf Neustadt, the app's own layout, has the Striezelmarkt on by default, on the Bahnhofsplatz", () => {
   const json = JSON.parse(readFileSync(join(ROOT, "web/layouts/ebl-neustadt.json"), "utf8"));
   assert.deepEqual(validateLayout(json, registry), []);
   const world = createWorld(json);
@@ -395,11 +395,17 @@ test("Bf Neustadt, the app's own layout, has the Striezelmarkt on by default, be
   assert.equal(world.objects.filter((o) => o.type === "market-stall").length, 22);
   for (const type of ["christmas-tree", "ferris-wheel", "carousel", "mini-train"]) assert.equal(world.objects.filter((o) => o.type === type).length, 1, type);
   assert.ok(marketOf(world), "the visitors' simulation runs");
-  // the square on its table module, its gates on the Wallanlagen, each arch over a gate
+  // the square in front of the station, between its front and Bahnhofstraße; its gates on the street and
+  // at the station's doors, each arch over a gate
   const square = world.getObject("market-square");
-  const table = world.getObject("table-markt-am-wall");
-  const [x, y] = table.spec.position, w = table.spec.width_mm / 2, d = table.spec.depth_mm / 2;
-  for (const [px, py] of square.spec.points) assert.ok(px >= x - w && px <= x + w && py >= y - d && py <= y + d, `${px}, ${py} on the table module`);
+  const station = world.getObject("station-1").footprint(), street = world.getObject("road-bahnhofstrasse");
+  const front = Math.min(...station.map((p) => p[1])), curb = street.geometry.points.at(-1)[1] + street.roadInfo().half; // the outer edge of its sidewalk
+  const [sx0, sx1] = [Math.min(...station.map((p) => p[0])), Math.max(...station.map((p) => p[0]))];
+  for (const [px, py] of square.spec.points) {
+    assert.ok(py >= curb, `${px}, ${py} off Bahnhofstraße and its sidewalk`);
+    if (px > sx0 && px < sx1) assert.ok(py <= front, `${px}, ${py} in front of the station`);
+  }
+  for (const o of world.objects.filter((o) => o.marketInfo)) assert.ok(square.covers(o.anchorPoint()), `${o.id} on the square`);
   const gates = square.entrances();
   assert.ok(gates.length >= 2);
   for (const arch of world.objects.filter((o) => o.type === "market-gate")) {

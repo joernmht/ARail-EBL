@@ -31,7 +31,7 @@ export const SHOTS = [
   { name: "crossing-fly", layout: NEUSTADT, target: [-560, 404], distance_mm: 650, yaw_deg: 40, pitch_deg: 18, time: DAY },
   { name: "station-fly", layout: NEUSTADT, target: [2930, -150], distance_mm: 900, yaw_deg: 270, pitch_deg: 16, time: DAY },
   { name: "school-fly", layout: NEUSTADT, target: [5050, -1650], distance_mm: 900, yaw_deg: 60, pitch_deg: 20, time: DAY },
-  { name: "tram-fly", layout: NEUSTADT, target: [1950, -217], distance_mm: 520, yaw_deg: 10, pitch_deg: 16, time: DAY },
+  { name: "tram-fly", layout: NEUSTADT, target: [2080, -555], distance_mm: 520, yaw_deg: 10, pitch_deg: 16, time: DAY },
   { name: "throat-fly", layout: NEUSTADT, target: [2600, 330], distance_mm: 600, yaw_deg: 160, pitch_deg: 16, time: DAY },
   { name: "line-fly", layout: NEUSTADT, target: [5200, 300], distance_mm: 900, yaw_deg: 10, pitch_deg: 14, time: DAY },
   { name: "overview-fly", layout: NEUSTADT, target: [2600, 0], distance_mm: 5200, yaw_deg: 90, pitch_deg: 42, time: DAY },
