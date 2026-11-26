@@ -209,7 +209,7 @@ export class App {
     else if (params.get("camera") === "1") this.startLive();
     if (params.get("mock") === "1") this.panels.startMock();
     else if (params.get("feed")) this.panels.connect();
-    const scenario = params.get("scenario");
+    const scenario = ARail.RENAMED_SCENARIOS[params.get("scenario")] ?? params.get("scenario"); // an old address: the renamed scenario
     if (scenario) {
       this.setAppModule("disruptions", true); // a scenario is played in the module Disruptions
       setTimeout(() => {
@@ -949,6 +949,7 @@ export class App {
    * @param {{withImage?: boolean, layers?: string[] | null, switchOn?: string[] | null}} [opts]
    */
   async loadLayoutFromUrl(url, { withImage = !this.source || this.source.kind === "image", layers = null, switchOn = null } = {}) {
+    layers = ARail.renameLayers(layers); // renamed modules under their new ids (a module home kept before, an address)
     const legacy = Object.keys(LEGACY).find((f) => url.endsWith(f));
     if (legacy) {
       // a former example file: the lab example with that layer on
@@ -1049,7 +1050,7 @@ export class App {
    * remembered when it was opened as a module, else for an example its example home.
    */
   async _moduleHome(url) {
-    const saved = storage.get(`arail.moduleHome:${url}`);
+    const saved = ARail.renameModuleHome(storage.get(`arail.moduleHome:${url}`)); // renamed modules under their new ids
     if (saved?.url && Array.isArray(saved.modules)) return saved;
     const x = this.page.examples.find((e) => e.home && new URL(e.layout, location.href).href === url);
     if (!x) return null;
