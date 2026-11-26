@@ -209,7 +209,7 @@ export class App {
     else if (params.get("camera") === "1") this.startLive();
     if (params.get("mock") === "1") this.panels.startMock();
     else if (params.get("feed")) this.panels.connect();
-    const scenario = ARail.RENAMED_SCENARIOS[params.get("scenario")] ?? params.get("scenario"); // an old address: the renamed scenario
+    const scenario = ARail.renamedScenario(params.get("scenario")); // an old address: the renamed scenario
     if (scenario) {
       this.setAppModule("disruptions", true); // a scenario is played in the module Disruptions
       setTimeout(() => {

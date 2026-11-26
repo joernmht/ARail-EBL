@@ -130,7 +130,7 @@ test("the hump blocked: nothing can be pushed on, so Slower, Faster and Stop are
 test("the example Hump yard (Settings → View): Bf Neustadt with its module, the example shown; the former #scenarios opens the list of examples", async ({ page }) => {
   const errors = await open(page);
   await page.evaluate(() => window.__arail.openExample("hump"));
-  await expect.poll(() => page.evaluate(() => window.__arail.layersOn().toSorted())).toEqual(["hump", "market-visitors", "sbahn", "wintermarkt", "waldhof"]);
+  await expect.poll(() => page.evaluate(() => window.__arail.layersOn().toSorted())).toEqual(["hump", "market-visitors", "sbahn", "waldhof", "wintermarkt"]);
   await expectCase(page, "hump");
   await expect(page.locator("#caseName")).toHaveText("Hump a train");
   await expect(page.locator("#caseStart")).toBeEnabled();

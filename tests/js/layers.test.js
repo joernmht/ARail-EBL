@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 
 import {
   composeLayout, createWorld, decomposeLayout, infraOf, journeysOf, layerChoice, layersKnown, layersOn, layoutPlugins, loadPlugins, normalizeLayers, opsOf, registry,
-  renameLayers, renameLayoutLayers, renameModuleHome, RENAMED_SCENARIOS, switchOnLayers, toggleLayer, validateLayout, withLayers, withNewLayers,
+  renameLayers, renameLayoutLayers, renameModuleHome, renamedScenario, switchOnLayers, toggleLayer, validateLayout, withLayers, withNewLayers,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
@@ -322,20 +322,27 @@ test("the market's module renamed: a choice, its known ids, an edited layout and
     for (const sc of layer.scenarios ?? []) if (sc.id === "wintermarkt-evening") sc.id = "striezelmarkt-evening";
     edited.view = { ...edited.view, image: "photos/striezelmarkt-2025.jpg" };
     edited.objects = [...(edited.objects ?? []), { id: "striezelmarkt-sign", type: "tree", position: [0, 0] }];
+    edited.scenarios = [...(edited.scenarios ?? []), { id: "own", name: "Trip to the Striezelmarkt", steps: [] }];
     const now = renameLayoutLayers(edited);
     assert.equal(now.view.image, "photos/striezelmarkt-2025.jpg", `${file}: paths stay`);
     assert.ok(now.objects.some((o) => o.id === "striezelmarkt-sign"), `${file}: object ids stay`);
+    assert.equal(now.scenarios.at(-1).name, "Trip to the Striezelmarkt", `${file}: a scenario of the user's own stays`);
     assert.deepEqual(now.layers, json.layers, file);
     const composed = composeLayout(withLayers(now, layerChoice(normalizeLayers(now.layers), ["wintermarkt", "market-visitors"]))).layout;
     assert.ok(composed.objects.some((o) => o.type === "market-gate" && o.text === "Wintermarkt"), file);
-    assert.ok(!JSON.stringify(composed.scenarios).includes("Striezelmarkt"), file);
+    assert.ok(!JSON.stringify(composed.scenarios.filter((sc) => sc.id !== "own")).includes("Striezelmarkt"), file);
   }
   // the home of the container terminal kept before: its box reads Wintermarkt and switches the market on
   const home = renameModuleHome({ url: "x", name: "Lab", module: "terminal", modules: [{ id: "striezelmarkt", name: "Striezelmarkt" }, { id: "terminal", name: "Container terminal" }] });
   assert.deepEqual(home.modules.map((m) => [m.id, m.name]), [["wintermarkt", "Wintermarkt"], ["terminal", "Container terminal"]]);
-  assert.equal(RENAMED_SCENARIOS["striezelmarkt-evening"], "wintermarkt-evening");
   assert.deepEqual(renameLayers(["striezelmarkt", "wintermarkt", "terminal"]), ["wintermarkt", "terminal"]);
   assert.equal(renameLayers(null), null);
+  // only the renamed ids: names of built-ins are no renamed layers or scenarios
+  assert.deepEqual(renameLayers(["constructor", "toString", "__proto__"]), ["constructor", "toString", "__proto__"]);
+  assert.equal(renamedScenario("toString"), "toString");
+  assert.equal(renamedScenario("striezelmarkt-evening"), "wintermarkt-evening");
+  const odd = { layers: [{ id: "constructor" }] };
+  assert.equal(renameLayoutLayers(odd), odd);
   const plain = { objects: [] };
   assert.equal(renameLayoutLayers(plain), plain);
 });

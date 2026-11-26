@@ -109,3 +109,49 @@ test("Bf Neustadt: an example brings back no module switched off by hand; a choi
   await expect.poll(on).toEqual(["sbahn", "waldhof", "wintermarkt", "market-visitors", "hump"]);
   expect(errors).toEqual([]);
 });
+
+test("the lab: what was saved under the old id striezelmarkt (a choice, an edited layout, an address) gets the Wintermarkt", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const on = () => page.evaluate(() => window.__arail.layersOn());
+  const loaded = () => page.waitForFunction(() => window.__arail?.world?.objects?.length, null, { timeout: 30_000 });
+  await page.goto(LAB);
+  await loaded();
+  const file = new URL("/layouts/ebl-lab.json", page.url()).href;
+  const ids = await page.evaluate(() => window.__arail.world.layers().map((l) => l.id));
+  const old = ids.map((id) => (id === "wintermarkt" ? "striezelmarkt" : id));
+  // a choice kept with the old id: the market on, although it is off by default in the lab
+  await page.evaluate(({ file, old }) => {
+    localStorage.clear();
+    localStorage.setItem(`arail.layers:${file}`, JSON.stringify(["striezelmarkt", "market-visitors"]));
+    localStorage.setItem(`arail.layersKnown:${file}`, JSON.stringify(old));
+  }, { file, old });
+  await page.reload();
+  await loaded();
+  expect(await on()).toEqual(["wintermarkt", "market-visitors"]);
+  expect(await page.evaluate((file) => JSON.parse(localStorage.getItem(`arail.layers:${file}`)), file)).toEqual(["wintermarkt", "market-visitors"]);
+  // a layout saved with edits under the old id: the market is there, its gates read Wintermarkt
+  await page.evaluate(async ({ file }) => {
+    const json = await (await fetch(file)).json();
+    const layer = json.layers.find((l) => l.id === "wintermarkt");
+    layer.id = "striezelmarkt";
+    layer.name = "Striezelmarkt";
+    for (const o of layer.objects) if (o.type === "market-gate") o.text = "Striezelmarkt";
+    localStorage.setItem(`arail.layout:${file}`, JSON.stringify(json));
+    localStorage.setItem(`arail.layers:${file}`, JSON.stringify(["striezelmarkt", "market-visitors"]));
+  }, { file });
+  await page.reload();
+  await loaded();
+  expect(await on()).toEqual(["wintermarkt", "market-visitors"]);
+  expect(await page.evaluate(() => window.__arail.world.getObject("market-gate")?.spec.text)).toBe("Wintermarkt");
+  // an address with the old ids: the module and the scenario under their new ones
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(`${LAB}&layers=striezelmarkt&scenario=striezelmarkt-evening`);
+  await loaded();
+  expect(await on()).toContain("wintermarkt");
+  // the scenario has one step: played, it has set 6 December and is over at once
+  await expect.poll(() => page.evaluate(() => window.__arail.world.clock.monthDay()), { timeout: 10_000 }).toEqual({ month: 12, day: 6 });
+  await expect(page.getByText("has no scenario")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

@@ -119,13 +119,21 @@ export const RENAMED_SCENARIOS = Object.freeze({ "striezelmarkt-evening": "winte
 /** The old name and the new one, as the texts of a layout (names, boards, messages) have them. */
 const RENAMED_TEXTS = [["Striezelmarkt", "Wintermarkt"]];
 
+/** The new id of a renamed layer, or the id as it is (own keys only: `constructor` is no layer that was renamed). */
+export const renamedLayer = (id) => (typeof id === "string" && Object.hasOwn(RENAMED_LAYERS, id) ? RENAMED_LAYERS[id] : id);
+/** The new id of a renamed scenario (an old address), or the id as it is. */
+export const renamedScenario = (id) => (typeof id === "string" && Object.hasOwn(RENAMED_SCENARIOS, id) ? RENAMED_SCENARIOS[id] : id);
+/** The layers whose texts the app wrote with the old name: the renamed one and the market's visitors. */
+const MARKET_LAYERS = new Set([...Object.keys(RENAMED_LAYERS), ...Object.values(RENAMED_LAYERS), "market-visitors"]);
+
 const renameText = (t) => (typeof t === "string" ? RENAMED_TEXTS.reduce((s, [old, now]) => s.split(old).join(now), t) : t);
 
 /** A scenario with its renamed id and the old name in its name, description and messages replaced. */
 function renameScenario(sc) {
   if (!isObject(sc)) return sc;
   const out = { ...sc, name: renameText(sc.name), description: renameText(sc.description) };
-  if (typeof sc.id === "string" && RENAMED_SCENARIOS[sc.id]) out.id = RENAMED_SCENARIOS[sc.id];
+  out.id = renamedScenario(sc.id);
+  if (out.id === undefined) delete out.id;
   if (Array.isArray(sc.steps)) out.steps = sc.steps.map((st) => (isObject(st) && typeof st.message === "string" ? { ...st, message: renameText(st.message) } : st));
   for (const k of ["name", "description"]) if (out[k] === undefined) delete out[k];
   return out;
@@ -141,27 +149,27 @@ const renameObjects = (objects) => (Array.isArray(objects) ? objects.map((o) => 
  */
 export function renameLayers(ids) {
   if (!Array.isArray(ids)) return ids;
-  return [...new Set([...ids].map((id) => RENAMED_LAYERS[id] ?? id))];
+  return [...new Set([...ids].map(renamedLayer))];
 }
 
 /**
  * A layout (as saved with a user's own edits) with its renamed layers under their new ids
- * ({@link RENAMED_LAYERS}). Only what the app wrote under the old name is renamed: the ids and names
- * of layers, the board of a market gate, the scenarios that came with the layer (id, name,
- * description, messages) and the descriptions of the layout and its layers. Object ids, paths
- * (`view.image`) and the rest stay as they are. The layout given is not changed; one without a
+ * ({@link RENAMED_LAYERS}). The old name is replaced in what the app wrote with it: the layout's
+ * description and, in the market's own layers (the renamed one and `market-visitors`), their id,
+ * name and description, the boards of their market gates and their scenarios (id, name, description,
+ * messages), also where the user edited them. Everything else stays as it is: the base and the other
+ * layers (a scenario of the user's own), object ids, paths (`view.image`). The layout given is not changed; one without a
  * renamed layer comes back as it is.
  * @param {object} layout
  * @returns {object}
  */
 export function renameLayoutLayers(layout) {
-  if (!isObject(layout) || !Array.isArray(layout.layers) || !layout.layers.some((l) => isObject(l) && RENAMED_LAYERS[l.id])) return layout;
-  const scenarios = (v) => (Array.isArray(v) ? v.map(renameScenario) : v);
-  const out = { ...layout, objects: renameObjects(layout.objects), scenarios: scenarios(layout.scenarios), description: renameText(layout.description) };
-  for (const k of ["objects", "scenarios", "description"]) if (out[k] === undefined) delete out[k];
+  if (!isObject(layout) || !Array.isArray(layout.layers) || !layout.layers.some((l) => isObject(l) && renamedLayer(l.id) !== l.id)) return layout;
+  const out = { ...layout, description: renameText(layout.description) };
+  if (out.description === undefined) delete out.description;
   out.layers = layout.layers.map((l) => {
-    if (!isObject(l)) return l;
-    const r = { ...l, id: RENAMED_LAYERS[l.id] ?? l.id, name: renameText(l.name), description: renameText(l.description), objects: renameObjects(l.objects), scenarios: scenarios(l.scenarios) };
+    if (!isObject(l) || !MARKET_LAYERS.has(l.id)) return l;
+    const r = { ...l, id: renamedLayer(l.id), name: renameText(l.name), description: renameText(l.description), objects: renameObjects(l.objects), scenarios: Array.isArray(l.scenarios) ? l.scenarios.map(renameScenario) : l.scenarios };
     for (const k of ["name", "description", "objects", "scenarios"]) if (r[k] === undefined) delete r[k];
     return r;
   });
@@ -178,8 +186,8 @@ export function renameModuleHome(home) {
   if (!isObject(home) || !Array.isArray(home.modules)) return home;
   return {
     ...home,
-    module: RENAMED_LAYERS[home.module] ?? home.module,
-    modules: home.modules.map((m) => (isObject(m) ? { ...m, id: RENAMED_LAYERS[m.id] ?? m.id, name: renameText(m.name) } : m)),
+    module: renamedLayer(home.module),
+    modules: home.modules.map((m) => (isObject(m) ? { ...m, id: renamedLayer(m.id), name: MARKET_LAYERS.has(m.id) ? renameText(m.name) : m.name } : m)),
   };
 }
 
