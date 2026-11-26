@@ -201,7 +201,7 @@ export class App {
     const layout = photoLayout || example?.layout || params.get("layout") || storage.get(this.key("lastLayout")) || this.page.examples[0].layout;
     const image = params.get("image");
     const media = !image && (example?.image || example?.video) ? example : null;
-    const layers = params.has("layers") ? params.get("layers").split(",").filter(Boolean) : null;
+    const layers = params.has("layers") ? ARail.renameLayers(params.get("layers").split(",").filter(Boolean)) : null;
     await this.loadLayoutFromUrl(layout, { withImage: !tourPhoto && !image && !media && params.get("camera") !== "1", layers });
     if (tourPhoto) this.tourNav.showPhoto(photo);
     else if (image) this.loadImage(new URL(image, location.href).href, "Image");
@@ -927,7 +927,7 @@ export class App {
    * (ARail.layersKnown). Edits are kept; the simulations start again.
    */
   async setLayers(ids) {
-    const file = ARail.normalizeLayers(this.originalLayout?.layers), known = storage.get(this._layersKnownKey());
+    const file = ARail.normalizeLayers(this.originalLayout?.layers), known = ARail.renameLayers(storage.get(this._layersKnownKey()));
     const on = ARail.layerChoice(this.world.layers(), [...ids, ...(known ? ARail.withNewLayers(file, ids, known) : [])]);
     const json = ARail.withLayers(this.world.toJSON(), on);
     storage.set(this._layersKey(), on);
@@ -970,7 +970,7 @@ export class App {
     const fileLayers = ARail.normalizeLayers(json.layers);
     // layers: as asked for, else as last time, else as the file has them; an example's modules switched on with them
     // (beside the file's own modules when the choice before was an exclusive module, which is left for it)
-    const saved = layers ? null : storage.get(this._layersKey(absolute));
+    const saved = layers ? null : ARail.renameLayers(storage.get(this._layersKey(absolute))); // renamed modules under their new ids
     let asked = layers || (Array.isArray(saved) ? saved : null);
     if (switchOn?.length) {
       const alone = asked && ARail.layerChoice(fileLayers, asked).some((id) => fileLayers.find((l) => l.id === id)?.exclusive);
@@ -992,7 +992,7 @@ export class App {
     // a kept choice gains the modules on by default that the layout has got since (ARail.withNewLayers);
     // an exclusive module chosen alone keeps them for when it is left (ARail.layersKnown). Without the
     // ids kept, a choice saved before they were kept gains those with `since`; any other knows them all.
-    const known = storage.get(this._layersKnownKey()) ?? (Array.isArray(saved) ? null : fileLayers.map((l) => l.id));
+    const known = ARail.renameLayers(storage.get(this._layersKnownKey())) ?? (Array.isArray(saved) ? null : fileLayers.map((l) => l.id));
     const chosen = asked && (layers ? asked : ARail.withNewLayers(fileLayers, asked, known));
     if (chosen) {
       storage.set(this._layersKey(), chosen);
@@ -1008,7 +1008,7 @@ export class App {
     // a virtual layout opens in the flyover: the photo or video shown until then does not belong to it
     const virtual = json.view?.start === "flyover";
     if (virtual && this.source) this.source.stale = true;
-    let edited = storage.get(this._layoutKey());
+    let edited = ARail.renameLayoutLayers(storage.get(this._layoutKey())); // renamed modules under their new ids
     // changes saved before the layout had layers: they keep the file's layers
     if (edited && edited.layers == null && Array.isArray(json.layers)) edited = { ...edited, layers: json.layers };
     let restored = false;

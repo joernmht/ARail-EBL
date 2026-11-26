@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 
 import {
   composeLayout, createWorld, decomposeLayout, infraOf, journeysOf, layerChoice, layersKnown, layersOn, layoutPlugins, loadPlugins, normalizeLayers, opsOf, registry,
-  switchOnLayers, toggleLayer, validateLayout, withLayers, withNewLayers,
+  renameLayers, renameLayoutLayers, switchOnLayers, toggleLayer, validateLayout, withLayers, withNewLayers,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
@@ -299,4 +299,26 @@ test("an example that needs a module switches it on with the modules chosen befo
   assert.deepEqual(switchOnLayers(layers, ["sbahn", "hump"], ["operations"]), ["operations"]);
   assert.deepEqual(switchOnLayers(layers, ["plan"], ["hump"]), toggleLayer(layers, ["plan"], "hump"));
   assert.deepEqual(switchOnLayers(layers, ["sbahn"], ["unknown"]), ["sbahn"]);
+});
+
+test("the market's module renamed: a choice, its known ids and an edited layout keep it under the new id", () => {
+  for (const file of ["ebl-neustadt.json", "ebl-lab.json"]) {
+    const json = readJSON(join("web/layouts", file));
+    const layers = normalizeLayers(json.layers), ids = layers.map((l) => l.id);
+    const old = ids.map((id) => (id === "wintermarkt" ? "striezelmarkt" : id));
+    // on before: on now, on the lab too, where the module is off by default
+    assert.ok(withNewLayers(layers, renameLayers(["striezelmarkt", "market-visitors"]), renameLayers(old)).includes("wintermarkt"), file);
+    // switched off before: stays off
+    assert.ok(!withNewLayers(layers, renameLayers(["market-visitors"]), renameLayers(old)).includes("wintermarkt"), file);
+    // a layout saved with edits under the old id: the market is there, its gates read the new name
+    const edited = JSON.parse(JSON.stringify(json).split("Wintermarkt").join("Striezelmarkt").split("wintermarkt").join("striezelmarkt"));
+    const now = renameLayoutLayers(edited);
+    assert.deepEqual(now, json, file);
+    const composed = composeLayout(withLayers(now, layerChoice(normalizeLayers(now.layers), ["wintermarkt", "market-visitors"]))).layout;
+    assert.ok(composed.objects.some((o) => o.type === "market-gate" && o.text === "Wintermarkt"), file);
+  }
+  assert.deepEqual(renameLayers(["striezelmarkt", "wintermarkt", "terminal"]), ["wintermarkt", "terminal"]);
+  assert.equal(renameLayers(null), null);
+  const plain = { objects: [] };
+  assert.equal(renameLayoutLayers(plain), plain);
 });

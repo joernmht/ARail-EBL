@@ -9,7 +9,7 @@ For a railway lab the visitors matter beyond the market: about a third of them c
 Both examples have it:
 
 - **Bf Neustadt** (the app's own layout, `app/`): on the Bahnhofsplatz, the square between the station and Bahnhofstraße: two rows of stalls along the station's front, the tree, the ferris wheel, the carousel and the locomotive stall beside the station, its gates on Bahnhofstraße and to the station's doors. The two modules are **on by default**; out of season the square is empty and people cross it to the trains.
-- **The lab example** (`app/?layout=../layouts/ebl-lab.json`): on the Marktplatz, a module of its own west of the town; switch the two modules on in **Examples → Sandbox**, or with the address `app/?layout=../layouts/ebl-lab.json&layers=wintermarkt,market-visitors`.
+- **The lab example** (`app/?layout=../layouts/ebl-lab.json`): on the Marktplatz, a module of its own west of the town; switch the two modules on in **Examples → Sandbox**, or with the address `app/?layout=../layouts/ebl-lab.json&layers=wintermarkt,market-visitors`. The module was called `striezelmarkt` before; a choice, an address or an edited layout with that id gets the Wintermarkt.
 
 Switch them on or off in **Examples → Sandbox**; the situation *Christmas market* (Settings → Simulation) switches them on and sets a snowy Saturday evening in December.
 

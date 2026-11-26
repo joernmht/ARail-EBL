@@ -106,6 +106,41 @@ export function toggleLayer(layers, on, id) {
 }
 
 /**
+ * Layer ids that were renamed, the old id to the new one: a choice saved, an address or a layout
+ * edited before keeps its modules under the new names ({@link renameLayers}, {@link renameLayoutLayers}).
+ * The Christmas market's module was `striezelmarkt` until the name, which is protected, gave way to
+ * `wintermarkt`.
+ */
+export const RENAMED_LAYERS = Object.freeze({ striezelmarkt: "wintermarkt" });
+
+/** Old names in a layout's texts, with what replaced them (see {@link RENAMED_LAYERS}). */
+const RENAMED_TEXTS = [["Striezelmarkt", "Wintermarkt"], ["striezelmarkt", "wintermarkt"]];
+
+/**
+ * Layer ids with the renamed ones under their new names ({@link RENAMED_LAYERS}); the order is kept.
+ * @param {string[] | null | undefined} ids (anything else comes back as it is)
+ * @returns {string[] | null | undefined}
+ */
+export function renameLayers(ids) {
+  if (!Array.isArray(ids)) return ids;
+  return [...new Set([...ids].map((id) => RENAMED_LAYERS[id] ?? id))];
+}
+
+/**
+ * A layout (as saved with a user's own edits) with its renamed layers under their new ids
+ * ({@link RENAMED_LAYERS}), and the old name in its texts (a gate's board, a scenario) replaced.
+ * The layout given is not changed; one with nothing to rename comes back as it is.
+ * @param {object} layout
+ * @returns {object}
+ */
+export function renameLayoutLayers(layout) {
+  if (!isObject(layout)) return layout;
+  const text = JSON.stringify(layout);
+  if (!RENAMED_TEXTS.some(([old]) => text.includes(old))) return layout;
+  return JSON.parse(RENAMED_TEXTS.reduce((t, [old, now]) => t.split(old).join(now), text));
+}
+
+/**
  * A valid choice of layers from a list of ids (an address, a saved choice): known ids in layer
  * order; when an exclusive layer is among them, only the first exclusive one.
  * @param {Array<{id: string, exclusive?: boolean}>} layers
