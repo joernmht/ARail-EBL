@@ -44,8 +44,8 @@ export async function refreshFiles() {
   await Promise.all([...own].map((u) => fetch(u, { cache: "reload" }).catch(() => null)));
 }
 
-/** The notice of a new version: Reload (after `beforeReload`, e.g. the layout's edits saved) or Later. */
-function showNotice(beforeReload) {
+/** The notice of a new version: Reload (after `beforeReload`, e.g. the layout's edits saved) or Later (`later`). */
+function showNotice(beforeReload, later) {
   const reload = h("button", {
     class: "btn small", type: "button",
     onclick: async () => {
@@ -62,29 +62,32 @@ function showNotice(beforeReload) {
   const el = h("div", { class: "update-notice", id: "updateNotice", role: "status" },
     h("span", {}, "A new version of ARail is available."),
     reload,
-    h("button", { class: "btn small", type: "button", onclick: () => el.remove() }, "Later"));
+    h("button", { class: "btn small", type: "button", onclick: () => { el.remove(); later?.(); } }, "Later"));
   document.body.append(el);
   return el;
 }
 
 /**
  * Ask the site for its version now, every ten minutes and when the page is shown again; a page older
- * than it shows the notice (again ten minutes after Later). Nothing on a page that was not published.
+ * than it shows the notice. After Later it is quiet for ten minutes, also when the page is shown again
+ * (`check(true)` asks all the same). Nothing on a page that was not published.
  * @param {{url?: string, every?: number, beforeReload?: () => void}} [opts]
- * @returns {{check: () => Promise<boolean>, stop: () => void} | null}
+ * @returns {{check: (now?: boolean) => Promise<boolean>, stop: () => void} | null}
  */
 export function watchVersion({ url = new URL("../version.json", import.meta.url).href, every = EVERY_MS, beforeReload = null } = {}) {
   const page = pageVersion();
   if (page === "dev") return null;
-  const check = async () => {
+  let quietUntil = 0;
+  const check = async (now = false) => {
     if (document.getElementById("updateNotice")) return true;
+    if (now !== true && Date.now() < quietUntil) return false;
     const outdated = isOutdated(page, await siteVersion(url));
-    if (outdated && !document.getElementById("updateNotice")) showNotice(beforeReload);
+    if (outdated && !document.getElementById("updateNotice")) showNotice(beforeReload, () => (quietUntil = Date.now() + every - 1000));
     return outdated;
   };
   const visible = () => document.visibilityState === "visible" && check();
-  check();
-  const timer = setInterval(check, every);
+  check(true);
+  const timer = setInterval(() => check(), every);
   document.addEventListener("visibilitychange", visible);
   return { check, stop: () => { clearInterval(timer); document.removeEventListener("visibilitychange", visible); } };
 }

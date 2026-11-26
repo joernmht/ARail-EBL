@@ -6,7 +6,7 @@ The app is an **interactive presentation** of the lab: the chapter **Examples** 
 
 The live camera needs a secure page: https (GitHub Pages) or `localhost`. Photos and videos work everywhere.
 
-**New versions.** Each deploy stamps the commit it publishes (`version.json`, and the meta `arail-version` of the app and the game page). An open page asks for it when it starts, every ten minutes and when it is shown again. If the page is older (a tab left open, or files the browser kept in its cache), a notice at the top says *A new version of ARail is available*. **Reload** saves the layout's edits, fetches the page's files again past the cache and loads the new version; **Later** hides the notice until the next check. A page served locally (`dev`) checks nothing.
+**New versions.** Each deploy stamps the commit it publishes (`version.json`, and the meta `arail-version` of the app and the game page). An open page asks for it when it starts, every ten minutes and when it is shown again. If the page is older (a tab left open, or files the browser kept in its cache), a notice at the top says *A new version of ARail is available*. **Reload** saves the layout's edits, fetches the page's files again past the cache and loads the new version; **Later** hides it for ten minutes. A page served locally (`dev`) checks nothing.
 
 ![The app in the flyover: the example town on its table modules in front of the lab table at 17:01, with the panel beside it](assets/app-screenshot.jpg)
 

@@ -75,7 +75,7 @@ function settled(page) {
   return page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))));
 }
 
-/** Settings → Simulation (the tab remembers its last view). */
+/** Settings → Simulation, which the tab always opens on. */
 async function openSimulation(page) {
   await page.locator("#tab-settings").click();
   await expect(page.locator("#panel-settings .situations").first()).toBeVisible(); // the simulation, always shown

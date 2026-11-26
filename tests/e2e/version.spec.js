@@ -33,8 +33,13 @@ test("an old page offers the new version: Later hides it, Reload fetches the pag
   await expect(notice).toContainText("A new version of ARail is available.");
   await notice.getByRole("button", { name: "Later" }).click();
   await expect(notice).toHaveCount(0);
-  // the next check shows it again; Reload: the page's own modules fetched past the cache, then the page loaded again
-  await page.evaluate(() => window.__arail.version.check());
+  // after Later: quiet for ten minutes, also when the page is shown again
+  expect(await page.evaluate(() => window.__arail.version.check())).toBe(false);
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(300);
+  await expect(notice).toHaveCount(0);
+  // asked all the same, it shows again; Reload: the page's own modules fetched past the cache, then the page loaded again
+  expect(await page.evaluate(() => window.__arail.version.check(true))).toBe(true);
   const refetched = [];
   // (fetched by refreshFiles with cache: "reload"; the header does not show while requests are routed)
   page.on("request", (r) => {
