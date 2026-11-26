@@ -1,7 +1,7 @@
 {
   "format": "arail-layout/1",
   "name": "EBL Bf Neustadt and terminal (example)",
-  "description": "A bigger part of the lab table, surveyed on 9 October 2026: the station Bf Neustadt with its two platforms (and, in the module Waldhof, the next station Waldhof with the RB 30 to Neustadt; in the module S-Bahn, the light rail S 10 from Pirna to Heidenau) and, along the same tracks, a container terminal with a gantry crane over the three loading tracks, a truck lane and a yard block. In front of the table lies the town of Neustadt: the station building and in front of it the Bahnhofsplatz, between the station and Bahnhofstraße, with the square of the Christmas market, the Striezelmarkt (modules Striezelmarkt and Market visitors, on by default), the bus station (ZOB) with low shops behind its bays, the P+R, a Fahrradstation and bike stands, everything on it low so that the tracks stay in view; then the Altstadt with the Markt, the Rathaus and St. Marien, its pedestrian zones (Marktstraße, Lange Straße, the Markt) lined with houses with shops on the ground floor, Gründerzeit blocks round it, the Stadtpark and the Wall; in the east a garden town of single-family houses. Behind the curve lies the high-rise estate Am Plattenring: slabs of 6 and 11 floors, point towers, the Passage with shops, a school, Kitas, the Kaufhalle. Two tram lines run from Lindenstraße along Ringstraße and Bahnhofstraße, line 1 to Neustadt Bf and the Busbahnhof, line 2 through the pedestrian zone Marktstraße to the Markt, past St. Marien and over Wallstraße to its loop Am Wall, in curves of 25 m, and turn in loops at both ends; where people cross the street to a tram, traffic lights hold the cars. Brückenstraße crosses the main line at a level crossing with half barriers, which trams never cross: bus 261 takes the estate from Neustadt Bf over it to its turning circle Am Wendekreis, bus 262 the garden town from the ZOB to its turning circle in Drosselweg, bus 7 goes round Am Bogen. Some streets are dead ends with turning circles or hammers; cars come and go at Lindenhof, Schulstraße and Leipziger Straße; bikes, e-scooters and cars with parking share the streets. The marker map comes from arail-survey (three photos and a video); it is locked.",
+  "description": "A bigger part of the lab table, surveyed on 9 October 2026: the station Bf Neustadt with its two platforms (and, in the module Waldhof, the next station Waldhof with the RB 30 to Neustadt; in the module S-Bahn, the light rail S 10 from Pirna to Heidenau) and, along the same tracks, a container terminal with a gantry crane over the three loading tracks, a truck lane and a yard block. In front of the table lies the town of Neustadt: the station building and in front of it the Bahnhofsplatz, between the station and Bahnhofstraße, with the square of the Christmas market, the Wintermarkt (modules Wintermarkt and Market visitors, on by default), the bus station (ZOB) with low shops behind its bays, the P+R, a Fahrradstation and bike stands, everything on it low so that the tracks stay in view; then the Altstadt with the Markt, the Rathaus and St. Marien, its pedestrian zones (Marktstraße, Lange Straße, the Markt) lined with houses with shops on the ground floor, Gründerzeit blocks round it, the Stadtpark and the Wall; in the east a garden town of single-family houses. Behind the curve lies the high-rise estate Am Plattenring: slabs of 6 and 11 floors, point towers, the Passage with shops, a school, Kitas, the Kaufhalle. Two tram lines run from Lindenstraße along Ringstraße and Bahnhofstraße, line 1 to Neustadt Bf and the Busbahnhof, line 2 through the pedestrian zone Marktstraße to the Markt, past St. Marien and over Wallstraße to its loop Am Wall, in curves of 25 m, and turn in loops at both ends; where people cross the street to a tram, traffic lights hold the cars. Brückenstraße crosses the main line at a level crossing with half barriers, which trams never cross: bus 261 takes the estate from Neustadt Bf over it to its turning circle Am Wendekreis, bus 262 the garden town from the ZOB to its turning circle in Drosselweg, bus 7 goes round Am Bogen. Some streets are dead ends with turning circles or hammers; cars come and go at Lindenhof, Schulstraße and Leipziger Straße; bikes, e-scooters and cars with parking share the streets. The marker map comes from arail-survey (three photos and a video); it is locked.",
   "scale": 87,
   "markers": {
     "dictionary": "ARUCO",
@@ -705,14 +705,14 @@
       ]
     },
     {
-      "id": "striezelmarkt",
-      "name": "Striezelmarkt",
+      "id": "wintermarkt",
+      "name": "Wintermarkt",
       "description": "The Christmas market on the Bahnhofsplatz, in front of the station: a big decorated Christmas tree, a ferris wheel, a carousel and a mini train, and stalls with Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilze from a steam locomotive, and crafts. Lit at night; switch on Market visitors for the crowd.",
       "enabled": true,
       "since": "2026-11-16",
       "objects": [
-        {"id": "market-gate", "type": "market-gate", "name": "Eingang Bahnhofstraße", "position": [2954, -450], "rotation_deg": 0, "text": "Striezelmarkt", "width_m": 4},
-        {"id": "market-gate-2", "type": "market-gate", "name": "Eingang Bahnhof", "position": [2983, -290], "rotation_deg": 180, "text": "Striezelmarkt"},
+        {"id": "market-gate", "type": "market-gate", "name": "Eingang Bahnhofstraße", "position": [2954, -450], "rotation_deg": 0, "text": "Wintermarkt", "width_m": 4},
+        {"id": "market-gate-2", "type": "market-gate", "name": "Eingang Bahnhof", "position": [2983, -290], "rotation_deg": 180, "text": "Wintermarkt"},
         {"id": "christmas-tree", "type": "christmas-tree", "name": "Weihnachtsbaum", "position": [3560, -272], "height_m": 20},
         {"id": "ferris-wheel", "type": "ferris-wheel", "name": "Riesenrad", "position": [3570, -140], "rotation_deg": 0, "diameter_m": 22},
         {"id": "carousel", "type": "carousel", "name": "Kinderkarussell", "position": [3540, -400], "rotation_deg": 90, "diameter_m": 7},
@@ -741,20 +741,20 @@
         {"id": "stall-22", "type": "market-stall", "position": [3048, -425], "rotation_deg": -180, "goods": "flammlachs", "tables": 1, "width_m": 3}
       ],
       "scenarios": [
-        {"id": "striezelmarkt-evening", "name": "Evening at the Striezelmarkt", "description": "6 December, a quarter to four: snow is falling, dusk comes at four, and the lights of the stalls, the tree and the rides come on.", "steps": [{"at": 0, "set": {"date": "12-06", "time": "15:45", "weather": "snow"}, "message": "6 December at the Striezelmarkt: snow is falling, and the lights come on at dusk."}]}
+        {"id": "wintermarkt-evening", "name": "Evening at the Wintermarkt", "description": "6 December, a quarter to four: snow is falling, dusk comes at four, and the lights of the stalls, the tree and the rides come on.", "steps": [{"at": 0, "set": {"date": "12-06", "time": "15:45", "weather": "snow"}, "message": "6 December at the Wintermarkt: snow is falling, and the lights come on at dusk."}]}
       ]
     },
     {
       "id": "market-visitors",
       "name": "Market visitors",
-      "description": "People come to the Striezelmarkt from the houses of the town, from the ends of the streets and by train: they queue at the stalls, drink their Glühwein at the standing tables, look at the tree and ride the ferris wheel, the carousel and the mini train, then go home, many of them to the station. Needs the module Striezelmarkt.",
+      "description": "People come to the Wintermarkt from the houses of the town, from the ends of the streets and by train: they queue at the stalls, drink their Glühwein at the standing tables, look at the tree and ride the ferris wheel, the carousel and the mini train, then go home, many of them to the station. Needs the module Wintermarkt.",
       "enabled": true,
       "since": "2026-11-16",
       "simulations": [
         {"type": "market", "visitors": 260, "open": "10:00", "close": "22:00"}
       ],
       "scenarios": [
-        {"id": "market-closing", "name": "Closing time at the Striezelmarkt", "description": "The market closes at 22:00: the crowd leaves, many of them for the trains. Watch the platforms fill.", "steps": [{"at": 0, "set": {"date": "12-06", "time": "20:30"}, "message": "A busy evening at the Striezelmarkt."}, {"at": 450, "message": "The market closes: everybody goes home, many to the station."}]}
+        {"id": "market-closing", "name": "Closing time at the Wintermarkt", "description": "The market closes at 22:00: the crowd leaves, many of them for the trains. Watch the platforms fill.", "steps": [{"at": 0, "set": {"date": "12-06", "time": "20:30"}, "message": "A busy evening at the Wintermarkt."}, {"at": 450, "message": "The market closes: everybody goes home, many to the station."}]}
       ]
     },
     {

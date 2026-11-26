@@ -1,6 +1,6 @@
-# The market square and the Striezelmarkt
+# The market square and the Wintermarkt
 
-A market square on a table module of its own, and on it, as two modules that are switched on and off, a German Christmas market (in Dresden the Striezelmarkt) and its visitors. The stalls sell Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Aachener Printen, Nürnberger Lebkuchen, Dresdner Stollen, Lübecker Marzipan, Marzipan, Langos, Flammlachs, Maronen, Pilze (from a stall built like a steam locomotive), Strickwaren, Lederwaren, Holzkunst aus dem Erzgebirge and Kerzen: the goods keep their German names in every language. A big decorated Christmas tree stands in the middle, with a ferris wheel, a carousel and a mini train round it.
+A market square on a table module of its own, and on it, as two modules that are switched on and off, a German Christmas market and its visitors. The stalls sell Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Aachener Printen, Nürnberger Lebkuchen, Dresdner Stollen, Lübecker Marzipan, Marzipan, Langos, Flammlachs, Maronen, Pilze (from a stall built like a steam locomotive), Strickwaren, Lederwaren, Holzkunst aus dem Erzgebirge and Kerzen: the goods keep their German names in every language. A big decorated Christmas tree stands in the middle, with a ferris wheel, a carousel and a mini train round it.
 
 For a railway lab the visitors matter beyond the market: about a third of them come by train and go home by train, so the market fills the platforms in the evening and, at closing time, all at once.
 
@@ -9,21 +9,21 @@ For a railway lab the visitors matter beyond the market: about a third of them c
 Both examples have it:
 
 - **Bf Neustadt** (the app's own layout, `app/`): on the Bahnhofsplatz, the square between the station and Bahnhofstraße: two rows of stalls along the station's front, the tree, the ferris wheel, the carousel and the locomotive stall beside the station, its gates on Bahnhofstraße and to the station's doors. The two modules are **on by default**; out of season the square is empty and people cross it to the trains.
-- **The lab example** (`app/?layout=../layouts/ebl-lab.json`): on the Marktplatz, a module of its own west of the town; switch the two modules on in **Examples → Sandbox**, or with the address `app/?layout=../layouts/ebl-lab.json&layers=striezelmarkt,market-visitors`.
+- **The lab example** (`app/?layout=../layouts/ebl-lab.json`): on the Marktplatz, a module of its own west of the town; switch the two modules on in **Examples → Sandbox**, or with the address `app/?layout=../layouts/ebl-lab.json&layers=wintermarkt,market-visitors`. The module was called `striezelmarkt` before; a choice, an address or an edited layout with that id gets the Wintermarkt.
 
 Switch them on or off in **Examples → Sandbox**; the situation *Christmas market* (Settings → Simulation) switches them on and sets a snowy Saturday evening in December.
 
 | Module | What it adds |
 | --- | --- |
 | *(the base)* | the market's table module with the paved square: on Bf Neustadt the Bahnhofsplatz in front of the station, on the lab example the Marktplatz with Lindenallee leading to it and the Altbau Am Markt on its south side (module M) |
-| **Striezelmarkt** (`striezelmarkt`) | 22 stalls with their signs, two arches over the entrances reading *Striezelmarkt*, the Christmas tree, the ferris wheel (Riesenrad), the carousel (Kinderkarussell) and the mini train (Kindereisenbahn); the scenario *Evening at the Striezelmarkt* |
-| **Market visitors** (`market-visitors`) | the visitor simulation `market`; the scenario *Closing time at the Striezelmarkt*. Needs the Striezelmarkt: without stalls and rides nobody comes, and while the market is open the visitors say so once (*Market visitors: no market square has stalls or rides, so nobody comes.*) |
+| **Wintermarkt** (`wintermarkt`) | 22 stalls with their signs, two arches over the entrances reading *Wintermarkt*, the Christmas tree, the ferris wheel (Riesenrad), the carousel (Kinderkarussell) and the mini train (Kindereisenbahn); the scenario *Evening at the Wintermarkt* |
+| **Market visitors** (`market-visitors`) | the visitor simulation `market`; the scenario *Closing time at the Wintermarkt*. Needs the Wintermarkt: without stalls and rides nobody comes, and while the market is open the visitors say so once (*Market visitors: no market square has stalls or rides, so nobody comes.*) |
 
-**The season.** A Christmas market is there from 26 November to 23 December, as the Striezelmarkt (the market simulation's `from` and `until`). On a date outside it (Settings → Date and weather, a scenario or a situation) the square is empty: no stalls, no tree, no arches, no rides, nobody comes; the clock without a date makes every day a market day.
+**The season.** A Christmas market is there from 26 November to 23 December (the market simulation's `from` and `until`). On a date outside it (Settings → Date and weather, a scenario or a situation) the square is empty: no stalls, no tree, no arches, no rides, nobody comes; the clock without a date makes every day a market day.
 
 The rides board and run in turn also without visitors. The stalls light their counters and fairy lights while the market is open (10:00 to 22:00), the tree its lights all night, the lanterns round the square at dusk. Point at a stall for its goods, price, queue, waiting time, sales and takings today; at the square for the visitors now and what sold best; at a visitor for where they came from, what they bought and what they still want to do; at a ride for its places, runs and queue. The Overview rates the stalls by their queues and the visitors by their mood.
 
-*Evening at the Striezelmarkt* sets the date to 6 December, the clock to 15:45 and the weather to snowfall ([Seasons and weather](weather.md)): dusk comes at four, and the lights come on while the market is busy. In the cold people want their Glühwein all the more; in rain fewer come. *Closing time* starts at 20:30 on a busy evening; at 22:00 the market closes and everybody goes, many to the station.
+*Evening at the Wintermarkt* sets the date to 6 December, the clock to 15:45 and the weather to snowfall ([Seasons and weather](weather.md)): dusk comes at four, and the lights come on while the market is busy. In the cold people want their Glühwein all the more; in rain fewer come. *Closing time* starts at 20:30 on a busy evening; at 22:00 the market closes and everybody goes, many to the station.
 
 ## The objects
 

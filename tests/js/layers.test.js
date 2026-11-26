@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 
 import {
   composeLayout, createWorld, decomposeLayout, infraOf, journeysOf, layerChoice, layersKnown, layersOn, layoutPlugins, loadPlugins, normalizeLayers, opsOf, registry,
-  switchOnLayers, toggleLayer, validateLayout, withLayers, withNewLayers,
+  renameLayers, renameLayoutLayers, renameModuleHome, renamedScenario, switchOnLayers, toggleLayer, validateLayout, withLayers, withNewLayers,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
@@ -208,16 +208,16 @@ test("simulation patches: a layer changes the settings of a simulation of the ba
   assert.ok(validateLayout({ layers: [{ id: "x", simulations: [{ patch: true }, { type: "town", patch: "yes" }] }] }).includes("layers[0].simulations[0] has no type"));
 });
 
-test("the lab example: one layout with the modules Striezelmarkt, market visitors, rail operations, infrastructure, journeys, border station and the container terminal", () => {
+test("the lab example: one layout with the modules Wintermarkt, market visitors, rail operations, infrastructure, journeys, border station and the container terminal", () => {
   assert.deepEqual(validateLayout(LAB, registry), []);
-  assert.deepEqual(LAB.layers.map((l) => [l.id, l.enabled]), [["operations", false], ["infrastructure", false], ["journeys", false], ["border", false], ["striezelmarkt", false], ["market-visitors", false], ["terminal", false]]);
+  assert.deepEqual(LAB.layers.map((l) => [l.id, l.enabled]), [["operations", false], ["infrastructure", false], ["journeys", false], ["border", false], ["wintermarkt", false], ["market-visitors", false], ["terminal", false]]);
   assert.deepEqual(normalizeLayers(LAB.layers).filter((l) => l.exclusive).map((l) => [l.id, l.layout]), [["terminal", "container-terminal.json"]]);
   // the base is the same with any layers on: the station, the Plattenbau behind the tracks
-  for (const on of [[], ["operations"], ["infrastructure"], ["journeys"], ["border"], ["striezelmarkt", "market-visitors"], ["operations", "infrastructure"], ["operations", "infrastructure", "journeys", "border", "striezelmarkt"], ["terminal"]]) {
+  for (const on of [[], ["operations"], ["infrastructure"], ["journeys"], ["border"], ["wintermarkt", "market-visitors"], ["operations", "infrastructure"], ["operations", "infrastructure", "journeys", "border", "wintermarkt"], ["terminal"]]) {
     const world = createWorld(withLayers(LAB, on));
     for (const id of ["station-1", "underpass-1", "plattenbau-2", "table-back", "market-square"]) assert.ok(world.getObject(id), `${id} with ${on}`);
-    // the market square is always there; its stalls and the tree come with the Striezelmarkt, its visitors with their module
-    assert.equal(!!world.getObject("christmas-tree"), on.includes("striezelmarkt"));
+    // the market square is always there; its stalls and the tree come with the Wintermarkt, its visitors with their module
+    assert.equal(!!world.getObject("christmas-tree"), on.includes("wintermarkt"));
     assert.equal(world.simulations.some((s) => s.constructor.type === "market"), on.includes("market-visitors"));
     assert.equal(!!world.getObject("depot-1"), on.includes("operations"));
     assert.equal(!!world.getObject("interlocking-bf"), on.includes("infrastructure"));
@@ -245,17 +245,17 @@ test("the lab example: one layout with the modules Striezelmarkt, market visitor
 
 test("a saved choice of modules gains the modules on by default that the layout has got since, once", () => {
   const layers = normalizeLayers([
-    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "striezelmarkt", enabled: true, since: "2026-11-16" }, { id: "market-visitors", enabled: true, since: "2026-11-16" },
+    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "wintermarkt", enabled: true, since: "2026-11-16" }, { id: "market-visitors", enabled: true, since: "2026-11-16" },
     { id: "infrastructure" }, { id: "operations", exclusive: true }, { id: "hump" },
   ]);
   // saved when the layout had no market: the market comes in, the choice as it was otherwise
   const before = ["sbahn", "waldhof", "infrastructure", "operations", "hump"];
-  assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], before), ["waldhof", "striezelmarkt", "market-visitors", "hump"]);
+  assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], before), ["waldhof", "wintermarkt", "market-visitors", "hump"]);
   // saved since, with the market switched off: it stays off, and S-Bahn switched off stays off
   assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], layers.map((l) => l.id)), ["waldhof", "hump"]);
   // a choice saved before the ids were kept gains only the modules that say when they came: S-Bahn,
   // switched off by hand, stays off
-  assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], null), ["waldhof", "striezelmarkt", "market-visitors", "hump"]);
+  assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], null), ["waldhof", "wintermarkt", "market-visitors", "hump"]);
   // the layout check: since is a date
   assert.ok(validateLayout({ objects: [], layers: [{ id: "x", since: "16.11.2026" }] }, registry).some((p) => /since must be a date/.test(p)));
   // an exclusive module chosen stays alone
@@ -264,7 +264,7 @@ test("a saved choice of modules gains the modules on by default that the layout 
 
 test("an exclusive module chosen alone keeps the new modules for when it is left; then they come, once", () => {
   const layers = normalizeLayers([
-    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "striezelmarkt", enabled: true, since: "2026-11-16" }, { id: "market-visitors", enabled: true, since: "2026-11-16" },
+    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "wintermarkt", enabled: true, since: "2026-11-16" }, { id: "market-visitors", enabled: true, since: "2026-11-16" },
     { id: "infrastructure" }, { id: "operations", exclusive: true }, { id: "hump" },
   ]);
   const all = layers.map((l) => l.id), before = ["sbahn", "waldhof", "infrastructure", "operations", "hump"];
@@ -277,8 +277,8 @@ test("an exclusive module chosen alone keeps the new modules for when it is left
     // still alone on the next visit, still not known
     assert.deepEqual(layersKnown(layers, withNewLayers(layers, ["operations"], kept), kept), before);
     // left for S-Bahn (the app's setLayers): the market comes, and from then on all are known
-    assert.deepEqual(withNewLayers(layers, ["sbahn"], kept), ["sbahn", "striezelmarkt", "market-visitors"]);
-    assert.deepEqual(layersKnown(layers, ["sbahn", "striezelmarkt", "market-visitors"], kept), all);
+    assert.deepEqual(withNewLayers(layers, ["sbahn"], kept), ["sbahn", "wintermarkt", "market-visitors"]);
+    assert.deepEqual(layersKnown(layers, ["sbahn", "wintermarkt", "market-visitors"], kept), all);
   }
   // switched off by hand afterwards, it stays off
   assert.deepEqual(withNewLayers(layers, ["sbahn"], all), ["sbahn"]);
@@ -289,7 +289,7 @@ test("an exclusive module chosen alone keeps the new modules for when it is left
 
 test("an example that needs a module switches it on with the modules chosen before, not with a fixed list", () => {
   const layers = normalizeLayers([
-    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "striezelmarkt", enabled: true }, { id: "market-visitors", enabled: true },
+    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "wintermarkt", enabled: true }, { id: "market-visitors", enabled: true },
     { id: "plan", exclusive: true }, { id: "operations", exclusive: true }, { id: "hump" },
   ]);
   // the market switched off by hand: the Hump yard does not bring it back
@@ -299,4 +299,50 @@ test("an example that needs a module switches it on with the modules chosen befo
   assert.deepEqual(switchOnLayers(layers, ["sbahn", "hump"], ["operations"]), ["operations"]);
   assert.deepEqual(switchOnLayers(layers, ["plan"], ["hump"]), toggleLayer(layers, ["plan"], "hump"));
   assert.deepEqual(switchOnLayers(layers, ["sbahn"], ["unknown"]), ["sbahn"]);
+});
+
+test("the market's module renamed: a choice, its known ids, an edited layout and a module home keep it under the new id", () => {
+  for (const file of ["ebl-neustadt.json", "ebl-lab.json"]) {
+    const json = readJSON(join("web/layouts", file));
+    const layers = normalizeLayers(json.layers), ids = layers.map((l) => l.id);
+    const market = layers.find((l) => l.id === "wintermarkt");
+    const old = ids.map((id) => (id === "wintermarkt" ? "striezelmarkt" : id));
+    // switched off before: stays off only because the known ids are renamed (Bf Neustadt has it on by default)
+    assert.ok(!withNewLayers(layers, renameLayers(["market-visitors"]), renameLayers(old)).includes("wintermarkt"), file);
+    if (market.enabled) assert.ok(withNewLayers(layers, ["market-visitors"], old).includes("wintermarkt"), `${file}: without the rename it would come back`);
+    // on before: without the rename the lab drops it (the id is unknown, the module off by default)
+    assert.ok(layerChoice(layers, renameLayers(["striezelmarkt", "market-visitors"])).includes("wintermarkt"), file);
+    assert.ok(!layerChoice(layers, ["striezelmarkt", "market-visitors"]).includes("wintermarkt"), file);
+    // a layout saved with edits under the old id, with a photo and an object of the user's own named after the market
+    const edited = structuredClone(json);
+    const layer = edited.layers.find((l) => l.id === "wintermarkt");
+    layer.id = "striezelmarkt";
+    layer.name = "Striezelmarkt";
+    for (const o of layer.objects) if (o.type === "market-gate") o.text = "Striezelmarkt";
+    for (const sc of layer.scenarios ?? []) if (sc.id === "wintermarkt-evening") sc.id = "striezelmarkt-evening";
+    edited.view = { ...edited.view, image: "photos/striezelmarkt-2025.jpg" };
+    edited.objects = [...(edited.objects ?? []), { id: "striezelmarkt-sign", type: "tree", position: [0, 0] }];
+    edited.scenarios = [...(edited.scenarios ?? []), { id: "own", name: "Trip to the Striezelmarkt", steps: [] }];
+    const now = renameLayoutLayers(edited);
+    assert.equal(now.view.image, "photos/striezelmarkt-2025.jpg", `${file}: paths stay`);
+    assert.ok(now.objects.some((o) => o.id === "striezelmarkt-sign"), `${file}: object ids stay`);
+    assert.equal(now.scenarios.at(-1).name, "Trip to the Striezelmarkt", `${file}: a scenario of the user's own stays`);
+    assert.deepEqual(now.layers, json.layers, file);
+    const composed = composeLayout(withLayers(now, layerChoice(normalizeLayers(now.layers), ["wintermarkt", "market-visitors"]))).layout;
+    assert.ok(composed.objects.some((o) => o.type === "market-gate" && o.text === "Wintermarkt"), file);
+    assert.ok(!JSON.stringify(composed.scenarios.filter((sc) => sc.id !== "own")).includes("Striezelmarkt"), file);
+  }
+  // the home of the container terminal kept before: its box reads Wintermarkt and switches the market on
+  const home = renameModuleHome({ url: "x", name: "Lab", module: "terminal", modules: [{ id: "striezelmarkt", name: "Striezelmarkt" }, { id: "terminal", name: "Container terminal" }] });
+  assert.deepEqual(home.modules.map((m) => [m.id, m.name]), [["wintermarkt", "Wintermarkt"], ["terminal", "Container terminal"]]);
+  assert.deepEqual(renameLayers(["striezelmarkt", "wintermarkt", "terminal"]), ["wintermarkt", "terminal"]);
+  assert.equal(renameLayers(null), null);
+  // only the renamed ids: names of built-ins are no renamed layers or scenarios
+  assert.deepEqual(renameLayers(["constructor", "toString", "__proto__"]), ["constructor", "toString", "__proto__"]);
+  assert.equal(renamedScenario("toString"), "toString");
+  assert.equal(renamedScenario("striezelmarkt-evening"), "wintermarkt-evening");
+  const odd = { layers: [{ id: "constructor" }] };
+  assert.equal(renameLayoutLayers(odd), odd);
+  const plain = { objects: [] };
+  assert.equal(renameLayoutLayers(plain), plain);
 });

@@ -62,7 +62,7 @@ test("situations: setting one sets the date, the time, the weather, the demand a
 
 test("situations: an event that needs modules the layout does not have is not ready", () => {
   const market = SITUATIONS.find((s) => s.id === "christmas-market");
-  assert.deepEqual(market.layers, ["striezelmarkt", "market-visitors"]);
+  assert.deepEqual(market.layers, ["wintermarkt", "market-visitors"]);
   assert.equal(situationReady(app(), market), false);
 });
 
@@ -70,7 +70,7 @@ test("situations: one that does not fit is found before anything changes, also b
   const world = createWorld({
     objects: [{ id: "p", type: "platform", from: [0, 0], to: [800, 0], sides: "both" }],
     simulations: [{ type: "passengers" }],
-    layers: [{ id: "striezelmarkt", name: "Striezelmarkt" }, { id: "market-visitors", name: "Market visitors" }],
+    layers: [{ id: "wintermarkt", name: "Wintermarkt" }, { id: "market-visitors", name: "Market visitors" }],
   });
   const a = { world, layersOn: () => [], chooseModules: async () => assert.fail("no modules are switched for a situation that does not fit") };
   await applySituation(a, SITUATIONS.find((s) => s.id === "after-match"));

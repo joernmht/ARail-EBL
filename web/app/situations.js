@@ -50,8 +50,8 @@ export const SITUATIONS = [
   },
   {
     id: "christmas-market", kind: "event", label: "Christmas market",
-    text: "Saturday, 5 December, 16:30: snow, the Striezelmarkt lights up at dusk",
-    date: "2026-12-05", time: "16:30", weather: "snow", demand: 2, layers: ["striezelmarkt", "market-visitors"],
+    text: "Saturday, 5 December, 16:30: snow, the Wintermarkt lights up at dusk",
+    date: "2026-12-05", time: "16:30", weather: "snow", demand: 2, layers: ["wintermarkt", "market-visitors"],
   },
   {
     id: "after-match", kind: "event", label: "After the football match",

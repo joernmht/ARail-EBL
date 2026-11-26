@@ -336,7 +336,7 @@ const APP_DE = {
   "Hot weekend in the summer of 2050": "Heißes Wochenende im Sommer 2050",
   "Saturday, 16 July 2050, 15:00: 39 °C in the shade, a heatwave of the future": "Samstag, 16. Juli 2050, 15:00: 39 °C im Schatten, eine Hitzewelle der Zukunft",
   "Christmas market": "Weihnachtsmarkt",
-  "Saturday, 5 December, 16:30: snow, the Striezelmarkt lights up at dusk": "Samstag, 5. Dezember, 16:30: Schnee, der Striezelmarkt leuchtet in der Dämmerung",
+  "Saturday, 5 December, 16:30: snow, the Wintermarkt lights up at dusk": "Samstag, 5. Dezember, 16:30: Schnee, der Wintermarkt leuchtet in der Dämmerung",
   "Saturday, 19 September, 17:20: the final whistle, the fans head for the trains and buses": "Samstag, 19. September, 17:20: Abpfiff, die Fans strömen zu Zügen und Bussen",
   // Settings → Simulation (panels.js): the presets
   "Spring (15 April)": "Frühling (15. April)",
@@ -540,14 +540,14 @@ const APP_DE = {
     "Der Weihnachtsmarkt auf dem Marktplatz: ein großer geschmückter Weihnachtsbaum, ein Riesenrad, ein Karussell und eine Kindereisenbahn, und Buden mit Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilzen aus einer Dampflok und Kunsthandwerk. Nachts beleuchtet; für das Gedränge Marktbesucher einschalten.",
   "The Christmas market on the Bahnhofsplatz, in front of the station: a big decorated Christmas tree, a ferris wheel, a carousel and a mini train, and stalls with Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilze from a steam locomotive, and crafts. Lit at night; switch on Market visitors for the crowd.":
     "Der Weihnachtsmarkt auf dem Bahnhofsplatz vor dem Bahnhof: ein großer geschmückter Weihnachtsbaum, ein Riesenrad, ein Karussell und eine Kindereisenbahn, und Buden mit Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilzen aus einer Dampflok und Kunsthandwerk. Nachts beleuchtet; für das Gedränge Marktbesucher einschalten.",
-  "Evening at the Striezelmarkt": "Abend auf dem Striezelmarkt",
+  "Evening at the Wintermarkt": "Abend auf dem Wintermarkt",
   "6 December, a quarter to four: snow is falling, dusk comes at four, and the lights of the stalls, the tree and the rides come on.": "6. Dezember, Viertel vor vier: Es schneit, um vier dämmert es, und die Lichter der Buden, des Baums und der Fahrgeschäfte gehen an.",
-  "6 December at the Striezelmarkt: snow is falling, and the lights come on at dusk.": "6. Dezember auf dem Striezelmarkt: Es schneit, und in der Dämmerung gehen die Lichter an.",
-  "People come to the Striezelmarkt from the houses of the town, from the ends of the streets and by train: they queue at the stalls, drink their Glühwein at the standing tables, look at the tree and ride the ferris wheel, the carousel and the mini train, then go home, many of them to the station. Needs the module Striezelmarkt.":
-    "Menschen kommen aus den Häusern der Stadt, von den Enden der Straßen und mit dem Zug zum Striezelmarkt: Sie stehen an den Buden an, trinken ihren Glühwein an den Stehtischen, schauen den Baum an und fahren Riesenrad, Karussell und Kindereisenbahn, dann gehen sie nach Hause, viele zum Bahnhof. Braucht das Modul Striezelmarkt.",
-  "Closing time at the Striezelmarkt": "Feierabend auf dem Striezelmarkt",
+  "6 December at the Wintermarkt: snow is falling, and the lights come on at dusk.": "6. Dezember auf dem Wintermarkt: Es schneit, und in der Dämmerung gehen die Lichter an.",
+  "People come to the Wintermarkt from the houses of the town, from the ends of the streets and by train: they queue at the stalls, drink their Glühwein at the standing tables, look at the tree and ride the ferris wheel, the carousel and the mini train, then go home, many of them to the station. Needs the module Wintermarkt.":
+    "Menschen kommen aus den Häusern der Stadt, von den Enden der Straßen und mit dem Zug zum Wintermarkt: Sie stehen an den Buden an, trinken ihren Glühwein an den Stehtischen, schauen den Baum an und fahren Riesenrad, Karussell und Kindereisenbahn, dann gehen sie nach Hause, viele zum Bahnhof. Braucht das Modul Wintermarkt.",
+  "Closing time at the Wintermarkt": "Feierabend auf dem Wintermarkt",
   "The market closes at 22:00: the crowd leaves, many of them for the trains. Watch the platforms fill.": "Der Markt schließt um 22:00: Die Menge geht, viele zu den Zügen. Sehen Sie, wie sich die Bahnsteige füllen.",
-  "A busy evening at the Striezelmarkt.": "Ein voller Abend auf dem Striezelmarkt.",
+  "A busy evening at the Wintermarkt.": "Ein voller Abend auf dem Wintermarkt.",
   "The market closes: everybody goes home, many to the station.": "Der Markt schließt: Alle gehen nach Hause, viele zum Bahnhof.",
 
   // ------------------------------------------------------------ Build

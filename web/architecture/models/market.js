@@ -36,7 +36,7 @@ export const MARKET = [
       { name: "MiniTrain", file: "web/arail/objects/market.js", kind: "class", extends: "Ride", role: "A mini train on an oval track with a station: whole laps.", operations: ["runSeconds() — whole laps, about ride_s", "marketInfo()", "draw(view)"] },
       {
         name: "market", file: "web/arail/objects/market.js", kind: "module", role: "The goods, their kinds and the market's hours.",
-        attributes: ["MARKET_GOODS — id → {name (German), kind, price, serve_s, stay (clock min), weight, kids, hot}", "GOODS_KINDS — drink, food, sweets, crafts: label and the colour of the sign", "MARKET_HOURS — 10:00 to 22:00 when no market simulation says otherwise", "MARKET_SEASON — 26 November to 23 December (the Striezelmarkt)"],
+        attributes: ["MARKET_GOODS — id → {name (German), kind, price, serve_s, stay (clock min), weight, kids, hot}", "GOODS_KINDS — drink, food, sweets, crafts: label and the colour of the sign", "MARKET_HOURS — 10:00 to 22:00 when no market simulation says otherwise", "MARKET_SEASON — 26 November to 23 December (the Wintermarkt)"],
         operations: ["marketHours(world)", "marketOpen(world, minutes) — only on a day of its season", "marketSeason(world) — the simulation's, else MARKET_SEASON", "marketInSeason(world, season) — the clock's date in it; without a date always", "parseHours(open, close)", "signBoard(m, x0, x1, y, z0, z1) — a sign board on a model: its back a face, its front for paintSign", "paintSign(view, board, text, opts) — the board in its colour with the text in perspective, while it faces the camera (lit at night)"],
       },
     ],

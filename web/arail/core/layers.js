@@ -106,6 +106,92 @@ export function toggleLayer(layers, on, id) {
 }
 
 /**
+ * Layer ids that were renamed, the old id to the new one: a choice saved, an address or a layout
+ * edited before keeps its modules under the new names ({@link renameLayers}, {@link renameLayoutLayers},
+ * {@link renameModuleHome}).
+ * The Christmas market's module was `striezelmarkt` until the name, which is protected, gave way to
+ * `wintermarkt`.
+ */
+export const RENAMED_LAYERS = Object.freeze({ striezelmarkt: "wintermarkt" });
+
+/** Scenario ids that were renamed with their layer (see {@link RENAMED_LAYERS}). */
+export const RENAMED_SCENARIOS = Object.freeze({ "striezelmarkt-evening": "wintermarkt-evening" });
+/** The old name and the new one, as the texts of a layout (names, boards, messages) have them. */
+const RENAMED_TEXTS = [["Striezelmarkt", "Wintermarkt"]];
+
+/** The new id of a renamed layer, or the id as it is (own keys only: `constructor` is no layer that was renamed). */
+export const renamedLayer = (id) => (typeof id === "string" && Object.hasOwn(RENAMED_LAYERS, id) ? RENAMED_LAYERS[id] : id);
+/** The new id of a renamed scenario (an old address), or the id as it is. */
+export const renamedScenario = (id) => (typeof id === "string" && Object.hasOwn(RENAMED_SCENARIOS, id) ? RENAMED_SCENARIOS[id] : id);
+/** The layers whose texts the app wrote with the old name: the renamed one and the market's visitors. */
+const MARKET_LAYERS = new Set([...Object.keys(RENAMED_LAYERS), ...Object.values(RENAMED_LAYERS), "market-visitors"]);
+
+const renameText = (t) => (typeof t === "string" ? RENAMED_TEXTS.reduce((s, [old, now]) => s.split(old).join(now), t) : t);
+
+/** A scenario with its renamed id and the old name in its name, description and messages replaced. */
+function renameScenario(sc) {
+  if (!isObject(sc)) return sc;
+  const out = { ...sc, name: renameText(sc.name), description: renameText(sc.description) };
+  out.id = renamedScenario(sc.id);
+  if (out.id === undefined) delete out.id;
+  if (Array.isArray(sc.steps)) out.steps = sc.steps.map((st) => (isObject(st) && typeof st.message === "string" ? { ...st, message: renameText(st.message) } : st));
+  for (const k of ["name", "description"]) if (out[k] === undefined) delete out[k];
+  return out;
+}
+
+/** Objects with the old name on a market gate's board replaced; nothing else of them is touched. */
+const renameObjects = (objects) => (Array.isArray(objects) ? objects.map((o) => (isObject(o) && o.type === "market-gate" && typeof o.text === "string" ? { ...o, text: renameText(o.text) } : o)) : objects);
+
+/**
+ * Layer ids with the renamed ones under their new names ({@link RENAMED_LAYERS}); the order is kept.
+ * @param {string[] | null | undefined} ids (anything else comes back as it is)
+ * @returns {string[] | null | undefined}
+ */
+export function renameLayers(ids) {
+  if (!Array.isArray(ids)) return ids;
+  return [...new Set([...ids].map(renamedLayer))];
+}
+
+/**
+ * A layout (as saved with a user's own edits) with its renamed layers under their new ids
+ * ({@link RENAMED_LAYERS}). The old name is replaced in what the app wrote with it: the layout's
+ * description and, in the market's own layers (the renamed one and `market-visitors`), their id,
+ * name and description, the boards of their market gates and their scenarios (id, name, description,
+ * messages), also where the user edited them. Everything else stays as it is: the base and the other
+ * layers (a scenario of the user's own), object ids, paths (`view.image`). The layout given is not changed; one without a
+ * renamed layer comes back as it is.
+ * @param {object} layout
+ * @returns {object}
+ */
+export function renameLayoutLayers(layout) {
+  if (!isObject(layout) || !Array.isArray(layout.layers) || !layout.layers.some((l) => isObject(l) && renamedLayer(l.id) !== l.id)) return layout;
+  const out = { ...layout, description: renameText(layout.description) };
+  if (out.description === undefined) delete out.description;
+  out.layers = layout.layers.map((l) => {
+    if (!isObject(l) || !MARKET_LAYERS.has(l.id)) return l;
+    const r = { ...l, id: renamedLayer(l.id), name: renameText(l.name), description: renameText(l.description), objects: renameObjects(l.objects), scenarios: Array.isArray(l.scenarios) ? l.scenarios.map(renameScenario) : l.scenarios };
+    for (const k of ["name", "description", "objects", "scenarios"]) if (r[k] === undefined) delete r[k];
+    return r;
+  });
+  return out;
+}
+
+/**
+ * A home of a module that is a layout of its own, as the app keeps it ({url, name, module, modules}),
+ * with its renamed modules under their new ids and names ({@link RENAMED_LAYERS}).
+ * @param {{module?: string, modules?: Array<{id: string, name?: string}>} | null} home
+ * @returns {object | null}
+ */
+export function renameModuleHome(home) {
+  if (!isObject(home) || !Array.isArray(home.modules)) return home;
+  return {
+    ...home,
+    module: renamedLayer(home.module),
+    modules: home.modules.map((m) => (isObject(m) ? { ...m, id: renamedLayer(m.id), name: MARKET_LAYERS.has(m.id) ? renameText(m.name) : m.name } : m)),
+  };
+}
+
+/**
  * A valid choice of layers from a list of ids (an address, a saved choice): known ids in layer
  * order; when an exclusive layer is among them, only the first exclusive one.
  * @param {Array<{id: string, exclusive?: boolean}>} layers

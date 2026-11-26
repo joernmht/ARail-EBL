@@ -1,6 +1,6 @@
 /**
- * A market square and what stands on it for a German Christmas market (Weihnachtsmarkt, in Dresden
- * the Striezelmarkt): wooden stalls that sell Glühwein, Stollen or Lederwaren (one of them a
+ * A market square and what stands on it for a German Christmas market (Weihnachtsmarkt,
+ * here the Wintermarkt): wooden stalls that sell Glühwein, Stollen or Lederwaren (one of them a
  * steam locomotive), a big decorated Christmas tree, a ferris wheel, a carousel and a mini train
  * for children. The goods keep their German names in every language: it is a German market.
  *
@@ -76,7 +76,7 @@ export function marketHours(world) {
 
 /**
  * The season of a Christmas market when no market simulation says otherwise: from the Wednesday
- * before the first Sunday of Advent (at the earliest 26 November) to 23 December, as the Striezelmarkt.
+ * before the first Sunday of Advent (at the earliest 26 November) to 23 December.
  */
 export const MARKET_SEASON = { from: "11-26", until: "12-23" };
 
@@ -711,7 +711,7 @@ export class MarketGate extends LayoutObject {
   static params = [
     NAME,
     ROTATION,
-    { key: "text", label: "Text", type: "text", default: "Striezelmarkt" },
+    { key: "text", label: "Text", type: "text", default: "Wintermarkt" },
     { key: "width_m", label: "Width", type: "number", unit: "m", min: 2, max: 15, step: 0.5, default: 5 },
     { key: "height_m", label: "Height", type: "number", unit: "m", min: 3, max: 10, step: 0.5, default: 5 },
   ];

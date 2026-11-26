@@ -333,7 +333,7 @@ export const MODEL_GROUPS = [
   { id: "world", name: "The world", intro: "What every layout has: the world and its step, layout files and modules, the clock with its date, the weather, objects, people, drawing." },
   { id: "tracking", name: "Tracking and cameras", intro: "From the camera image to the layout's pose: markers, the marker map, the flyover's virtual camera." },
   { id: "transport", name: "People and vehicles", intro: "Stops, the timetable's trains and buses, passengers, the town's residents with their households, their choice of the mode and what they learn from their trips, streets and their cross-sections, traffic signs and crossings, people on foot among the vehicles, bus and tram lines, cars and parking, bikes and e-scooters." },
-  { id: "market", name: "Market square", intro: "A market square with its stalls, the Christmas tree and rides, and the visitors who come to it (the lab example's modules Striezelmarkt and Market visitors)." },
+  { id: "market", name: "Market square", intro: "A market square with its stalls, the Christmas tree and rides, and the visitors who come to it (the lab example's modules Wintermarkt and Market visitors)." },
   { id: "disruptions", name: "Disruptions, scenarios and stories", intro: "What can go wrong, timelines of it for exercises (the module Disruptions), and stories to click through (the app's module tabs)." },
   { id: "terminal", name: "Module: container terminal" },
   { id: "operations", name: "Module: rail operations" },

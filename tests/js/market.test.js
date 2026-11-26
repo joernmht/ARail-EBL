@@ -1,5 +1,5 @@
 // The market square with its stalls, signs, gates, Christmas tree and rides (objects/market.js), and its visitors
-// (sims/market.js): the lab example's modules Striezelmarkt and Market visitors.
+// (sims/market.js): the lab example's modules Wintermarkt and Market visitors.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -14,7 +14,7 @@ import { ROOT } from "./helpers.js";
 registerWindmill({ ...await import("../../web/arail/index.js") });
 
 const LAB = JSON.parse(readFileSync(join(ROOT, "web/layouts/ebl-lab.json"), "utf8"));
-const MARKET = ["striezelmarkt", "market-visitors"];
+const MARKET = ["wintermarkt", "market-visitors"];
 const marketOf = (world) => world.simulations.find((s) => s.constructor.type === "market");
 
 /** The lab with these modules on, at a time of day. */
@@ -63,7 +63,7 @@ function draw(world, night = null) {
   return { fills, glows, texts };
 }
 
-test("the lab's market: the square is in the base, the Striezelmarkt and its visitors are modules", () => {
+test("the lab's market: the square is in the base, the Wintermarkt and its visitors are modules", () => {
   assert.deepEqual(validateLayout(withLayers(LAB, MARKET), registry), []);
   const base = lab([]);
   const square = base.getObject("market-square");
@@ -117,15 +117,15 @@ test("stalls, the tree and the rides: what the market simulation needs, cards, d
   assert.ok(day.fills.length > 500);
   assert.ok(night.glows > day.glows + 50, `${night.glows} lights at night, ${day.glows} by day`);
   // the signs: the goods on the stalls' boards, the market's name on its gates
-  for (const t of ["Glühwein", "Handbrot", "Strickwaren", "Striezelmarkt"]) assert.ok(day.texts.includes(t), `no sign "${t}" in ${day.texts.join(", ")}`);
+  for (const t of ["Glühwein", "Handbrot", "Strickwaren", "Wintermarkt"]) assert.ok(day.texts.includes(t), `no sign "${t}" in ${day.texts.join(", ")}`);
   assert.ok(!day.texts.includes("Kakao"), "a sign turned away from the camera is not painted (the Kakao stall faces the tree)");
   const gate = world.getObject("market-gate");
-  assert.equal(gate.spec.text, "Striezelmarkt");
+  assert.equal(gate.spec.text, "Wintermarkt");
   assert.ok(!world.getObject("market-square").contents().includes(gate), "a gate is no obstacle: people walk through it");
 });
 
 test("a ride boards, runs and lets its riders off; it runs without riders too", () => {
-  const world = lab(["striezelmarkt"], "13:00");
+  const world = lab(["wintermarkt"], "13:00");
   const wheel = world.getObject("ferris-wheel");
   const a = { id: "a" }, b = { id: "b" };
   assert.ok(wheel.canBoard());
@@ -236,10 +236,10 @@ test("clear() takes everybody off; a market without a square does nothing", () =
   assert.deepEqual(marketOf(bare).venues(), []);
 });
 
-test("scenarios set the time of day; the Striezelmarkt's evening", () => {
+test("scenarios set the time of day; the Wintermarkt's evening", () => {
   const world = lab(MARKET);
-  assert.ok(world.scenarios.scenarios.some((s) => s.id === "striezelmarkt-evening"));
-  world.scenarios.play("striezelmarkt-evening");
+  assert.ok(world.scenarios.scenarios.some((s) => s.id === "wintermarkt-evening"));
+  world.scenarios.play("wintermarkt-evening");
   world.step(0.1);
   // 6 December, a quarter to four, in snow: dusk at four
   assert.equal(world.clock.label().slice(0, 4), "15:4");
@@ -247,19 +247,19 @@ test("scenarios set the time of day; the Striezelmarkt's evening", () => {
   assert.equal(world.weather.now().sky, "snow");
   assert.ok(world.clock.sun().set < 16 * 60 + 5, "the sun sets at about four");
   assert.ok(marketOf(world).visitors.length > 100, "the clock was set: the market is full");
-  const { layout } = composeLayout(withLayers(LAB, ["striezelmarkt"]));
-  assert.ok(layout.scenarios.some((s) => s.id === "striezelmarkt-evening") && !layout.scenarios.some((s) => s.id === "market-closing"));
+  const { layout } = composeLayout(withLayers(LAB, ["wintermarkt"]));
+  assert.ok(layout.scenarios.some((s) => s.id === "wintermarkt-evening") && !layout.scenarios.some((s) => s.id === "market-closing"));
 });
 
-test("the visitors without the market: closing time at the Striezelmarkt says that nobody comes, once", () => {
-  // the module Market visitors on, the Striezelmarkt off: the square has no stalls and no rides
+test("the visitors without the market: closing time at the Wintermarkt says that nobody comes, once", () => {
+  // the module Market visitors on, the Wintermarkt off: the square has no stalls and no rides
   const world = lab(["market-visitors"]), said = [];
   world.events.on("scenario.message", ({ text }) => said.push(text));
   world.scenarios.play("market-closing");
   run(world, 5);
   assert.equal(marketOf(world).visitors.length, 0);
   const none = "Market visitors: no market square has stalls or rides, so nobody comes.";
-  assert.deepEqual(said, ["A busy evening at the Striezelmarkt.", none]);
+  assert.deepEqual(said, ["A busy evening at the Wintermarkt.", none]);
   world.setTime("19:00");
   run(world, 5);
   assert.equal(said.filter((t) => t === none).length, 1, "once");
@@ -386,7 +386,7 @@ test("the flow fields a square keeps stay few; opening hours that are no time of
   assert.ok(validateLayout(json, registry).some((x) => /\(market\): close "23\.30" is no time of day/.test(x)), validateLayout(json, registry).join("\n"));
 });
 
-test("Bf Neustadt, the app's own layout, has the Striezelmarkt on by default, on the Bahnhofsplatz", () => {
+test("Bf Neustadt, the app's own layout, has the Wintermarkt on by default, on the Bahnhofsplatz", () => {
   const json = JSON.parse(readFileSync(join(ROOT, "web/layouts/ebl-neustadt.json"), "utf8"));
   assert.deepEqual(validateLayout(json, registry), []);
   const world = createWorld(json);

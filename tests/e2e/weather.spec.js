@@ -116,7 +116,7 @@ test("Settings → Simulation: a situation sets the day, the time, the weather a
   await expect(page.locator("#situation-christmas-market")).toHaveAttribute("aria-pressed", "true");
   const market = await state();
   expect(market).toMatchObject({ date: "2026-12-05", demand: 2, weekend: true, weather: "−2 °C · snow" });
-  expect(market.layers).toEqual(expect.arrayContaining(["striezelmarkt", "market-visitors"]));
+  expect(market.layers).toEqual(expect.arrayContaining(["wintermarkt", "market-visitors"]));
   // something set on its own: no situation is pressed any more
   await page.locator("#simByHand summary").click();
   await page.getByRole("button", { name: "Noon 12:00" }).click();

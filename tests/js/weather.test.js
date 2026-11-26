@@ -399,7 +399,7 @@ test("the rails take the weather: wet in rain, leaves in November when damp, ice
 });
 
 test("fewer cyclists and fewer market visitors in rain; hot drinks in the cold; slower on snow", () => {
-  const world = lab(["striezelmarkt", "market-visitors"]);
+  const world = lab(["wintermarkt", "market-visitors"]);
   world.setTime("18:00");
   const cycling = world.simulations.find((s) => s.constructor.type === "cycling");
   const market = world.simulations.find((s) => s.constructor.type === "market");
@@ -503,7 +503,7 @@ test("scenarios set the date and the weather; what is neither fails the step, an
   run(world, 2);
   assert.equal(world.weather.mode, "off");
   // the lab example and its modules are sound
-  assert.deepEqual(validateLayout(withLayers(LAB, ["striezelmarkt", "market-visitors"]), registry), []);
+  assert.deepEqual(validateLayout(withLayers(LAB, ["wintermarkt", "market-visitors"]), registry), []);
 });
 
 /** Homography of a pinhole camera at `eye` looking at `target` (layout mm). */
@@ -767,7 +767,7 @@ test("under snow, markers and status fills keep their colour; only surfaces take
 });
 
 test("snow lies on steep slopes too (roofs, the tiers of a fir), not on walls", () => {
-  const world = lab(["striezelmarkt"]);
+  const world = lab(["wintermarkt"]);
   world.setTime("12:00");
   world.setWeather("snow");
   const fills = [];
