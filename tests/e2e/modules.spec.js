@@ -4,7 +4,7 @@
 // in a module, and the container terminal: a layout of its own, chosen alone, and the way back. The
 // app's modules Build and Disruptions, the three chapters, and Settings with its views Simulation and Control system.
 import { expect, test } from "@playwright/test";
-import { caseReady, expectCase, moduleBox, openCase, openModules } from "./ui.js";
+import { caseReady, expectCase, moduleBox, openCase, openModules, openSettingsPart } from "./ui.js";
 
 const LAB = "/game/?layout=../layouts/ebl-lab.json";
 
@@ -184,29 +184,38 @@ test("Disruptions is a module: its tool works only while it is on; switched off,
   expect(errors).toEqual([]);
 });
 
-test("Settings holds the simulation and the control system: #simulate and #control open those views, the last one is kept", async ({ page }) => {
+test("Settings shows the simulation, View and Control system folded away below it: #control opens its section, closed when the app starts", async ({ page }) => {
   const errors = await open(page, `${LAB}#control`);
   // the three chapters, whatever the modules
   expect(await page.locator(".tabs [role=tab]:not([hidden])").allTextContents()).toEqual(["Overview", "Examples", "Settings"]);
   await expect(page.locator("#tab-settings")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#feedUrl")).toBeVisible();
-  await page.locator("#settingsView-simulate").click();
-  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
+  // the simulation first; the section linked opened, the other one closed
   await expect(page.locator("#situation-winter-rush")).toBeVisible();
+  await expect(page.locator("#settings-control")).toHaveAttribute("open", "");
+  await expect(page.locator("#settings-view")).not.toHaveAttribute("open", "");
+  await expect(page.locator("#feedUrl")).toBeVisible();
+  expect(new URL(page.url()).hash).toBe("#control");
+  // closed by its title: its controls are gone, the address is the simulation's
+  await page.locator("#settingsView-control").click();
   await expect(page.locator("#feedUrl")).toHaveCount(0);
   expect(new URL(page.url()).hash).toBe("#simulate");
-  // the tab opens the view chosen last, also after a reload
-  await page.locator("#settingsView-control").click();
+  // opened again, it stays open while the app runs
+  await openSettingsPart(page, "control");
+  expect(new URL(page.url()).hash).toBe("#control");
   await page.locator("#tab-overview").click();
   expect(new URL(page.url()).hash).toBe("#overview");
   await page.locator("#tab-settings").click();
-  await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
-  expect(new URL(page.url()).hash).toBe("#control");
-  await page.goto(`${LAB}#overview`);
+  await expect(page.locator("#settings-control")).toHaveAttribute("open", "");
+  await expect(page.locator("#feedUrl")).toBeVisible();
+  // the app started again: Settings with both closed
+  await page.goto(`${LAB}#overview`); // (only the address's hash changes: no reload yet)
+  await page.reload();
   await page.waitForFunction(() => window.__arail?.world?.getObject("station-1"));
   await page.locator("#tab-settings").click();
-  await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#situation-winter-rush")).toBeVisible();
+  await expect(page.locator("#settings-control")).not.toHaveAttribute("open", "");
+  await expect(page.locator("#settings-view")).not.toHaveAttribute("open", "");
+  await expect(page.locator("#feedUrl")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

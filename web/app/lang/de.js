@@ -540,6 +540,9 @@ const APP_DE = {
     "Der Weihnachtsmarkt auf dem Marktplatz: ein großer geschmückter Weihnachtsbaum, ein Riesenrad, ein Karussell und eine Kindereisenbahn, und Buden mit Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilzen aus einer Dampflok und Kunsthandwerk. Nachts beleuchtet; für das Gedränge Marktbesucher einschalten.",
   "The Christmas market on the Bahnhofsplatz, in front of the station: a big decorated Christmas tree, a ferris wheel, a carousel and a mini train, and stalls with Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilze from a steam locomotive, and crafts. Lit at night; switch on Market visitors for the crowd.":
     "Der Weihnachtsmarkt auf dem Bahnhofsplatz vor dem Bahnhof: ein großer geschmückter Weihnachtsbaum, ein Riesenrad, ein Karussell und eine Kindereisenbahn, und Buden mit Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilzen aus einer Dampflok und Kunsthandwerk. Nachts beleuchtet; für das Gedränge Marktbesucher einschalten.",
+  "A new version of ARail is available.": "Eine neue Version von ARail ist da.",
+  "Reload": "Neu laden",
+  "Later": "Später",
   "Evening at the Wintermarkt": "Abend auf dem Wintermarkt",
   "6 December, a quarter to four: snow is falling, dusk comes at four, and the lights of the stalls, the tree and the rides come on.": "6. Dezember, Viertel vor vier: Es schneit, um vier dämmert es, und die Lichter der Buden, des Baums und der Fahrgeschäfte gehen an.",
   "6 December at the Wintermarkt: snow is falling, and the lights come on at dusk.": "6. Dezember auf dem Wintermarkt: Es schneit, und in der Dämmerung gehen die Lichter an.",

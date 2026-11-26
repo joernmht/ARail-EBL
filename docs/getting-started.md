@@ -6,6 +6,8 @@ The app is an **interactive presentation** of the lab: the chapter **Examples** 
 
 The live camera needs a secure page: https (GitHub Pages) or `localhost`. Photos and videos work everywhere.
 
+**New versions.** Each deploy stamps the commit it publishes (`version.json`, and the meta `arail-version` of the app and the game page). An open page asks for it when it starts, every ten minutes and when it is shown again. If the page is older (a tab left open, or files the browser kept in its cache), a notice at the top says *A new version of ARail is available*. **Reload** saves the layout's edits, fetches the page's files again past the cache and loads the new version; **Later** hides it for ten minutes. A page served locally (`dev`) checks nothing.
+
 ![The app in the flyover: the example town on its table modules in front of the lab table at 17:01, with the panel beside it](assets/app-screenshot.jpg)
 
 The app wears the corporate design of the Chair of Railway Operations (TU Dresden): a Türkis app bar with the chair's logo, Noto Sans, Orange for what you are working on (pressed buttons, placing), Rot for disruptions and Dunkelblau boards. It follows the light or dark mode of your device.
@@ -190,7 +192,7 @@ Changes are kept in the browser (per layout file). Export the layout to share it
 
 ### Settings
 
-Three views: **View**, **Simulation** and **Control system**. The tab opens the view chosen last; `#view`, `#simulate` and `#control` in the app URL open a view (and the URL names the view shown).
+The tab opens on **Simulation**. Below it, folded away because they are seldom needed, **View** and **Control system**: click a title to open it. They are closed each time the app starts. `#simulate` in the app URL opens Settings; `#view` and `#control` open it with that section open and scrolled to (and the URL names the section opened last).
 
 **View**
 
@@ -367,7 +369,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=c
 | `#overview`, `#interaction`, `#settings` | open a chapter (without one, the app opens Examples with the Introduction; the game page the Overview) |
 | `#examples` | open Examples with the list of examples (the former `#scenarios` still works) |
 | `#intro`, `#sandbox` (`#modules`), `#infra-operations`, `#infra-disruption`, `#evu-operations`, `#evu-disruption`, `#terminal`, `#journeys`, `#build`, `#disrupt` | open Examples with that example, shown without starting it (Start starts it), e.g. `app/?layout=../layouts/container-terminal.json#terminal` (a case whose module is off offers to switch it on; `#build` and `#disrupt` switch the modules Build and Disruptions on; the former `#infra` and `#ops` open the stories; the game page: `#infra`, `#ops`, `#terminal`, `#journeys`) |
-| `#view`, `#simulate`, `#control` | open Settings with its view View, Simulation or Control system |
+| `#simulate`, `#view`, `#control` | open Settings; `#view` and `#control` with that section (View, Control system) open and scrolled to |
 
 ## Tips for good tracking
 

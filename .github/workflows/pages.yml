@@ -27,6 +27,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v6
+      # The version published: pages older than it offer to load it (web/app/version.js)
+      - name: Stamp the version
+        run: |
+          v="${GITHUB_SHA::12}"
+          printf '{"version": "%s"}\n' "$v" > web/version.json
+          sed -i "s|<meta name=\"arail-version\" content=\"dev\">|<meta name=\"arail-version\" content=\"$v\">|" web/app/index.html web/game/index.html
+          for f in web/app/index.html web/game/index.html; do
+            grep -q "<meta name=\"arail-version\" content=\"$v\">" "$f" || { echo "$f: no meta arail-version stamped"; exit 1; }
+          done
       - uses: actions/upload-pages-artifact@v5
         with:
           path: web

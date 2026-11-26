@@ -10,6 +10,7 @@ import { Interaction, LIST, LIST_ALIASES } from "./interaction.js";
 import { drawGrid, drawGroundImage, Flyover, SKY } from "./flyover.js";
 import { Overview } from "./overview.js";
 import { Panels } from "./panels.js";
+import { watchVersion } from "./version.js";
 import { SpeedControl } from "./speed.js";
 import { TourNav } from "./tour-nav.js";
 import { $, h, morph, mount, pageLayout, pulse, reducedMotion, stageMaxHeight, storage, toast } from "./ui.js";
@@ -238,6 +239,8 @@ export class App {
     };
     requestAnimationFrame(loop);
     setInterval(() => this.refreshPanels(), 400);
+    // a page older than the site offers the new one (its edits saved first)
+    this.version = watchVersion({ beforeReload: () => this.flushSave() });
     window.__arail = this; // for debugging and end-to-end tests
   }
 
@@ -432,7 +435,8 @@ export class App {
   }
 
   /**
-   * Show a chapter (overview, interaction, settings), a view of Settings (view, simulate, control),
+   * Show a chapter (overview, interaction, settings), a part of Settings (simulate; view and control,
+   * which are folded away below the simulation, opened and scrolled to),
    * or in Interaction a case (its id, or a former tab name: build, terminal, ops, modules, …) or the
    * list of examples ("examples"; the former "scenarios" too). The case shown until then stops. On a page with a home (the
    * app), a scenario that was started and is left for the list or another scenario takes the stage
@@ -441,11 +445,13 @@ export class App {
    * it, except for the chapter the page starts with (`address` false): a first visit keeps its address.
    */
   selectTab(name, { address = true } = {}) {
-    if (TAB_VIEWS[name]) {
-      this.panels.settingsView = TAB_VIEWS[name][1];
-      storage.set("arail.settingsView", TAB_VIEWS[name][1]);
+    // a part of Settings: the simulation, or a section folded away below it, opened
+    const settingsPart = TAB_VIEWS[name]?.[1] ?? null;
+    if (settingsPart) {
+      this.panels.settingsView = settingsPart;
+      if (settingsPart in this.panels.settingsOpen) this.panels.settingsOpen[settingsPart] = true;
       name = TAB_VIEWS[name][0];
-    }
+    } else if (name === "settings") this.panels.settingsView = "simulate";
     if (LIST_ALIASES.includes(name)) name = LIST;
     const c = this.caseFor(name);
     let home = false;
@@ -473,7 +479,8 @@ export class App {
     }
     this._scrollTabIntoView($(`#tab-${name}`));
     this.renderPanel(name);
-    // Settings is linked by its view (#view, #simulate, #control), Interaction by its case (#terminal, #modules)
+    if (settingsPart) this.panels.showSettingsView();
+    // Settings is linked by its part (#simulate, #view, #control), Interaction by its case (#terminal, #modules)
     if (address) history.replaceState(null, "", `${location.pathname}${location.search}#${name === "settings" ? this.panels.settingsView : name === "interaction" ? this.activeCase : name}`);
   }
 
