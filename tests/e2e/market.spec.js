@@ -1,11 +1,11 @@
-// The lab example's market square: the modules Striezelmarkt and Market visitors switched on by
+// The lab example's market square: the modules Wintermarkt and Market visitors switched on by
 // their boxes, the market drawn in the flyover with its visitors, the card of a stall in German.
 import { expect, test } from "@playwright/test";
 import { moduleBox, openModules, viewTo } from "./ui.js";
 
 const LAB = "/app/?layout=../layouts/ebl-lab.json";
 
-test("the Striezelmarkt and its visitors: switched on in Sandbox, drawn in the flyover, a stall's card", async ({ page }) => {
+test("the Wintermarkt and its visitors: switched on in Sandbox, drawn in the flyover, a stall's card", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(LAB);
@@ -13,7 +13,7 @@ test("the Striezelmarkt and its visitors: switched on in Sandbox, drawn in the f
   await page.goto(`${LAB}&lang=de`);
   await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
   await openModules(page);
-  for (const name of ["Striezelmarkt", "Marktbesucher"]) {
+  for (const name of ["Wintermarkt", "Marktbesucher"]) {
     await moduleBox(page, name).click();
     await expect(moduleBox(page, name)).toHaveAttribute("aria-pressed", "true");
   }
@@ -39,7 +39,7 @@ test("the Striezelmarkt and its visitors: switched on in Sandbox, drawn in the f
   expect(errors).toEqual([]);
 });
 
-test("Bf Neustadt: the Striezelmarkt is on by default, also where a choice of modules was saved before it came", async ({ page }) => {
+test("Bf Neustadt: the Wintermarkt is on by default, also where a choice of modules was saved before it came", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   const url = "/app/?layout=../layouts/ebl-neustadt.json";
@@ -48,7 +48,7 @@ test("Bf Neustadt: the Striezelmarkt is on by default, also where a choice of mo
   await page.evaluate(() => localStorage.clear());
   await page.goto(url);
   await page.waitForFunction(() => window.__arail?.world?.objects?.length, null, { timeout: 30_000 });
-  expect(await on()).toEqual(["sbahn", "waldhof", "striezelmarkt", "market-visitors"]);
+  expect(await on()).toEqual(["sbahn", "waldhof", "wintermarkt", "market-visitors"]);
   // a choice saved before the market came (S-Bahn switched off, the hump yard on), without the ids of then
   await page.evaluate((key) => {
     localStorage.clear();
@@ -56,19 +56,19 @@ test("Bf Neustadt: the Striezelmarkt is on by default, also where a choice of mo
   }, `arail.layers:${new URL("/layouts/ebl-neustadt.json", page.url()).href}`);
   await page.reload();
   await page.waitForFunction(() => window.__arail?.world?.objects?.length, null, { timeout: 30_000 });
-  expect(await on()).toContain("striezelmarkt");
+  expect(await on()).toContain("wintermarkt");
   expect(await on()).toContain("market-visitors");
   expect(await on()).toContain("hump");
   expect(await on()).not.toContain("sbahn"); // switched off before: it stays off
   // switched off by hand, it stays off
-  await page.evaluate(() => window.__arail.setLayers(window.__arail.layersOn().filter((id) => id !== "striezelmarkt" && id !== "market-visitors")));
+  await page.evaluate(() => window.__arail.setLayers(window.__arail.layersOn().filter((id) => id !== "wintermarkt" && id !== "market-visitors")));
   await page.reload();
   await page.waitForFunction(() => window.__arail?.world?.objects?.length, null, { timeout: 30_000 });
-  expect(await on()).not.toContain("striezelmarkt");
+  expect(await on()).not.toContain("wintermarkt");
   expect(errors).toEqual([]);
 });
 
-test("Bf Neustadt: an example brings back no module switched off by hand; a choice of Breakdown alone gets the Striezelmarkt when it is left", async ({ page }) => {
+test("Bf Neustadt: an example brings back no module switched off by hand; a choice of Breakdown alone gets the Wintermarkt when it is left", async ({ page }) => {
   test.setTimeout(150_000);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -80,7 +80,7 @@ test("Bf Neustadt: an example brings back no module switched off by hand; a choi
   await page.goto(url);
   await loaded();
   // the market switched off by hand, then Examples → Hump yard: the hump yard on, the market still off
-  await page.evaluate(() => window.__arail.setLayers(window.__arail.layersOn().filter((id) => id !== "striezelmarkt" && id !== "market-visitors")));
+  await page.evaluate(() => window.__arail.setLayers(window.__arail.layersOn().filter((id) => id !== "wintermarkt" && id !== "market-visitors")));
   await page.evaluate(() => window.__arail.openExample("hump"));
   await expect.poll(on).toEqual(["sbahn", "waldhof", "hump"]);
   // and so for Bf Neustadt from then on
@@ -100,12 +100,12 @@ test("Bf Neustadt: an example brings back no module switched off by hand; a choi
   }
   // left for S-Bahn: the market comes with it
   await page.evaluate(() => window.__arail.toggleModule("sbahn"));
-  await expect.poll(on).toEqual(["sbahn", "striezelmarkt", "market-visitors"]);
+  await expect.poll(on).toEqual(["sbahn", "wintermarkt", "market-visitors"]);
   // the Plan (an exclusive module) chosen last, then Examples → Hump yard: the hump yard beside the town's own
   // modules, not alone
   await page.evaluate(() => window.__arail.setLayers(["plan"]));
   await expect.poll(on).toEqual(["plan"]);
   await page.evaluate(() => window.__arail.openExample("hump"));
-  await expect.poll(on).toEqual(["sbahn", "waldhof", "striezelmarkt", "market-visitors", "hump"]);
+  await expect.poll(on).toEqual(["sbahn", "waldhof", "wintermarkt", "market-visitors", "hump"]);
   expect(errors).toEqual([]);
 });

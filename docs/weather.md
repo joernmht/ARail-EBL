@@ -17,7 +17,7 @@ This is the base of the concept in [#254](https://github.com/joernmht/ARail-EBL/
 
 With a date or a weather, a clock on the stage shows them: *Sun 6 Dec · 15:46 · −2 °C · snow*. What is set here is not saved with the layout; a layout's own date and weather are ([layout file](#in-a-layout-file)).
 
-The lab example's scenario *Evening at the Striezelmarkt* (module Striezelmarkt) sets 6 December, 15:45 and snowfall: dusk comes at four.
+The lab example's scenario *Evening at the Wintermarkt* (module Wintermarkt) sets 6 December, 15:45 and snowfall: dusk comes at four.
 
 ## The date and the sun
 

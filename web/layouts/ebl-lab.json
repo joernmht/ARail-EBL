@@ -1,7 +1,7 @@
 {
   "format": "arail-layout/1",
   "name": "EBL lab, Beta 0.1 (example)",
-  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. In front of the table, virtual table modules carry a small town: streets, two bus lines and people who go to work, school and shopping. A modern station building stands between Bahnhofstraße and the tracks; behind the tracks, Plattenbau on another module, linked by a pedestrian underpass. West of the town, a market square on a module of its own. Modules (View panel) add the Striezelmarkt with its visitors, rail operations, the infrastructure game, journeys for an exercise and the container terminal.",
+  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. In front of the table, virtual table modules carry a small town: streets, two bus lines and people who go to work, school and shopping. A modern station building stands between Bahnhofstraße and the tracks; behind the tracks, Plattenbau on another module, linked by a pedestrian underpass. West of the town, a market square on a module of its own. Modules (View panel) add the Wintermarkt with its visitors, rail operations, the infrastructure game, journeys for an exercise and the container terminal.",
   "scale": 87,
   "markers": {
     "dictionary": "ARUCO",
@@ -455,13 +455,13 @@
       ]
     },
     {
-      "id": "striezelmarkt",
-      "name": "Striezelmarkt",
+      "id": "wintermarkt",
+      "name": "Wintermarkt",
       "description": "The Christmas market on the Marktplatz: a big decorated Christmas tree, a ferris wheel, a carousel and a mini train, and stalls with Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilze from a steam locomotive, and crafts. Lit at night; switch on Market visitors for the crowd.",
       "enabled": false,
       "objects": [
-        { "id": "market-gate", "type": "market-gate", "name": "Eingang Lindenallee", "position": [-550, -996], "rotation_deg": 0, "text": "Striezelmarkt" },
-        { "id": "market-gate-2", "type": "market-gate", "name": "Eingang Ost", "position": [-174, -659], "rotation_deg": 90, "width_m": 4, "text": "Striezelmarkt" },
+        { "id": "market-gate", "type": "market-gate", "name": "Eingang Lindenallee", "position": [-550, -996], "rotation_deg": 0, "text": "Wintermarkt" },
+        { "id": "market-gate-2", "type": "market-gate", "name": "Eingang Ost", "position": [-174, -659], "rotation_deg": 90, "width_m": 4, "text": "Wintermarkt" },
         { "id": "christmas-tree", "type": "christmas-tree", "name": "Weihnachtsbaum", "position": [-560, -780], "height_m": 20 },
         { "id": "ferris-wheel", "type": "ferris-wheel", "name": "Riesenrad", "position": [-790, -600], "rotation_deg": 0, "diameter_m": 22 },
         { "id": "carousel", "type": "carousel", "name": "Kinderkarussell", "position": [-290, -660], "rotation_deg": 0, "diameter_m": 9 },
@@ -490,19 +490,19 @@
         { "id": "stall-22", "type": "market-stall", "position": [-510, -905], "rotation_deg": 180, "goods": "flammlachs", "tables": 1 }
       ],
       "scenarios": [
-        { "id": "striezelmarkt-evening", "name": "Evening at the Striezelmarkt", "description": "6 December, a quarter to four: snow is falling, dusk comes at four, and the lights of the stalls, the tree and the rides come on.", "steps": [{ "at": 0, "set": { "date": "12-06", "time": "15:45", "weather": "snow" }, "message": "6 December at the Striezelmarkt: snow is falling, and the lights come on at dusk." }] }
+        { "id": "wintermarkt-evening", "name": "Evening at the Wintermarkt", "description": "6 December, a quarter to four: snow is falling, dusk comes at four, and the lights of the stalls, the tree and the rides come on.", "steps": [{ "at": 0, "set": { "date": "12-06", "time": "15:45", "weather": "snow" }, "message": "6 December at the Wintermarkt: snow is falling, and the lights come on at dusk." }] }
       ]
     },
     {
       "id": "market-visitors",
       "name": "Market visitors",
-      "description": "People come to the Striezelmarkt from the houses of the town, from the ends of the streets and by train: they queue at the stalls, drink their Glühwein at the standing tables, look at the tree and ride the ferris wheel, the carousel and the mini train, then go home, many of them to the station. Needs the module Striezelmarkt.",
+      "description": "People come to the Wintermarkt from the houses of the town, from the ends of the streets and by train: they queue at the stalls, drink their Glühwein at the standing tables, look at the tree and ride the ferris wheel, the carousel and the mini train, then go home, many of them to the station. Needs the module Wintermarkt.",
       "enabled": false,
       "simulations": [
         { "type": "market", "visitors": 260, "open": "10:00", "close": "22:00" }
       ],
       "scenarios": [
-        { "id": "market-closing", "name": "Closing time at the Striezelmarkt", "description": "The market closes at 22:00: the crowd leaves, many of them for the trains. Watch the platforms fill.", "steps": [{ "at": 0, "set": { "date": "12-06", "time": "20:30" }, "message": "A busy evening at the Striezelmarkt." }, { "at": 450, "message": "The market closes: everybody goes home, many to the station." }] }
+        { "id": "market-closing", "name": "Closing time at the Wintermarkt", "description": "The market closes at 22:00: the crowd leaves, many of them for the trains. Watch the platforms fill.", "steps": [{ "at": 0, "set": { "date": "12-06", "time": "20:30" }, "message": "A busy evening at the Wintermarkt." }, { "at": 450, "message": "The market closes: everybody goes home, many to the station." }] }
       ]
     },
     {

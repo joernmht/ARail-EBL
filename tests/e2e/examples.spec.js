@@ -172,7 +172,7 @@ test("the Sandbox: the whole layout in the flyover, the modules, the infrastruct
   await page.locator("#casesBack").click();
   expect(await page.evaluate(() => window.__arail.world.settings.ageYears)).toBe(0);
   await page.waitForFunction(() => !window.__arail._homing && window.__arail.mode === "camera", null, { timeout: 30_000 });
-  expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["sbahn", "waldhof", "striezelmarkt", "market-visitors", "infrastructure"]);
+  expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["sbahn", "waldhof", "wintermarkt", "market-visitors", "infrastructure"]);
   expect(await condition()).toBeCloseTo(today, 6);
   expect(errors).toEqual([]);
 });
@@ -340,7 +340,7 @@ test("leaving a scenario for the list takes the stage back to the town, other ch
     const a = window.__arail;
     return { layout: a.layoutUrl.replace(/.*\//, ""), layers: a.layersOn(), mode: a.mode, photo: a.source?.el?.src?.replace(/.*\//, "") ?? null, stale: !!a.source?.stale };
   });
-  const town = { layout: "ebl-neustadt.json", layers: ["sbahn", "waldhof", "striezelmarkt", "market-visitors"], mode: "camera", photo: "ebl-neustadt.jpg", stale: false };
+  const town = { layout: "ebl-neustadt.json", layers: ["sbahn", "waldhof", "wintermarkt", "market-visitors"], mode: "camera", photo: "ebl-neustadt.jpg", stale: false };
   const home = () => page.waitForFunction(() => !window.__arail._homing && window.__arail.mode === "camera" && /ebl-neustadt\.jpg$/.test(window.__arail.source?.el?.src || ""), null, { timeout: 30_000 });
   expect(await stage()).toEqual(town);
   // the loading task at the hybrid train: the tour offers its photos only, those with the terminal and
@@ -374,7 +374,7 @@ test("leaving a scenario for the list takes the stage back to the town, other ch
   const running = () => page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.layersOn(), window.__arail.mode, !!window.__arail._homing, window.__arail.tourNav.scope?.key ?? null]);
   const scope = await page.evaluate(() => window.__arail.tourNav.scope?.key ?? null);
   expect(scope).toMatch(/^infra-disruption\|/);
-  const runs = [true, ["sbahn", "waldhof", "striezelmarkt", "market-visitors", "infrastructure"], "flyover", false, scope];
+  const runs = [true, ["sbahn", "waldhof", "wintermarkt", "market-visitors", "infrastructure"], "flyover", false, scope];
   expect(await running()).toEqual(runs);
   expect(await page.evaluate(() => window.__arail.tourNav.tour.parts.map((p) => p.name))).toEqual(["Neustadt", "Neustadt", "Neustadt", "Neustadt"]);
   // the other chapters leave it running, its stage and its tour as they are (a photo of another layout

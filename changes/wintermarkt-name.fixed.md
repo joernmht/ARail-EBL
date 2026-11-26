@@ -1,0 +1,1 @@
+- **The Christmas market is called the Wintermarkt**: the name Striezelmarkt is protected, so the market, its module (`wintermarkt`, before `striezelmarkt`), its gates, scenarios and texts now say *Wintermarkt*. A browser that had saved its choice of modules gets the module Wintermarkt switched on once, as a new one.

@@ -1,5 +1,5 @@
 /**
- * The visitors of a market (in the lab example the Striezelmarkt, the Christmas market on the
+ * The visitors of a market (in the lab example the Wintermarkt, the Christmas market on the
  * Marktplatz): people come while it is open, from the houses of the town, from the ends of the
  * streets and by train, walk onto the square, queue at the stalls (objects/market.js), drink their
  * Glühwein at a standing table, look at the Christmas tree, ride the ferris wheel, the carousel and
