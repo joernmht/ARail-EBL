@@ -61,3 +61,10 @@ export async function viewTo(page, view) {
   for (let i = 0; i < 4 && (await button.getAttribute("data-view")) !== view; i++) await button.click();
   await expect(button).toHaveAttribute("data-view", view);
 }
+
+/** Open a section of Settings folded away below the simulation ("view" or "control"), unless it is open (Settings shown). */
+export async function openSettingsPart(page, part) {
+  const fold = page.locator(`#settings-${part}`);
+  if (!(await fold.evaluate((d) => d.open))) await page.locator(`#settingsView-${part}`).click();
+  await expect(fold).toHaveAttribute("open", "");
+}

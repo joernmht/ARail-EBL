@@ -1,7 +1,7 @@
 // Accessibility checks (axe-core, WCAG 2.2 AA rules) of the published pages, in light and dark mode.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { openCase, openModules } from "./ui.js";
+import { openCase, openModules, openSettingsPart } from "./ui.js";
 
 const PAGES = [
   ["project page", "/"],
@@ -78,8 +78,7 @@ function settled(page) {
 /** Settings → Simulation (the tab remembers its last view). */
 async function openSimulation(page) {
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
-  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#panel-settings .situations").first()).toBeVisible(); // the simulation, always shown
 }
 
 /** Violations on the page now, labelled with the state they were found in. */
@@ -147,7 +146,7 @@ for (const [scheme, device, viewport] of STATES) {
     await expect(page.getByRole("button", { name: "Unlock" })).toBeVisible();
     found.push(...(await violations(page, "locked marker map with moving markers")));
     await page.locator("#tab-settings").click();
-    await page.locator("#settingsView-view").click();
+    await openSettingsPart(page, "view");
     found.push(...(await violations(page, "Settings → View, locked map with moving markers")));
     await openSimulation(page);
     found.push(...(await violations(page, "Settings → Simulation, the situations")));

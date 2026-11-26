@@ -1,0 +1,1 @@
+- **Settings opens on Simulation**: the situations and the clock come first. **View** and **Control system**, seldom needed, are folded away below them and closed each time the app starts; click a title to open it. `#view` and `#control` open Settings with that section open and scrolled to; `#simulate` opens Settings.

@@ -61,8 +61,7 @@ for (const [scheme, expected] of Object.entries(MODES)) {
       await page.keyboard.press("Escape");
 
       await page.locator("#tab-settings").click();
-      await page.locator("#settingsView-simulate").click();
-      await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator("#panel-settings .situations").first()).toBeVisible(); // the simulation, always shown
       // Pause and the speed in the upper right corner of the stage: pressed in Orange, on the overlay
       await page.getByRole("group", { name: "Speed", exact: true }).getByRole("button", { name: "Pause" }).click();
       await expect(page.locator("#simPause")).toHaveAttribute("aria-pressed", "true");
@@ -70,7 +69,7 @@ for (const [scheme, expected] of Object.entries(MODES)) {
       expect(await contrastViolations(page, ["#panel-settings", "#hud", "#simClock"])).toEqual([]);
 
       await page.locator("#tab-settings").click();
-      await page.locator("#settingsView-simulate").click();
+      await expect(page.locator("#panel-settings .situations").first()).toBeVisible(); // the simulation, always shown
 
       await openModules(page);
       await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();

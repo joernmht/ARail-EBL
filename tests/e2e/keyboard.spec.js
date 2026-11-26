@@ -3,7 +3,7 @@
 // are not hidden behind the placing bar (WCAG 2.2: 2.1.1 Keyboard, 2.4.7 Focus Visible, 2.4.11
 // Focus Not Obscured).
 import { expect, test } from "@playwright/test";
-import { expectCase, openCase } from "./ui.js";
+import { expectCase, openCase, openSettingsPart } from "./ui.js";
 
 async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   const errors = [];
@@ -62,7 +62,7 @@ test("the buttons that open files show the keyboard focus", async ({ page }) => 
   expect(await outline("surveyVideo")).not.toBe("none");
   // a mouse click on the label does not draw the ring
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await openSettingsPart(page, "view");
   expect(await outline("calibrationFile")).toBe("none");
 });
 
@@ -146,10 +146,7 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   await tabTo(page, "#tab-interaction");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-settings")).toBeFocused();
-  await expect(page.locator("#settingsView-view")).toHaveAttribute("aria-pressed", "true"); // the view shown last
-  await tabTo(page, "#settingsView-simulate");
-  await page.keyboard.press("Enter");
-  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#situation-winter-rush")).toBeVisible(); // Settings opens on the simulation
   await tabTo(page, "#simByHand summary");
   await page.keyboard.press("Enter");
   await expect(page.locator("#simByHand")).toHaveAttribute("open", "");
@@ -280,12 +277,12 @@ test("keyboard: after Depart the focus stays on the arrival cards; an added term
   await page.keyboard.press("Enter");
   await expect(page.locator("#casePanel h2").first()).toHaveText("Container terminal");
   await expect(page.locator("#casePanel h2").first()).toBeFocused();
-  // the views of Settings with the keyboard: the button pressed keeps the focus
+  // the sections of Settings folded away, with the keyboard: Enter on the title opens it, which keeps the focus
   await page.locator("#tab-settings").click();
   await page.locator("#settingsView-control").focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#settings-control")).toHaveAttribute("open", "");
   await expect(page.locator("#settingsView-control")).toBeFocused();
-  await expect(page.locator("#panel-settings")).toContainText("Control system");
+  await expect(page.locator("#feedUrl")).toBeVisible();
   expect(errors).toEqual([]);
 });

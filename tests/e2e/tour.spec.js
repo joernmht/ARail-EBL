@@ -3,6 +3,7 @@
 // side; a photo with a digital layer opens with its layout and is tracked, the others are shown as
 // photos only.
 import { expect, test } from "@playwright/test";
+import { openSettingsPart } from "./ui.js";
 
 function trackErrors(page) {
   const errors = [];
@@ -144,7 +145,7 @@ test("a photo of the container train opens its layout; the examples in Settings 
   // the list of layouts is no longer in the bar: the examples are in the View panel
   await expect(page.locator("#exampleSelect")).toHaveCount(0);
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await openSettingsPart(page, "view");
   await page.locator("#example-neustadt").click();
   await page.waitForFunction(() => window.__arail.world.layout.name === "EBL Bf Neustadt and terminal (example)" && window.__arail.tracker.state.H);
   expect(await shown(page)).toBeNull(); // the layout's own photo, not one of the tour's
@@ -167,7 +168,7 @@ test("the hybrid container train's example with its scenario shown: the tour off
   await page.waitForFunction(() => !window.__arail.tourNav.scope);
   // the example opened again from Settings → View: its scenario shown, its photos only
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await openSettingsPart(page, "view");
   await page.locator("#example-container-task").click();
   await page.waitForFunction(() => window.__arail.activeCase === "terminal" && window.__arail.tourNav.scope?.key === "terminal|container||wagons", null, { timeout: 30_000 });
   expect(errors).toEqual([]);

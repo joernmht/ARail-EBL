@@ -208,6 +208,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
    a message shown while placing goes to the top of the stage */
 .placing { position: absolute; left: 10px; right: 10px; bottom: calc(32px + 1rem); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--overlay); color: var(--overlay-text); border-left: 5px solid var(--warn); padding: 8px 10px; border-radius: var(--radius); font-size: .88rem; }
 .placing:not([hidden]) ~ .toast { bottom: auto; top: 48px; }
+/* a new version of the site (version.js): over everything, at the top of the window */
+.update-notice { position: fixed; z-index: 1000; top: 12px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; background: var(--board); color: var(--board-text); border-left: 5px solid var(--accent); padding: 8px 12px; border-radius: var(--radius); font-weight: 500; box-shadow: 0 6px 24px rgba(0, 6, 26, .4); }
 .placing strong { font-weight: 700; }
 .placing .grow { flex: 1; min-width: 12ch; }
 /* on phones the text takes the whole width (the buttons go below it), and touch screens skip the keyboard hint */
@@ -360,9 +362,11 @@ details.info-section[open] > summary { margin-bottom: 4px; }
 .seg button:last-child { border-right: 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); font-weight: 700; }
 /* Settings: its two views side by side, the full width of the panel; the view's sections spaced as in a panel */
-.settings-views { display: flex; width: 100%; }
-.settings-views button { flex: 1; }
 .settings-body { display: grid; gap: 18px; }
+/* Settings → View and Control system, folded away below the simulation; opened, their sections follow */
+details.settings-fold > summary { cursor: pointer; }
+details.settings-fold > summary h2 { display: inline; margin: 0; font-size: 1rem; font-weight: 700; color: var(--text); }
+details.settings-fold[open] > summary { margin-bottom: 14px; }
 
 .field { display: grid; gap: 3px; font-size: .8rem; color: var(--text-2); min-width: 0; }
 .field > span small, .field > label small { color: var(--text-2); font-weight: 400; }

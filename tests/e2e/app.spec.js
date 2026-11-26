@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { SCENE, SCENE_VIDEO, atPath, hasScene, routeScene } from "./scene.js";
-import { expectCase } from "./ui.js";
+import { expectCase, openSettingsPart } from "./ui.js";
 
 /** Collect uncaught page errors (console noise such as blocked web fonts is ignored). */
 function trackErrors(page) {
@@ -23,7 +23,7 @@ async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
 /** Open an example from the View panel (the app's examples; the stage's photo tour chooses the rest). */
 async function chooseExample(page, id) {
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await openSettingsPart(page, "view");
   await page.locator(`#example-${id}`).click();
 }
 
@@ -187,7 +187,7 @@ test("a video's markers are found in the worker, and the frame shown is the one 
   await routeScene(page);
   const errors = await openApp(page, `/app/?layout=${SCENE}#build`);
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await openSettingsPart(page, "view");
   await page.locator("#fileVideo").setInputFiles(SCENE_VIDEO);
   await page.waitForFunction(() => window.__arail.videoDetection.state === "ready" && window.__arail.videoDetection.shown && window.__arail.tracker.state.H, null, { timeout: 30_000 });
   const s = await page.evaluate(() => {
@@ -205,7 +205,7 @@ test("with ?worker=0 a video's markers are found on the page itself", async ({ p
   await routeScene(page);
   const errors = await openApp(page, `/app/?layout=${SCENE}&worker=0#build`);
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await openSettingsPart(page, "view");
   await page.locator("#fileVideo").setInputFiles(SCENE_VIDEO);
   await page.waitForFunction(() => window.__arail.source?.kind === "video" && window.__arail.tracker.state.H);
   expect(await page.evaluate(() => ({ state: window.__arail.videoDetection.state, worker: !!window.__arail.videoDetection.worker, shown: window.__arail.videoDetection.shown }))).toEqual({ state: "failed", worker: false, shown: null });
@@ -218,7 +218,7 @@ test("a layout chosen from the examples while a video plays is not tracked in th
   const errors = await openApp(page, `/app/?layout=${SCENE}#build`);
   // Settings → View → Image source: Record video (here a file)
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await openSettingsPart(page, "view");
   await page.locator("#fileVideo").setInputFiles(SCENE_VIDEO);
   await page.waitForFunction(() => window.__arail.source?.kind === "video" && window.__arail.tracker.state.H);
   // the lab photo comes later: meanwhile the video of the test scene (markers 0–7) is still shown
@@ -416,7 +416,7 @@ test("Pause and the speed in the upper right corner of the stage: each click on 
   // the time of day is in Settings → Simulation → Each on its own, as presets: the part of the day it is is pressed
   await page.evaluate(() => window.__arail.world.setTime("22:30"));
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
+  await expect(page.locator("#panel-settings .situations").first()).toBeVisible(); // the simulation, always shown
   await page.locator("#simByHand summary").click();
   await page.locator("#optLighting").uncheck(); // only the drawing stays bright
   await expect(page.getByRole("button", { name: "Night 22:30" })).toHaveAttribute("aria-pressed", "true");
@@ -432,9 +432,9 @@ test("the image sources are in Settings → View, not in the bar: a photo chosen
   await expect(page.locator("#bar #btnLive, #bar input[type=file], #bar label.btn")).toHaveCount(0);
   await page.evaluate(() => window.__arail.flyover.enter()); // the flyover: what is chosen is shown in the camera view
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await openSettingsPart(page, "view");
   // the first section of the view: the live camera (here, on localhost, the browser can open it), a photo, a video, a file
-  const sources = page.locator("#panel-settings .settings-body > .section").first();
+  const sources = page.locator("#settings-view .settings-body > .section").first();
   await expect(sources.locator("h2")).toHaveText("Image source");
   await expect(sources.getByRole("button", { name: "Live camera" })).toBeVisible();
   for (const name of ["Take photo", "Record video", "Open file"]) await expect(sources.locator("label.btn", { hasText: name })).toBeVisible();

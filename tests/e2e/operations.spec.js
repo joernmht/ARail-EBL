@@ -2,7 +2,7 @@
 // the crews, the penalties, a comparison of setups), its trains at the platforms, adding rail
 // operations to a layout from Settings → Simulation, the tabs on a phone and with the keyboard.
 import { expect, test } from "@playwright/test";
-import { caseReady, expectCase, openCase } from "./ui.js";
+import { caseReady, expectCase, openCase, openSettingsPart } from "./ui.js";
 
 const EXAMPLE = "/game/?layout=../layouts/ebl-lab.json&layers=operations#ops";
 
@@ -139,7 +139,7 @@ test("a comparison of setups runs in the page and gives a table, the cancelled t
   await page.locator("#opsWide").click();
   await expect.poll(async () => (await page.locator("#panel").boundingBox()).width).toBeGreaterThan(narrow + 200);
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await openSettingsPart(page, "view");
   await expect.poll(async () => (await page.locator("#panel").boundingBox()).width).toBeLessThan(narrow + 2);
   expect(errors).toEqual([]);
 });

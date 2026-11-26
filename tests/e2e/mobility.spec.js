@@ -3,6 +3,7 @@
 // in Settings → Simulation, with their CSV; both accessible in light and dark mode.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { openSettingsPart } from "./ui.js";
 
 const LAB = "/app/?layout=../layouts/ebl-lab.json";
 
@@ -29,7 +30,7 @@ for (const scheme of ["light", "dark"]) {
     test("Settings → View: the room people take, drawn and kept for the next visit", async ({ page }) => {
       const errors = await openApp(page);
       await page.locator("#tab-settings").click();
-      await page.locator("#settingsView-view").click();
+      await openSettingsPart(page, "view");
       const box = page.getByRole("checkbox", { name: "The room people take" });
       await expect(box).not.toBeChecked();
       await box.check();
@@ -45,7 +46,7 @@ for (const scheme of ["light", "dark"]) {
       await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
       expect(await page.evaluate(() => window.__arail.world.settings.spaceCircles)).toBe(true);
       await page.locator("#tab-settings").click();
-      await page.locator("#settingsView-view").click();
+      await openSettingsPart(page, "view");
       await expect(page.getByRole("checkbox", { name: "The room people take" })).toBeChecked();
       expect(errors).toEqual([]);
     });

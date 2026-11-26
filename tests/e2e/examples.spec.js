@@ -382,8 +382,7 @@ test("leaving a scenario for the list takes the stage back to the town, other ch
   await page.locator("#tab-overview").click();
   expect(await running()).toEqual(runs);
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
-  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#panel-settings .situations").first()).toBeVisible(); // the simulation, always shown
   expect(await running()).toEqual(runs);
   await page.locator("#tab-interaction").click();
   await expectCase(page, "infra-disruption");

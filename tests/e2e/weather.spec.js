@@ -136,7 +136,7 @@ test("Settings → Simulation: a situation sets the day, the time, the weather a
   await page.evaluate(() => window.__arail.openLayout("../layouts/ebl-neustadt.json"));
   await page.waitForFunction(() => window.__arail.world.layout.name?.includes("Neustadt"));
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
+  await expect(page.locator("#panel-settings .situations").first()).toBeVisible(); // the simulation, always shown
   await expect(page.locator("#situation-spring-sunday")).toHaveAttribute("aria-pressed", "false");
   expect(errors).toEqual([]);
 });

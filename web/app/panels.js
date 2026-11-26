@@ -1,4 +1,4 @@
-// Panels: Settings (view, simulation and control system), Disruptions.
+// Panels: Settings (the simulation, and folded away below it the view and the control system), Disruptions.
 import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, MockFeed, WEATHER_PRESETS, sectionSystems, SYSTEM_OVERLAYS, systemValue, WebSocketFeed } from "../arail/index.js";
 import { applySituation, markSituation, SITUATIONS, situationHolds, situationReady } from "./situations.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
@@ -11,7 +11,8 @@ const DATE_PRESETS = [["", "No date"], ["04-15", "Spring (15 April)"], ["07-15",
 /** The passenger demand of Settings → Simulation (a factor on all the demand of the layout). */
 const DEMAND_PRESETS = [[0.5, "Quiet (× 0.5)"], [1, "Normal (× 1)"], [2, "Busy (× 2)"], [4, "Rush hour (× 4)"]];
 /** The views of the Settings panel. */
-const SETTINGS_VIEWS = [["view", "View"], ["simulate", "Simulation"], ["control", "Control system"]];
+/** The sections of Settings folded away below the simulation, which is always shown: their ids and titles. */
+const SETTINGS_FOLDS = [["view", "View"], ["control", "Control system"]];
 /** "Platform 1, Track G2" for the id of a platform's track (a dock, "platform-1:left"), or null. */
 const trackName = (world, id) => {
   for (const a of world.stopAreas()) for (const k of a.docks) if (k.id === id) return `${a.owner.name}, ${k.label}`;
@@ -22,15 +23,17 @@ export class Panels {
   constructor(app) {
     this.app = app;
     this.disruptionDraft = { type: "delay", target: "*", params: {} };
-    /** The view of the Settings panel: "view", "simulate" or "control". */
-    this.settingsView = SETTINGS_VIEWS.some(([v]) => v === storage.get("arail.settingsView")) ? storage.get("arail.settingsView") : "view";
+    /** The part of the Settings panel linked last (the address #simulate, #view or #control): "simulate" for the panel itself. */
+    this.settingsView = "simulate";
+    /** Which of the folded sections of Settings (View, Control system) are open: closed when the app starts. */
+    this.settingsOpen = { view: false, control: false };
   }
 
   get world() {
     return this.app.world;
   }
 
-  /* ================================================================ View (a view of Settings) */
+  /* ================================================================ View (a section of Settings) */
 
   /** Settings → View: the image source, the examples, what is shown, the grid, the camera, recording, the language. */
   renderView(el) {
@@ -112,7 +115,7 @@ export class Panels {
 
   /** Draw Settings → View again if it is shown (a key pressed, a track colouring chosen on a card). */
   renderViewIfShown() {
-    if (this.app.activeTab === "settings" && this.settingsView === "view" && this.settingsBody?.isConnected) this.renderView(this.settingsBody);
+    if (this.app.activeTab === "settings" && this.settingsOpen.view && this.viewBody?.isConnected) this.renderView(this.viewBody);
   }
 
   /** The legend of Settings → View → Colour the tracks by: each value on the layout's tracks, with its colour and how many tracks have it. */
@@ -164,37 +167,72 @@ export class Panels {
 
   /* ================================================================ Settings */
 
-  /** The Settings panel, what can be set: its views View (image source, layouts, display, camera, language), Simulation (presets) and Control system. */
+  /**
+   * The Settings panel, what can be set: the simulation (situations, the clock), and folded away below
+   * it, as it is seldom needed, View (image source, layouts, display, camera, language) and Control
+   * system. A folded section is drawn when it is opened.
+   */
   renderSettings(el) {
     this.settingsBody = h("div", { class: "settings-body" });
-    mount(el,
-      h("div", { class: "section settings-head" },
-        h("div", { class: "seg settings-views", role: "group", "aria-label": "Settings" },
-          SETTINGS_VIEWS.map(([v, label]) => h("button", { type: "button", id: `settingsView-${v}`, "aria-pressed": this.settingsView === v ? "true" : "false", onclick: () => this.setSettingsView(v) }, label)))),
-      this.settingsBody,
-    );
-    // the other views' controls are gone: their live figures are not refreshed
+    this.viewBody = h("div", { class: "settings-body" });
+    this.controlBody = h("div", { class: "settings-body" });
+    const bodies = { view: this.viewBody, control: this.controlBody };
+    mount(el, this.settingsBody, ...SETTINGS_FOLDS.map(([v, label]) => h("details", {
+      class: "section settings-fold", id: `settings-${v}`, open: !!this.settingsOpen[v],
+      ontoggle: (e) => this._settingsToggled(v, e.currentTarget.open),
+    }, h("summary", { id: `settingsView-${v}` }, h("h2", {}, label)), bodies[v])));
+    // the controls of a section not drawn are gone: their live figures are not refreshed
     this.focalRow = this.feedStatus = this.dateSelect = null;
-    if (this.settingsView === "control") this.renderControl(this.settingsBody);
-    else if (this.settingsView === "view") this.renderView(this.settingsBody);
-    else this.renderSimulate(this.settingsBody);
+    this.renderSimulate(this.settingsBody);
+    for (const [v] of SETTINGS_FOLDS) if (this.settingsOpen[v]) this._renderFold(v);
   }
 
+  _renderFold(v) {
+    if (v === "view") this.renderView(this.viewBody);
+    else this.renderControl(this.controlBody);
+  }
+
+  /** A folded section of Settings opened or closed: drawn when opened, emptied when closed; the address follows. */
+  _settingsToggled(v, open) {
+    if (open === !!this.settingsOpen[v]) return; // (also the toggle of a section drawn open)
+    this.settingsOpen[v] = open;
+    if (open) this._renderFold(v);
+    else {
+      (v === "view" ? this.viewBody : this.controlBody).replaceChildren();
+      if (v === "control") this.feedStatus = null;
+      else this.focalRow = null;
+    }
+    this.settingsView = open ? v : "simulate";
+    if (this.app.activeTab === "settings") history.replaceState(null, "", `${location.pathname}${location.search}#${this.settingsView}`);
+  }
+
+  /**
+   * Show a part of Settings: "simulate" (the panel at its top), or "view" or "control", which is opened
+   * and scrolled to.
+   */
   setSettingsView(v) {
     this.settingsView = v;
-    storage.set("arail.settingsView", v);
+    if (v in this.settingsOpen) this.settingsOpen[v] = true;
     if (this.app.activeTab === "settings") {
       this.renderSettings(document.getElementById("panel-settings"));
-      document.getElementById(`settingsView-${v}`)?.focus(); // the button pressed is drawn anew: it keeps the focus
+      this.showSettingsView();
     }
     history.replaceState(null, "", `${location.pathname}${location.search}#${v}`);
   }
 
-  /** Live figures of the Settings panel (every 400 ms while it is shown). */
+  /** Scroll the folded section linked last into view, its title focused (nothing for the simulation). */
+  showSettingsView() {
+    const summary = document.getElementById(`settingsView-${this.settingsView}`);
+    if (!summary) return;
+    summary.closest("details")?.scrollIntoView({ block: "start" });
+    summary.focus({ preventScroll: true });
+  }
+
+  /** Live figures of the Settings panel (every 400 ms while it is shown): the simulation, and the folded sections that are open. */
   updateSettings() {
-    if (this.settingsView === "control") return this.updateControl();
-    if (this.settingsView === "view") return this.updateView();
     this.updateSimulate();
+    if (this.settingsOpen.view) this.updateView();
+    if (this.settingsOpen.control) this.updateControl();
   }
 
   /* ================================================================ Simulate */
@@ -280,7 +318,7 @@ export class Panels {
     }
     this.situation?.off();
     this.situation = markSituation(this.world, x);
-    if (this.app.activeTab === "settings" && this.settingsView === "simulate") {
+    if (this.app.activeTab === "settings") {
       this.renderSettings(document.getElementById("panel-settings"));
       document.getElementById(`situation-${x.id}`)?.focus();
     }

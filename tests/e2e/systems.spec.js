@@ -2,7 +2,7 @@
 // the card of a track, and the lab example's module Border station.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { openCase } from "./ui.js";
+import { openCase, openSettingsPart } from "./ui.js";
 
 const LAB = "/app/?layout=../layouts/ebl-lab.json&layers=border";
 
@@ -85,7 +85,7 @@ test("may this train run here: RE 1 at the Czech track G3; Show where it may run
   expect(await page.evaluate(() => window.__arail.world.settings.trackSystems)).toBe("compatibility");
   // the View panel: the choice and its legend
   await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await openSettingsPart(page, "view");
   await expect(page.locator("#optTrackSystems")).toHaveValue("compatibility");
   const legend = page.getByRole("list", { name: "Colours of the tracks" });
   await expect(legend).toContainText("RE 1 may run");
