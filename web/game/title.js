@@ -77,6 +77,9 @@ export const SHELL_KEYS = ["layout", "layers", "example", "photo", "image", "cam
 /** The pages the main menu opens, which Continue may open again. */
 export const PAGES = ["play/", "german/", "career/", "roles/", "logbook/"];
 
+/** Pages the menu opened once and Continue still opens for who played them last: the signaller's page. */
+export const FORMER_PAGES = ["signaller/"];
+
 /** The heading of each menu; a submenu's is also the label of the item that opens it. */
 const HEADINGS = { main: "Main menu", play: "Games", free: "Free play", career: "Career", options: "Options" };
 
@@ -338,7 +341,7 @@ export class TitleScreen {
   continued() {
     const last = store.get(LAST, null);
     // only the pages the menu opens (the browser's storage is shared by the whole site: nothing else becomes a link)
-    if (PAGES.includes(last?.href)) return { label: "Continue", sub: typeof last.label === "string" ? last.label : "", href: last.href, keep: true };
+    if (PAGES.includes(last?.href) || FORMER_PAGES.includes(last?.href)) return { label: "Continue", sub: typeof last.label === "string" ? last.label : "", href: last.href, keep: true };
     // the shell played last; also a game kept from before the title screen (no record of what was played last)
     const layout = last?.shell || last == null ? store.get(SHELL_LAYOUT, null) : null;
     if (typeof layout !== "string" || !layout) return null;

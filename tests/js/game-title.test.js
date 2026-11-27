@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { MAX_CHOICES, SHELL_KEYS, TitleScreen, withLang } from "../../web/game/title.js";
+import { FORMER_PAGES, MAX_CHOICES, PAGES, SHELL_KEYS, TitleScreen, withLang } from "../../web/game/title.js";
 
 const at = (search, hash = "") => ({ search, hash });
 
@@ -51,5 +51,20 @@ test("no menu of the title screen offers more than MAX_CHOICES choices (Back not
     Object.defineProperty(screen, "motion", { value: true });
     const choices = screen.items().filter((it) => !it.back);
     assert.ok(choices.length <= MAX_CHOICES, `${view}: ${choices.length} choices (${choices.map((it) => it.label).join(", ")}), at most ${MAX_CHOICES}`);
+  }
+});
+
+test("Continue still opens the signaller's page for who played it last, though the menu no longer offers it", () => {
+  assert.equal(PAGES.includes("signaller/"), false);
+  assert.deepEqual(FORMER_PAGES, ["signaller/"]);
+  const values = { "arail.game.continue": JSON.stringify({ href: "signaller/", label: "Signaller" }) };
+  globalThis.localStorage = { getItem: (k) => values[k] ?? null, setItem() {} };
+  try {
+    const screen = Object.assign(Object.create(TitleScreen.prototype), { view: "main", freePlay: [] });
+    assert.deepEqual(screen.continued(), { label: "Continue", sub: "Signaller", href: "signaller/", keep: true });
+    values["arail.game.continue"] = JSON.stringify({ href: "https://example.org/" });
+    assert.equal(screen.continued(), null, "no other link becomes Continue");
+  } finally {
+    delete globalThis.localStorage;
   }
 });

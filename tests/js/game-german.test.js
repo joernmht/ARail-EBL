@@ -165,6 +165,32 @@ test("the terminal: a stack is full at its height, the crane takes only so many 
   assert.match(g.blocked("S2", "S3"), /moves waiting/);
 });
 
+test("the terminal: a truck that waits for a container still on a train to come does not end the game", () => {
+  const g = new GermanTerminalGame({ seed: 1 });
+  // an empty yard, no train at the track, one train before the terminal, and the truck for its container already here
+  g.nextTrain = Infinity;
+  g.queue = [];
+  g.train = { id: "KT 90", state: "in", at: 0, boxes: ["Z1"] };
+  g.due = [];
+  g.trucks = [{ id: "L1", wants: "Z1", since: 0, served: false }];
+  assert.equal(g.movable(), false, "nothing can be moved while the train rolls in");
+  g.step(5);
+  assert.equal(g.over, null, "and the game goes on");
+  while (g.train?.state !== "here") g.step(1);
+  assert.equal(g.act("move", "W1", "T").ok, true, "straight from the wagon to its truck");
+  while (g.jobs.length) g.step(1);
+  assert.equal(g.result().points, 1);
+  assert.equal(g.over, null);
+  // with every wanted container in a full yard and none of them on top, it is stuck
+  const full = new GermanTerminalGame({ seed: 1 });
+  full.nextTrain = Infinity;
+  full.plan.stacks = full.plan.stacks.map((_, i) => Array.from({ length: TIERS }, (_, k) => `Y${i}${k}`));
+  full.real.stacks = full.plan.stacks.map((s) => [...s]);
+  full.trucks = [{ id: "L1", wants: "Y00", since: 0, served: false }];
+  full.step(1);
+  assert.match(full.over, /the yard is full/);
+});
+
 test("the terminal: it ends with too many trains before it, or too many trucks at the gate", () => {
   for (const seed of SEEDS) for (const computer of [false, true]) {
     const g = play(GermanTerminalGame, seed, computer), st = g.state();

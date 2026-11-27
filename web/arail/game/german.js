@@ -239,7 +239,7 @@ export const JOBS_MAX = 4;
 /** The traffic: the time between two trains at stage 1 (s), what it is multiplied by with every stage, and what it never falls below (s). */
 export const TRAIN_GAP_S = 260;
 export const TRAIN_GAP_FACTOR = 0.96;
-export const TRAIN_GAP_MIN_S = 195;
+export const TRAIN_GAP_MIN_S = 165;
 /** A train's containers: two at stage 1, one more every so many stages, at most so many. */
 export const MORE_EVERY = 8;
 export const LOAD_MAX = 3;
@@ -499,7 +499,8 @@ export class GermanTerminalGame extends Game {
     const sum = `${this.out} ${this.out === 1 ? "container" : "containers"} left by truck in ${span(this.t)} min.`;
     if (this.queue.length > TRAIN_QUEUE_MAX) this.end(`Stuck: ${this.queue.length} trains wait before the terminal, back onto the main line. ${sum}`);
     else if (this.trucks.length > TRUCK_QUEUE_MAX) this.end(`Stuck: ${this.trucks.length} trucks wait at the gate, back onto the road. ${sum}`);
-    else if (!this.jobs.length && this.trucks.length && !this.movable()) this.end(`Stuck: the yard is full, and no container a truck waits for can be reached. ${sum}`);
+    // no move left: only with every container a truck waits for in the yard (one still on a train to come can go straight to its truck)
+    else if (!this.jobs.length && this.trucks.length && this.trucks.every((k) => k.served || this.find(k.wants)) && !this.movable()) this.end(`Stuck: the yard is full, and no container a truck waits for can be reached. ${sum}`);
   }
 
   result() {

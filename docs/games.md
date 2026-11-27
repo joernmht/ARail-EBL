@@ -516,7 +516,7 @@ It is played in two places (`?game=signaller`, `?game=terminal`):
 | What comes | Trains from both sides by a **timetable** that is known ten minutes ahead: each with its planned track and its time. Regional trains stop (G2 from Bergheim), intercity and freight trains pass (G1 from Bergheim); every train from Talsee is planned into G3 | Trains with containers; for each container a truck, 1 to 6 minutes after its train |
 | What you do | A route in (entry signal, then a track) and a route out (the exit signal) for every train | Unload the train onto the stacks; give every truck its container. Only the top of a stack can be lifted |
 | The score | 10 points a train; 5 fewer on another track than planned, 1 fewer for every minute late (at most 5) | A point for every container gone by truck |
-| How the load rises | Every 2 minutes the trains of a direction come 5 % closer together: 3 minutes apart at first, never less than 115 s | Every 2 minutes the trains come 4 % closer together (260 s at first, never less than 195 s); from the ninth stage with three containers, not two |
+| How the load rises | Every 2 minutes the trains of a direction come 5 % closer together: 3 minutes apart at first, never less than 115 s | Every 2 minutes the trains come 4 % closer together (260 s at first, never less than 165 s); from the ninth stage with three containers, not two |
 | Stuck | More than 3 trains wait on one line before the station | More than 2 trains before the terminal, more than 5 trucks at the gate, or no move left in the yard |
 
 The decision the signal box asks again and again: the planned track is occupied, and a train
@@ -527,7 +527,7 @@ Both run at six seconds a second. A game with nobody at the desk is over in abou
 its clock. **Played well it lasts long**: the load stops rising where careful play still keeps up,
 so what ends a game then is a bad run of trains (two freight trains in a row, a truck for the
 container at the bottom) met with too little room. The computer's players (`GermanSignallerPlayer`,
-`GermanTerminalPlayer`) last from half an hour to more than three hours of the clock, depending on
+`GermanTerminalPlayer`) last from half an hour to an hour and a half of the clock, depending on
 the seed; the tests play both on many seeds (`tests/js/game-german.test.js`).
 
 Keys: Space or Enter starts a game and the next one, P pauses. In the signal box A or F chooses the

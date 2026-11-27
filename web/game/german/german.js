@@ -58,7 +58,7 @@ class SignalBox {
     ["Click an exit signal (N1 to N3, P2, P3) to let a train out: a regional train stops for 40 seconds and leaves at its time."],
     ["Another track than planned costs 5 of a train's 10 points. A line that fills up costs the game. Which is it worth?"],
     ["Keys: ", ["A"], " or ", ["F"], " then ", ["1"], " to ", ["3"], " lets a train in; ", ["1"], " to ", ["3"], " alone lets the train of that track out."],
-    ["The timetable never gets thinner. Played well, a game lasts for hours of its clock."],
+    ["The timetable never gets thinner. Played well, a game lasts long: the computer manages half an hour to an hour and a half of its clock."],
   ];
 
   constructor(page) {
