@@ -15,6 +15,7 @@ to fit together, and the first role game, the signaller of Bf Neustadt.
 - [The signaller of Bf Neustadt](#the-signaller-of-bf-neustadt): the first role game, and
   [its shift on the table](#the-shift-on-the-table): the game on the lab's layout, in augmented
   reality, with the maintenance dispatcher's district beside it
+- [German mode](#german-mode): an endless game, the load rising until nothing moves
 - [How a game looks](#how-a-game-looks): a line or two, a picture of where you work
 - [What a mission needs](#what-a-mission-needs): the rules for a new mission ([How to develop the game](mission-design.md))
 - [Where the games are](#where-the-games-are) and [what comes next](#what-comes-next)
@@ -495,6 +496,53 @@ world's services; Node tests in `tests/js/game-table.test.js`), `web/game/live.j
 camera, the table's photo, the lab's photo and the device's camera with the markers found in a
 worker, which goes when the table is seen from above again or left), the play page (`tablePick`, `setSource`; browser tests in `tests/e2e/table.spec.js`).
 
+## German mode
+
+`game/german/` is the game without a mission: **the load on the infrastructure rises until you are
+stuck.** There is nothing to win and nobody to answer to, only a score to beat, as in the game a
+browser shows when the network is gone. It is the second entry of the menu's Games, beside the
+missions.
+
+Why it is called so: a network that carries more trains every year on the same tracks runs well for
+a long time, and then, quite suddenly, not at all. What the game teaches is that capacity is not
+used up evenly. The first trains cost nothing; the last ones cost everything, and it is always a
+queue that ends the game, never a single train.
+
+It is played in two places (`?game=signaller`, `?game=terminal`):
+
+| | The signal box | The container terminal |
+| --- | --- | --- |
+| The place | Bf Neustadt, the signaller's interlocking as it is: routes, points, signals, trains that brake | A loading track, six stacks of three, a truck lane, one crane |
+| What comes | Trains from both sides by a **timetable** that is known ten minutes ahead: each with its planned track and its time. Regional trains stop (G2 from Bergheim), intercity and freight trains pass (G1 from Bergheim); every train from Talsee is planned into G3 | Trains with containers; for each container a truck, 1 to 6 minutes after its train |
+| What you do | A route in (entry signal, then a track) and a route out (the exit signal) for every train | Unload the train onto the stacks; give every truck its container. Only the top of a stack can be lifted |
+| The score | 10 points a train; 5 fewer on another track than planned, 1 fewer for every minute late (at most 5) | A point for every container gone by truck |
+| How the load rises | Every 2 minutes the trains of a direction come 5 % closer together: 3 minutes apart at first, never less than 115 s | Every 2 minutes the trains come 4 % closer together (260 s at first, never less than 165 s); from the ninth stage with three containers, not two |
+| Stuck | More than 3 trains wait on one line before the station | More than 2 trains before the terminal, more than 5 trucks at the gate, or no move left in the yard |
+
+The decision the signal box asks again and again: the planned track is occupied, and a train
+stands before the entry signal. Another track costs half its points; waiting costs minutes, and a
+line that fills up costs the game.
+
+Both run at six seconds a second. A game with nobody at the desk is over in about ten minutes of
+its clock. **Played well it lasts long**: the load stops rising where careful play still keeps up,
+so what ends a game then is a bad run of trains (two freight trains in a row, a truck for the
+container at the bottom) met with too little room. The computer's players (`GermanSignallerPlayer`,
+`GermanTerminalPlayer`) last from half an hour to an hour and a half of the clock, depending on
+the seed; the tests play both on many seeds (`tests/js/game-german.test.js`).
+
+Keys: Space or Enter starts a game and the next one, P pauses. In the signal box a second click on a signal takes back a
+route that no train has taken. A or F chooses the
+entry signal and 1 to 3 its track; 1 to 3 alone lets the train of that track out. At the terminal Q,
+W, E, R name a wagon and 1 to 6 a stack: first where from, then where to; a container a truck waits
+for goes to its truck at once. The best score of each place is kept in the browser
+(`arail.german.best`); `?seed=` gives the same game again.
+
+The code: `web/arail/game/german.js` (`GermanSignallerGame`, which is the `SignallerGame` with a
+timetable that never ends and with nothing that fails; `GermanTerminalGame`, a small terminal of its
+own, not the terminal simulation of the layout), the page `web/game/german/` (browser tests in
+`tests/e2e/german.spec.js`). German mode is not a role game of a mission: it is not in `GAMES`, has
+no flows and no score out of 100.
+
 ## How a game looks
 
 A mission is played as a game, not filled in as a form. What holds on the play page (`game/play/`),
@@ -643,9 +691,10 @@ idea to the pull request.
 
 | Page | What |
 | --- | --- |
-| `game/` | The game page. It opens like a game: the lab's photos full screen, drifting from one to the next, and the main menu, at most five choices: Continue, Games (Missions, Signaller, Free play), Career (Logbook, Career planner, Roles), Options, Leave. Free play holds the games and exercises that were in the app: on the lab's layout the Sandbox, infrastructure asset management, rail operations and journeys, and the full terminal on the virtual container terminal; a link with a layout or a case (`game/?layout=…#infra`) goes straight to them, and the bar's Menu leads back |
+| `game/` | The game page. It opens like a game: the lab's photos full screen, drifting from one to the next, and the main menu, at most five choices: Continue, Games (Missions, German mode, Free play), Career (Logbook, Career planner, Roles), Options, Leave. Free play holds the games and exercises that were in the app: on the lab's layout the Sandbox, infrastructure asset management, rail operations and journeys, and the full terminal on the virtual container terminal; a link with a layout or a case (`game/?layout=…#infra`) goes straight to them, and the bar's Menu leads back |
 | `game/play/` | The play page of the big game: the line of missions; choose one and your seats (the others are the computer's), play its turns and shifts on the stage (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), read what happened, and the verdict with its stars; the numbers, what the roles give each other and the full report open as dialogs. Missions, in the order of the line: Your first shift (the signaller, nothing fails), a morning at Bf Neustadt (signaller and maintenance dispatcher), Fault Night alone, Transportleitung (the undertaking's operations control, with the computer's signaller), Whose minutes? (the train dispatcher between three undertakings, with the computer's signaller), The last wagon (the yard master at the hump yard), Fit to run (the workshop manager in the hall), Short notice (the maintenance district manager's week of works), Malus Month, Budget Years and The Night Session alone, Rush hour (the signaller on a bad morning), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), a morning in the lab (on the EBL's simulation API). The shifts at Bf Neustadt (the signaller's, the maintenance dispatcher's, the operations control's, the train dispatcher's) are played on the table: the game on the lab's layout, on the table's photo, a photo of the lab or through the camera ([the shift on the table](#the-shift-on-the-table)) |
-| `game/signaller/` | The signaller of Bf Neustadt |
+| `game/german/` | German mode: the signal box (by a timetable that gets denser) or the container terminal under a rising load, with a score to beat |
+| `game/signaller/` | The signaller of Bf Neustadt, as a page of its own (from the role catalogue; the game's menu has it as the mission *Your first shift* and in German mode) |
 | `game/logbook/` | The logbook: the rank, the stars and the badges reached, the railway terms met as cards with a quiz, a sheet per mission played |
 | `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, ways in and mini game |
 | `game/career/` | The career planner: a career from a school certificate through educations and jobs, chosen step by step |

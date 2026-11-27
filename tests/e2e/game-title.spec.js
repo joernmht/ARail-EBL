@@ -70,12 +70,12 @@ test("no menu offers more than five choices: the games and the career are submen
   const errors = await open(page);
   const choices = async () => (await labels(page)).filter((l) => l !== "Back");
   expect(await choices()).toEqual(["Continue", "Games", "Career", "Options", "Leave"]);
-  // Games: the big game's missions, the signaller, and Free play, a submenu of its own
+  // Games: the big game's missions, German mode, and Free play, a submenu of its own
   await page.getByRole("button", { name: /Games/ }).click();
   await expect(page.locator(".title-menu-head")).toHaveText("Games");
-  expect(await labels(page)).toEqual(["Missions", "Signaller", "Free play", "Back"]);
+  expect(await labels(page)).toEqual(["Missions", "German mode", "Free play", "Back"]);
   await expect(page.getByRole("link", { name: /Missions/ })).toHaveAttribute("href", "play/");
-  await expect(page.getByRole("link", { name: /Signaller/ })).toHaveAttribute("href", "signaller/");
+  await expect(page.getByRole("link", { name: /German mode/ })).toHaveAttribute("href", "german/");
   await page.getByRole("button", { name: /Free play/ }).click();
   await expect(page.locator(".title-menu-head")).toHaveText("Free play");
   expect((await choices()).length).toBeLessThanOrEqual(5);

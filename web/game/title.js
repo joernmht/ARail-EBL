@@ -2,7 +2,7 @@
 // layout or a case (a bare game/, or game/?lang=de). The photos of the lab, full screen, drift and
 // fade into each other, as a game's title does; beside them the main menu, never more than five
 // choices (MAX_CHOICES), the rest in submenus: to go on with the game played last; Games (the big game's
-// missions, the signaller, and free play, a submenu of its own with the game page's cases); Career (the
+// missions, German mode, and free play, a submenu of its own with the game page's cases); Career (the
 // logbook, the career planner, the role catalogue); the options (language, a moving background, full
 // screen); and the way back to the project page. A link of the menu opens its page (coming back to the
 // title in the same tab, the submenu it was opened from is open again); free play opens this page again
@@ -75,7 +75,10 @@ export function withLang(href, loc = location) {
 export const SHELL_KEYS = ["layout", "layers", "example", "photo", "image", "camera", "scenario", "feed", "mock", "worker"];
 
 /** The pages the main menu opens, which Continue may open again. */
-export const PAGES = ["play/", "signaller/", "career/", "roles/", "logbook/"];
+export const PAGES = ["play/", "german/", "career/", "roles/", "logbook/"];
+
+/** Pages the menu opened once and Continue still opens for who played them last: the signaller's page. */
+export const FORMER_PAGES = ["signaller/"];
 
 /** The heading of each menu; a submenu's is also the label of the item that opens it. */
 const HEADINGS = { main: "Main menu", play: "Games", free: "Free play", career: "Career", options: "Options" };
@@ -292,7 +295,7 @@ export class TitleScreen {
     if (this.view === "play") {
       return [
         { label: "Missions", sub: "A line of missions, played on the lab's table: take a seat, collect your stars", href: "play/" },
-        { label: "Signaller", sub: "Half an hour at Bf Neustadt in a relay interlocking", href: "signaller/" },
+        { label: "German mode", sub: "More and more load on the same tracks, until nothing moves: how far do you get?", href: "german/" },
         { label: "Free play", sub: "Assets, operations and journeys on the lab's layout; the container terminal", go: "free" },
         back,
       ];
@@ -317,7 +320,7 @@ export class TitleScreen {
     }
     return [
       this.continued(),
-      { label: "Games", sub: "Missions, the signaller, free play on the lab's layout", go: "play" },
+      { label: "Games", sub: "Missions, German mode, free play on the lab's layout", go: "play" },
       { label: "Career", sub: this.rankLine() ?? "Your logbook, the career planner, every role of the railway", go: "career" },
       { label: "Options", sub: "Language, moving background, full screen", go: "options" },
       { label: "Leave", sub: "To the project page", href: "../", keep: true },
@@ -338,7 +341,7 @@ export class TitleScreen {
   continued() {
     const last = store.get(LAST, null);
     // only the pages the menu opens (the browser's storage is shared by the whole site: nothing else becomes a link)
-    if (PAGES.includes(last?.href)) return { label: "Continue", sub: typeof last.label === "string" ? last.label : "", href: last.href, keep: true };
+    if (PAGES.includes(last?.href) || FORMER_PAGES.includes(last?.href)) return { label: "Continue", sub: typeof last.label === "string" ? last.label : "", href: last.href, keep: true };
     // the shell played last; also a game kept from before the title screen (no record of what was played last)
     const layout = last?.shell || last == null ? store.get(SHELL_LAYOUT, null) : null;
     if (typeof layout !== "string" || !layout) return null;

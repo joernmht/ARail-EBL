@@ -214,7 +214,7 @@ export const clockOf = (t) => {
 };
 
 /** A train on the panel. */
-class Train {
+export class Train {
   constructor(spec, enterAt) {
     const k = KINDS[spec.kind];
     Object.assign(this, spec);

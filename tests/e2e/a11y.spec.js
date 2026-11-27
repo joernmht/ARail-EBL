@@ -27,6 +27,8 @@ const PAGES = [
   ["game page, the title screen", "/game/"],
   ["game page, Overview", "/game/#overview"],
   ["signaller's game", "/game/signaller/"],
+  ["German mode, the signal box", "/game/german/"],
+  ["German mode, the container terminal", "/game/german/?game=terminal"],
   ["role catalogue", "/game/roles/#role-signaller-relay"],
   ["career planner", "/game/career/#aim=signaller-relay"],
   ["big game, the missions", "/game/play/"],

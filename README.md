@@ -96,6 +96,7 @@ web/                  the website (published with GitHub Pages)
                       flyover and the in-app video survey, in English and German; its shell is the game page's too
   game/               the game page: the games and exercises (infrastructure, rail operations, journeys, the terminal);
                       signaller/ the signaller's role game; play/ the big game (missions/ its missions as data);
+                      german/ German mode, the endless game under a load that only rises;
                       roles/ the role catalogue; career/ the career planner
   builder/            the builder: a street and layout editor beside the app, with the street access check and
                       a push of the layout and covered photos to GitHub
