@@ -117,7 +117,7 @@ export class GermanSignallerGame extends SignallerGame {
     this.logs = [];
     this.failure = null;
     /** How many trains have come, by kind (their numbers), and how many got through. */
-    this.made = { RB: 0, IC: 0, GZ: 0 };
+    this.made = { 1: { RB: 0, IC: 0, GZ: 0 }, [-1]: { RB: 0, IC: 0, GZ: 0 } };
     /** How many trains of each direction the timetable has so far. */
     this.count = { 1: 0, [-1]: 0 };
     this.through = 0;
@@ -180,9 +180,9 @@ export class GermanSignallerGame extends SignallerGame {
           kind = k;
           if ((x -= share) < 0) break;
         }
-        this.made[kind] += 1;
+        this.made[dir][kind] += 1;
         // odd numbers run east, even numbers west, as on the railway
-        const id = `${kind} ${(kind === "RB" ? 100 : kind === "IC" ? 2000 : 50000) + 2 * this.made[kind] - (dir > 0 ? 1 : 0)}`;
+        const id = `${kind} ${(kind === "RB" ? 100 : kind === "IC" ? 2000 : 50000) + 2 * this.made[dir][kind] - (dir > 0 ? 1 : 0)}`;
         const plan = dir > 0 ? (kind === "RB" ? "G2" : "G1") : "G3";
         const run = RUN_S_BY_KIND[kind], enter = Math.round(at);
         const spec = kind === "RB" ? { id, kind, dir, enter, plan, arr: enter + run.arr, dep: enter + run.dep } : { id, kind, dir, enter, plan, pass: enter + run.pass };

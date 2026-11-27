@@ -530,7 +530,8 @@ container at the bottom) met with too little room. The computer's players (`Germ
 `GermanTerminalPlayer`) last from half an hour to an hour and a half of the clock, depending on
 the seed; the tests play both on many seeds (`tests/js/game-german.test.js`).
 
-Keys: Space or Enter starts a game and the next one, P pauses. In the signal box A or F chooses the
+Keys: Space or Enter starts a game and the next one, P pauses. In the signal box a second click on a signal takes back a
+route that no train has taken. A or F chooses the
 entry signal and 1 to 3 its track; 1 to 3 alone lets the train of that track out. At the terminal Q,
 W, E, R name a wagon and 1 to 6 a stack: first where from, then where to; a container a truck waits
 for goes to its truck at once. The best score of each place is kept in the browser

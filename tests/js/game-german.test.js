@@ -129,6 +129,13 @@ test("the signal box: the same seed gives the same timetable whatever the step, 
   };
   assert.deepEqual(table(0.1), table(1));
   assert.deepEqual(table(0.37), table(1));
+  // a train's number is counted in its own direction: odd to Talsee, even to Bergheim, each kind from its first
+  const g = new GermanSignallerGame({ seed: 4 });
+  for (const dir of [1, -1]) for (const kind of ["RB", "IC", "GZ"]) {
+    const numbers = g.trains.filter((tr) => tr.dir === dir && tr.kind === kind).map((tr) => Number(tr.id.split(" ")[1]));
+    const first = (kind === "RB" ? 100 : kind === "IC" ? 2000 : 50000) + (dir > 0 ? 1 : 2);
+    assert.deepEqual(numbers, numbers.map((_, i) => first + 2 * i), `${kind} ${dir}`);
+  }
   const st = new GermanSignallerGame({ seed: 4 }).state();
   assert.equal(st.score, 0);
   assert.deepEqual(Object.keys(st.points).sort(), ["W1", "W2", "W3", "W4", "W5", "W6"], "the points of the track, for the panel");

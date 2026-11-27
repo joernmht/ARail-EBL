@@ -65,6 +65,12 @@ test("the signal box: a train is let in through its entry signal and out through
   await expect(page.locator("#hint")).toHaveText(`${first.id}: +10`);
   // the panel shows which way the points lie: into G1 the diverging leg of W1 is dimmed, into G2 the straight one
   expect(await page.locator("#desk .sec.leg-off").count()).toBeGreaterThanOrEqual(6);
+  // a route set by mistake is taken back with a second click on its signal
+  await page.locator('[data-signal="P2"]').click();
+  await expect(page.locator("#hint")).toHaveText("Route P2 → Bergheim set.");
+  await page.locator('[data-signal="P2"]').click();
+  await expect(page.locator("#hint")).toHaveText("Route P2 → Bergheim cancelled.");
+  expect(await page.evaluate(() => window.__german.game.routeFrom("P2"))).toBeNull();
   // the same with the keys, for a train from Talsee
   await page.keyboard.press("f");
   await page.keyboard.press("3");
@@ -187,6 +193,15 @@ test("the title screen offers German mode among the games, and Continue goes bac
   await expect(page.locator(".title-menu-head")).toHaveText("Games");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("link", { name: /Continue/ })).toHaveAttribute("href", "german/");
+});
+
+test("an address that names no game of the page opens the signal box", async ({ page }) => {
+  for (const game of ["constructor", "__proto__", "nothing"]) {
+    const errors = await open(page, `?game=${game}`);
+    await expect(page.getByRole("link", { name: "Signal box" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
+    expect(errors).toEqual([]);
+  }
 });
 
 test("on a phone the picture scrolls sideways and the page does not", async ({ page }) => {

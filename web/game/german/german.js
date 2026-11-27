@@ -56,6 +56,7 @@ class SignalBox {
   static how = [
     ["Click the entry signal ", ["A"], " or ", ["F"], ", then the track the train goes to: its planned track stands on its tag and in the timetable. Trains from Talsee reach G2 and G3 only."],
     ["Click an exit signal (N1 to N3, P2, P3) to let a train out: a regional train stops for 40 seconds and leaves at its time."],
+    ["A route set by mistake blocks the others: click its signal again to take it back, while no train has taken it."],
     ["Another track than planned costs 5 of a train's 10 points. A line that fills up costs the game. Which is it worth?"],
     ["Keys: ", ["A"], " or ", ["F"], " then ", ["1"], " to ", ["3"], " lets a train in; ", ["1"], " to ", ["3"], " alone lets the train of that track out."],
     ["The timetable never gets thinner. Played well, a game lasts long: the computer manages half an hour to an hour and a half of its clock."],
@@ -167,7 +168,14 @@ class SignalBox {
   /** A signal: an exit signal sets its route at once, an entry signal shows its tracks (again: no choice). */
   choose(id) {
     if (!this.page.running) return;
-    const routes = this.page.game.routesFrom(id);
+    const g = this.page.game, routes = g.routesFrom(id);
+    // a route from it that no train has taken: a second click takes it back
+    const mine = g.routeFrom(id);
+    if (mine && !mine.train) {
+      const res = g.act("cancelRoute", mine.id);
+      this.page.hint(res.ok ? `Route ${mine.def.from} → ${mine.def.to} cancelled.` : res.reason, !res.ok);
+      return this.page.draw();
+    }
     if (routes.length === 1) return this.set(routes[0].id);
     this.chosen = this.chosen === id ? null : id;
     this.page.hint(this.chosen ? `${id}: into which track? (${routes.map((r) => r.to).join(", ")})` : "");
@@ -389,7 +397,7 @@ const VIEWS = { signaller: SignalBox, terminal: Terminal };
 class GermanPage {
   constructor() {
     const params = new URLSearchParams(location.search);
-    this.View = VIEWS[params.get("game")] ?? SignalBox;
+    this.View = Object.hasOwn(VIEWS, params.get("game") ?? "") ? VIEWS[params.get("game")] : SignalBox;
     /** The seed the address asks for (every game the same), or null: every game anew. */
     this.fixed = /^\d+$/.test(params.get("seed") ?? "") ? Number(params.get("seed")) : null;
     this.best = storage.get(BEST_KEY, {});
