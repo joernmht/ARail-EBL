@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
+<title>German mode · ARail Game</title>
+<meta name="description" content="German mode of the ARail game: the load on the infrastructure rises until nothing moves any more. An endless game in the signal box of Bf Neustadt or at the crane of the container terminal, with a score to beat.">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../../app/app.css">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="../signaller/signaller.css">
+<link rel="stylesheet" href="german.css">
+<script type="module" src="german.js"></script>
+</head>
+<body class="board-page">
+<a class="skip-link" href="#main">Skip to content</a>
+<!-- the picture behind the page: the place that is played (GermanPage.place) -->
+<div class="backdrop" aria-hidden="true"><img id="backdrop" src="../../media/ebl-neustadt.jpg" alt="" decoding="async" style="object-position: 40% 72%"></div>
+<header class="bar site-bar">
+  <div class="identity">
+    <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+    <span class="divider" aria-hidden="true"></span>
+    <a class="brand" href="../../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>Game</small></a>
+  </div>
+  <span class="spacer"></span>
+  <nav class="site-nav" aria-label="Main">
+    <a class="opt" href="../play/">Missions</a>
+    <a href="../">Game page</a>
+    <a class="btn primary" href="../../app/">App</a>
+  </nav>
+</header>
+
+<main id="main">
+  <div class="wrap ger-layout">
+    <section class="ger-card ger-head" aria-labelledby="gerTitle">
+      <div>
+        <p class="eyebrow">Endless · no way to win</p>
+        <h1 id="gerTitle">German mode</h1>
+        <p class="ger-hook" id="hook">More and more load on the same infrastructure, until nothing moves.</p>
+      </div>
+      <nav class="seg ger-places" id="places" aria-label="Where to play"></nav>
+    </section>
+
+    <section class="ger-card" aria-labelledby="boardTitle">
+      <h2 id="boardTitle" class="visually-hidden">The game</h2>
+      <div class="ger-hud" id="hud">
+        <p class="ger-score"><span class="k" id="pointsLabel">Points</span> <span class="v" id="points">0</span></p>
+        <p><span class="k">Best</span> <span class="v" id="best">0</span></p>
+        <p><span class="k">Time</span> <span class="v" id="time">0:00</span></p>
+        <p><span class="k">Load</span> <span class="v" id="stage">1</span></p>
+        <div class="ger-meters" id="meters"></div>
+      </div>
+      <div class="ger-stage">
+        <div class="sig-desk ger-desk" id="deskScroll" tabindex="0" role="region" aria-label="The picture of the game (scrolls sideways on small screens)">
+          <svg id="desk" viewBox="0 0 1180 250" role="group" aria-label="The game"></svg>
+        </div>
+        <!-- before the first game, and when it is over -->
+        <div class="ger-over" id="over" role="dialog" aria-labelledby="overTitle" aria-describedby="overText">
+          <h2 id="overTitle">Ready?</h2>
+          <p id="overText"></p>
+          <p class="ger-result" id="overResult" hidden></p>
+          <button class="btn primary" type="button" id="startBtn">Start</button>
+          <p class="hint">Space or Enter starts, P pauses.</p>
+        </div>
+      </div>
+      <p class="hint" id="hint" role="status"></p>
+      <div class="row ger-controls">
+        <button class="btn" type="button" id="pauseBtn" aria-pressed="false">Pause</button>
+        <button class="btn" type="button" id="againBtn">New game</button>
+      </div>
+    </section>
+
+    <section class="ger-card ger-side" id="side" aria-labelledby="sideTitle" hidden></section>
+
+    <section class="ger-card" aria-labelledby="howTitle">
+      <h2 id="howTitle">How it is played</h2>
+      <ul class="ger-how" id="how"></ul>
+      <p class="hint">Why "German mode": a network that carries more trains every year on the same tracks runs well for a long time, and then, quite suddenly, not at all. Capacity is not used up evenly: the last trains cost the most.</p>
+    </section>
+  </div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p>German mode of the ARail game: the signal box and the container terminal under a load that only rises (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md#german-mode">the game design</a>).</p>
+    <p><a href="../../">Project page</a> · <a href="../../app/">App</a> · <a href="../">Game page</a> · <a href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a> · <a href="../../impressum/" lang="de">Impressum</a> · <a href="../../datenschutz/" lang="de">Datenschutz</a></p>
+  </div>
+</footer>
+<noscript><p class="wrap">The game runs with JavaScript.</p></noscript>
+</body>
+</html>

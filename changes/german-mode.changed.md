@@ -1,0 +1,1 @@
+- **The game's menu: Missions and German mode.** Games on the title screen of the game page now offers the missions and German mode (and Free play); the signaller's page is no longer in the menu or in the bars of the game's pages. It is still there (`game/signaller/`, from the role catalogue), and the signaller is played as the mission *Your first shift* and in German mode.

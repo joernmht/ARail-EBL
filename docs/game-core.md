@@ -548,6 +548,10 @@ Seated together:
 A role can have two games: the train dispatcher has its own (`dispatcher`) and the lab's seat
 (`lab`), the same role with the lab as its world (`gamesOfRole`; `gameOfRole` gives the first).
 
+German mode (`german.js`: `GermanSignallerGame`, `GermanTerminalGame`) is built on the same core
+but is no role game: it is not in `GAMES`, takes and gives no flows and is not seated in a mission.
+It is the endless game of `game/german/` ([German mode](games.md#german-mode)).
+
 ## The parked games
 
 The infrastructure game and the rail operations (`web/arail/infra/`, `web/arail/ops/`, on the game

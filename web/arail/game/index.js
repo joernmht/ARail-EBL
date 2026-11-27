@@ -18,7 +18,7 @@ export {
   takeRole, study, work, missingText, prerequisiteTree, reachable,
 } from "./career.js";
 export {
-  SignallerAutopilot, SignallerGame, STATION, TIMETABLE, CONNECTIONS, KINDS, LEVELS, ZS1_REASONS, BRAKE, ACCEL, SIGHT_M, DISTANT_M, POINT_S, ZS1_MS, DWELL_S, END_S, clockOf, failureChance,
+  SignallerAutopilot, SignallerGame, STATION, TIMETABLE, Train, CONNECTIONS, KINDS, LEVELS, ZS1_REASONS, BRAKE, ACCEL, SIGHT_M, DISTANT_M, POINT_S, ZS1_MS, DWELL_S, END_S, clockOf, failureChance,
 } from "./signaller.js";
 export { AssetManagerGame, AssetManagerPlayer, LEVELS as ASSET_MANAGER_LEVELS, TARGET_GRADE, minutesPerFault, renewalsOf, yearOf } from "./asset-manager.js";
 export { BudgetGame, BudgetPlayer, LEVELS as BUDGET_LEVELS, LINES as BUDGET_LINES } from "./budget.js";
@@ -36,3 +36,7 @@ export {
   STAFF, STORM, STRAIN, TRAFFIC, WEEK_H, WORKS, WorksGame, WorksPlayer, at as weekHour, trainsAt, when as weekWhen,
 } from "./works.js";
 export { HOLD, HOLD_ASK_S, INBOUND, LEVELS as YARD_LEVELS, LOCO, MOOD, NEXT_PATH, OUTBOUND, PEOPLE as YARD_PEOPLE, PUSH, SIDINGS, WRONG_MIN, YARD, YardGame, YardPlayer } from "./yard.js";
+export {
+  GAP_FACTOR, GAP_JITTER, GAP_MIN_S, GAP_S, GERMAN_GAMES, GermanSignallerGame, GermanSignallerPlayer, GermanTerminalGame, GermanTerminalPlayer, HOIST_S, JOBS_MAX, LOAD_MAX, MIX, MORE_EVERY, PICKUP_S, POINTS as GERMAN_POINTS, QUEUE_MAX, ROLL_S, RUN_S_BY_KIND, AHEAD_S,
+  RUN_S, STACKS, STAGE_S, TIERS, TRAIN_GAP_FACTOR, TRAIN_GAP_MIN_S, TRAIN_GAP_S, TRAIN_QUEUE_MAX, TRUCK_QUEUE_MAX, WAGONS, AT as GERMAN_AT, gapAt, loadAt, placeAt as germanPlaceAt, span as germanSpan, stageAt, trainGapAt,
+} from "./german.js";

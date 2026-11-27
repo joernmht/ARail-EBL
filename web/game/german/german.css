@@ -1,0 +1,79 @@
+/* German mode: one board (the signal box's panel, or the container terminal under its crane), the score
+   above it, and the card that starts a game and ends it. The panel's own colours are the signaller's
+   (../signaller/signaller.css). */
+.ger-layout { display: grid; gap: 16px; padding-block: 18px 10px; }
+.ger-layout > * { min-width: 0; }
+.ger-card { background: var(--board); border: 1px solid var(--board-line); border-radius: 6px; padding: 14px 16px 16px; }
+.ger-card > * + * { margin-top: 10px; }
+.ger-card > h2 { font-size: 1.05rem; }
+
+.ger-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.ger-head .eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--board-muted); }
+.ger-head h1 { font-size: clamp(1.8rem, 4.2vw, 2.9rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
+.ger-hook { font-size: clamp(1rem, 1.8vw, 1.2rem); font-weight: 500; margin-top: 4px; max-width: 60ch; }
+.ger-places a { text-decoration: none; }
+body.board-page main .ger-places a { color: var(--text); padding: 6px 14px; border: 1px solid var(--board-line); font-weight: 600; font-size: .92rem; }
+body.board-page main .ger-places a:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+body.board-page main .ger-places a:last-child { border-radius: 0 var(--radius) var(--radius) 0; border-left: 0; }
+body.board-page main .ger-places a[aria-current="page"] { background: var(--overlay-ok); color: var(--board); border-color: var(--overlay-ok); }
+
+.ger-hud { display: flex; flex-wrap: wrap; align-items: end; gap: 6px 28px; margin: 0; }
+.ger-hud .k, .ger-hud .v { display: block; }
+.ger-hud .k { font-family: var(--mono); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--board-muted); }
+.ger-hud .v { font-family: var(--mono); font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.ger-score .v { font-size: 2.6rem; }
+.ger-meters { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-left: auto; }
+.ger-meter .pips { display: flex; gap: 5px; height: 1.43rem; align-items: center; }
+.ger-meter .pips i { width: 16px; height: 10px; border-radius: 2px; border: 1px solid var(--board-muted); }
+.ger-meter .pips i.on { background: var(--board-warn); border-color: var(--board-warn); }
+.ger-meter.full .pips i.on { background: var(--overlay-bad); border-color: var(--overlay-bad); }
+@media (prefers-reduced-motion: no-preference) { .ger-meter.full .pips { animation: ger-pulse .7s ease-in-out infinite alternate; } }
+@keyframes ger-pulse { to { opacity: .45; } }
+
+.ger-stage { position: relative; }
+.ger-desk { border: 1px solid var(--board-line); background: var(--board); }
+.ger-over { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; padding: 16px; background: color-mix(in srgb, var(--board) 88%, transparent); border-radius: var(--radius); }
+.ger-over[hidden] { display: none; }
+.ger-over h2 { font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 800; }
+.ger-over p { max-width: 56ch; }
+.ger-result { font-family: var(--mono); font-weight: 700; }
+.ger-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+.ger-how { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .95rem; }
+.ger-how kbd { font-family: var(--mono); font-size: .85em; border: 1px solid var(--board-line); border-radius: 4px; padding: 0 5px; background: var(--board-2); }
+
+/* the signal box: the trains that wait before the station, beside their line */
+.sig-desk .queue text { font-size: 12px; }
+.sig-desk .queue .tag rect { fill: var(--board-warn); }
+.sig-desk .queue .tag text { fill: var(--board); font-weight: 700; }
+.sig-desk .key { fill: var(--board-muted); font-size: 11px; font-family: var(--mono); }
+
+/* the container terminal */
+.ger-desk .ground { stroke: var(--board-muted); stroke-width: 3; }
+.ger-desk .rail { stroke: var(--board-muted); stroke-width: 6; stroke-linecap: round; }
+.ger-desk .zone { fill: var(--board-2); stroke: var(--board-line); }
+.ger-desk .gantry { stroke: var(--board-text); stroke-width: 5; fill: none; stroke-linecap: round; }
+.ger-desk .rope { stroke: var(--board-text); stroke-width: 2; }
+.ger-desk .trolley { fill: var(--overlay-ok); }
+.ger-desk .wagon { fill: var(--board-line); }
+.ger-desk .lorry { fill: var(--board-line); stroke: var(--board-muted); }
+.ger-desk .box { cursor: pointer; }
+.ger-desk .box rect { fill: var(--board-2); stroke: var(--board-muted); stroke-width: 2; }
+.ger-desk .box text { font-size: 13px; font-weight: 700; }
+.ger-desk .box.wanted rect { fill: var(--board-warn); stroke: var(--board-warn); }
+.ger-desk .box.wanted text { fill: var(--board); }
+.ger-desk .box.moving rect { stroke-dasharray: 5 4; }
+.ger-desk .box.covered { cursor: default; }
+.ger-desk .box.chosen rect { stroke: #ffffff; stroke-width: 4; }
+.ger-desk .box:focus, .ger-desk .slot:focus { outline: none; }
+.ger-desk .box:focus-visible rect, .ger-desk .slot:focus-visible rect { stroke: var(--overlay-ok); stroke-width: 4; }
+.ger-desk .slot { cursor: pointer; }
+.ger-desk .slot rect { fill: transparent; stroke: var(--overlay-ok); stroke-width: 2; stroke-dasharray: 4 5; }
+.ger-desk .slot text { fill: var(--overlay-ok); font-size: 12px; }
+.ger-desk .truck-tag rect { fill: var(--board-2); stroke: var(--board-muted); }
+.ger-desk .truck-tag.served rect { stroke: var(--overlay-ok); }
+.ger-desk .truck-tag text { font-size: 12px; }
+
+/* the timetable under the panel */
+.ger-side .table-scroll { overflow-x: auto; }
+.ger-side .game-table td.late, .ger-side .game-table .late { color: var(--board-warn); font-weight: 700; }
+.ger-side .game-table tr.waits th, .ger-side .game-table tr.waits td { background: var(--board-2); }
