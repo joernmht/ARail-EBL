@@ -63,6 +63,8 @@ test("the signal box: a train is let in through its entry signal and out through
   // by the timetable: every point
   await expect(page.locator("#points")).toHaveText("10");
   await expect(page.locator("#hint")).toHaveText(`${first.id}: +10`);
+  // the panel shows which way the points lie: into G1 the diverging leg of W1 is dimmed, into G2 the straight one
+  expect(await page.locator("#desk .sec.leg-off").count()).toBeGreaterThanOrEqual(6);
   // the same with the keys, for a train from Talsee
   await page.keyboard.press("f");
   await page.keyboard.press("3");
@@ -142,6 +144,25 @@ test("the container terminal: a container goes from the train onto a stack, and 
   await run(page, 60);
   await expect(page.locator("#points")).toHaveText("1");
   expect(errors).toEqual([]);
+});
+
+test("a game given up for a new one keeps its score as the best", async ({ page }) => {
+  await open(page);
+  await start(page);
+  const points = await page.evaluate(() => {
+    const p = window.__german, g = p.game, pl = new g.constructor.player();
+    while (g.through < 3) {
+      pl.think(g);
+      g.step(1);
+    }
+    p.draw();
+    return g.result().points;
+  });
+  expect(points).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "New game" }).click();
+  await expect(page.locator("#points")).toHaveText("0");
+  await expect(page.locator("#best")).toHaveText(String(points));
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("arail.german.best")))).toEqual({ signaller: points });
 });
 
 test("the container terminal: left alone it is stuck", async ({ page }) => {

@@ -117,6 +117,24 @@ test("the signal box: the timetable is known ahead, and a train on another track
   assert.equal(g.result().wrong, 1);
 });
 
+test("the signal box: the same seed gives the same timetable whatever the step, and the panel's points stay in its state", () => {
+  const table = (dt) => {
+    const g = new GermanSignallerGame({ seed: 4 }), seen = [];
+    const add = () => g.trains.forEach((tr) => seen.some((x) => x.id === tr.id) || seen.push({ id: tr.id, enter: tr.enter, plan: tr.plan }));
+    for (let t = 0; t < 1500 && !g.over; t += dt) {
+      add();
+      g.step(dt);
+    }
+    return seen.slice(0, 12);
+  };
+  assert.deepEqual(table(0.1), table(1));
+  assert.deepEqual(table(0.37), table(1));
+  const st = new GermanSignallerGame({ seed: 4 }).state();
+  assert.equal(st.score, 0);
+  assert.deepEqual(Object.keys(st.points).sort(), ["W1", "W2", "W3", "W4", "W5", "W6"], "the points of the track, for the panel");
+  assert.ok(Object.values(st.points).every((p) => p.pos === "+" || p.pos === "-"));
+});
+
 test("the terminal: places along the crane's runway", () => {
   assert.equal(germanPlaceAt("W1"), 0);
   assert.ok(germanPlaceAt("S1") > germanPlaceAt(`W${WAGONS}`));

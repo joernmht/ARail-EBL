@@ -118,6 +118,8 @@ export class GermanSignallerGame extends SignallerGame {
     this.failure = null;
     /** How many trains have come, by kind (their numbers), and how many got through. */
     this.made = { RB: 0, IC: 0, GZ: 0 };
+    /** How many trains of each direction the timetable has so far. */
+    this.count = { 1: 0, [-1]: 0 };
     this.through = 0;
     /** The points, the trains that ran on another track than planned, and the minutes late that cost points. */
     this.earned = 0;
@@ -171,8 +173,8 @@ export class GermanSignallerGame extends SignallerGame {
   _traffic() {
     for (const dir of [1, -1]) {
       while (this.t + AHEAD_S >= this.nextAt[dir]) {
-        const at = this.nextAt[dir], n = this.made.RB + this.made.IC + this.made.GZ;
-        const r = this.rng("train", dir, n);
+        // by the count of its own direction: the other direction's trains change nothing, whatever the step
+        const at = this.nextAt[dir], r = this.rng("train", dir, this.count[dir]++);
         let x = r.next(), kind = MIX[0][0];
         for (const [k, share] of MIX) {
           kind = k;
@@ -210,7 +212,7 @@ export class GermanSignallerGame extends SignallerGame {
 
   /** The panel's state (SignallerGame.state), and German mode's own: the trains through, the stage, who waits where. */
   state() {
-    return { ...super.state(), points: this.earned, through: this.through, wrong: this.wrong, lateMin: this.lateMin, timetable: this.timetable(), stage: this.stage, limit: QUEUE_MAX, gap: Math.round(gapAt(this.stage)), waiting: { west: this.waiting(1), east: this.waiting(-1) } };
+    return { ...super.state(), score: this.earned, through: this.through, wrong: this.wrong, lateMin: this.lateMin, timetable: this.timetable(), stage: this.stage, limit: QUEUE_MAX, gap: Math.round(gapAt(this.stage)), waiting: { west: this.waiting(1), east: this.waiting(-1) } };
   }
 }
 
@@ -513,7 +515,7 @@ export class GermanTerminalGame extends Game {
     const box = (id) => (id ? { id, wanted: wanted.get(id) ?? null, moving: moving.has(id) } : null);
     const job = this.jobs[0];
     return {
-      t: this.t, clock: span(this.t), over: this.over, points: this.out, stage: this.stage,
+      t: this.t, clock: span(this.t), over: this.over, score: this.out, stage: this.stage,
       stacks: this.real.stacks.map((s) => s.map(box)),
       wagons: this.real.wagons.map(box),
       train: this.train ? { id: this.train.id, state: this.train.state, f: this.train.state === "here" ? 1 : Math.min(1, (this.t - this.train.at) / ROLL_S) } : null,

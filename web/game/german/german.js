@@ -421,8 +421,19 @@ class GermanPage {
     return this.started && !this.paused && !this.game.over;
   }
 
-  /** A new game, not yet started. */
+  /** Keep the score of the game played as the best of its place, if it is; returns the best before. */
+  keepBest() {
+    const id = this.View.id, points = this.game.result().points, before = Number(this.best[id]) || 0;
+    if (points > before) {
+      this.best[id] = points;
+      storage.set(BEST_KEY, this.best);
+    }
+    return before;
+  }
+
+  /** A new game, not yet started; a game given up for it keeps its score. */
   newGame() {
+    if (this.game && this.started) this.keepBest();
     const G = GERMAN_GAMES[this.View.id];
     this.game = new G({ seed: this.fixed ?? 1 + Math.floor(Math.random() * 1e9) });
     this.pace = G.pace;
@@ -467,11 +478,7 @@ class GermanPage {
   /** The game is over: the score, and the best one kept. */
   finish() {
     this.ended = true;
-    const id = this.View.id, points = this.game.result().points, before = Number(this.best[id]) || 0;
-    if (points > before) {
-      this.best[id] = points;
-      storage.set(BEST_KEY, this.best);
-    }
+    const points = this.game.result().points, before = this.keepBest();
     // the reason without its time of day
     const reason = String(this.game.over).replace(/^(\d\d:\d\d:\d\d )?Stuck: /, "").replace(/^./, (c) => c.toUpperCase());
     this.card("Stuck.", reason.split(". ")[0] + ".", `${this.view.result(points, this.game.result())}${points > before && before > 0 ? " · a new best" : before > points ? ` · best ${before}` : ""}`, "Again");
@@ -487,8 +494,8 @@ class GermanPage {
   draw() {
     const st = this.game.state();
     this.view.draw(st);
-    $("#points").textContent = String(st.points);
-    $("#best").textContent = String(Math.max(Number(this.best[this.View.id]) || 0, st.points));
+    $("#points").textContent = String(st.score);
+    $("#best").textContent = String(Math.max(Number(this.best[this.View.id]) || 0, st.score));
     $("#time").textContent = `${Math.floor(st.t / 60)}:${String(Math.floor(st.t % 60)).padStart(2, "0")}`;
     $("#stage").textContent = String(st.stage);
     // the view's card beside the picture (the timetable), when what it shows has changed
