@@ -1,4 +1,4 @@
-// The project page's three groups (educators, scientists, practitioners): each has an issue form to
+// The project page's three groups (educators, scientists, decision-makers): each has an issue form to
 // file with, a label its issues are collected by, and a board on the page that lists what has been
 // brought (web/references.json), with its status and its links.
 import assert from "node:assert/strict";
@@ -14,7 +14,7 @@ const read = (f) => readFileSync(join(ROOT, f), "utf8");
 const BOARDS = {
   teaching: { form: "teaching_concept.yml", label: "teaching-concept", group: "educators" },
   papers: { form: "paper.yml", label: "paper", group: "scientists" },
-  practice: { form: "practice_case.yml", label: "practice-case", group: "practitioners" },
+  practice: { form: "practice_case.yml", label: "practice-case", group: "decision-makers" },
 };
 const STATUSES = ["proposed", "in-progress", "implemented"];
 

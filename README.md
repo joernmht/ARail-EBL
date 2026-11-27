@@ -89,9 +89,9 @@ Write an adapter for your system from the template; see [Control-system interfac
 ```
 web/                  the website (published with GitHub Pages)
   index.html          project page: the video of the lab, then one page each for educators, scientists and
-                      practitioners, behind a switch
+                      decision-makers, behind a switch
   how/                How it works: markers, a phone, the survey, the bridge; where it goes next
-  references.json     what they brought (teaching concepts, papers, cases from practice), listed on its boards
+  references.json     what they brought (teaching concepts, papers, decisions and measures), listed on its boards
   app/                the AR app (an interactive presentation: the modules as stories to click through), with the
                       flyover and the in-app video survey, in English and German; its shell is the game page's too
   game/               the game page: the games and exercises (infrastructure, rail operations, journeys, the terminal);

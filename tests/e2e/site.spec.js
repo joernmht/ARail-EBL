@@ -90,7 +90,7 @@ test("the switch below the video shows the page of one group: its question, its 
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
   const groups = page.getByRole("group", { name: "Show me ARail for" });
-  expect(await groups.getByRole("radio").evaluateAll((rs) => rs.map((r) => r.value))).toEqual(["educators", "scientists", "practitioners"]);
+  expect(await groups.getByRole("radio").evaluateAll((rs) => rs.map((r) => r.value))).toEqual(["educators", "scientists", "decision-makers"]);
   // below the video, above the pages it switches
   const video = await page.locator("#heroVideo").boundingBox(), sw = await groups.boundingBox(), first = await page.locator("#educators").boundingBox();
   expect(sw.y).toBeGreaterThanOrEqual(video.y + video.height);
@@ -104,7 +104,7 @@ test("the switch below the video shows the page of one group: its question, its 
   // each page: the question, three ways, three steps, a form to file it with, and its board
   const pages = [
     ["scientists", "Scientists", /Does it survive the whole railway\?/, "Submit a paper", "paper.yml", "Papers"],
-    ["practitioners", "Practitioners", /Does your training\?/, "Bring a case from practice", "practice_case.yml", "Cases from practice"],
+    ["decision-makers", "Decision-makers", /Is that a good idea\?/, "Bring a decision or a measure", "practice_case.yml", "Decisions and measures"],
     ["educators", "Educators", /Do you teach it that way\?/, "Propose a teaching concept", "teaching_concept.yml", "Teaching concepts"],
   ];
   for (const [id, name, question, cta, form, board] of pages) {
@@ -125,14 +125,21 @@ test("the switch below the video shows the page of one group: its question, its 
     expect(width[0]).toBe(width[1]);
   }
   // the arrow keys move the switch, as radio buttons do
-  await page.getByRole("radio", { name: "Practitioners" }).focus();
+  await page.getByRole("radio", { name: "Decision-makers" }).focus();
   await page.keyboard.press("ArrowLeft");
   await expect(page.getByRole("radio", { name: "Scientists" })).toBeChecked();
   expect(await shown()).toEqual(["scientists"]);
   // a link with the group opens its page
+  await page.goto("/?for=decision-makers");
+  await expect(page.getByRole("radio", { name: "Decision-makers" })).toBeChecked();
+  expect(await shown()).toEqual(["decision-makers"]);
+  // the name this page had before still opens it
   await page.goto("/?for=practitioners");
-  await expect(page.getByRole("radio", { name: "Practitioners" })).toBeChecked();
-  expect(await shown()).toEqual(["practitioners"]);
+  await expect(page.getByRole("radio", { name: "Decision-makers" })).toBeChecked();
+  expect(await shown()).toEqual(["decision-makers"]);
+  // both of its questions are on it
+  await expect(page.locator("#decision-makers .ways")).toContainText("Is that a good idea?");
+  await expect(page.locator("#decision-makers .ways")).toContainText("What could we do?");
   // an unknown group: the first page
   await page.goto("/?for=nobody");
   expect(await shown()).toEqual(["educators"]);
@@ -151,10 +158,10 @@ test("the switch below the video shows the page of one group: its question, its 
       }
     }
   });
-  await page.getByRole("radio", { name: "Practitioners" }).check();
-  await expect(page.locator("html")).toHaveAttribute("data-aud", "practitioners");
-  expect(await shown()).toEqual(["practitioners"]);
-  expect(await page.locator(".app-card .teach").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => e.dataset.aud))).toEqual(Array(6).fill("practitioners"));
+  await page.getByRole("radio", { name: "Decision-makers" }).check();
+  await expect(page.locator("html")).toHaveAttribute("data-aud", "decision-makers");
+  expect(await shown()).toEqual(["decision-makers"]);
+  expect(await page.locator(".app-card .teach").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => e.dataset.aud))).toEqual(Array(6).fill("decision-makers"));
   await page.goto("/?for=nobody");
   // the paper's way in says what filing it allows
   await page.getByRole("radio", { name: "Scientists" }).check();

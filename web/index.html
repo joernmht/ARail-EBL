@@ -19,7 +19,7 @@
 /* Project page in the app's design (tokens, bar, buttons and logo: app/app.css; what the pages of the
    site share: assets/site.css). Story: the picture first (the video, the whole width, with the ways in
    at its lower edge), one sentence, then a switch: who are you? An educator, a scientist or a
-   practitioner gets a page of their own: a question, three ways to use ARail, the way from an idea to
+   decision-maker gets a page of their own: a question, three ways to use ARail, the way from an idea to
    something that runs, and the board of what others have brought. The switch is three radio buttons;
    what belongs to one group carries data-aud, and CSS alone shows the chosen one. Then, for all: what
    runs today and the lab table in ARail. How it gets onto a lab's table, and where it goes next, are on
@@ -59,19 +59,19 @@
 .aud-track { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(100%, 600px); padding: 5px; border-radius: 999px; background: var(--board-2); border: 1px solid var(--board-line); }
 .aud-thumb { position: absolute; top: 5px; bottom: 5px; left: 5px; width: calc((100% - 10px) / 3); border-radius: 999px; background: #ffffff; box-shadow: 0 4px 14px rgba(0, 6, 26, .45); transition: transform .3s cubic-bezier(.3, .7, .2, 1); }
 .aud-track:has(#aud-scientists:checked) .aud-thumb { transform: translateX(100%); }
-.aud-track:has(#aud-practitioners:checked) .aud-thumb { transform: translateX(200%); }
-.aud-track label { position: relative; display: grid; place-items: center; min-height: 46px; padding: 6px 4px; border-radius: 999px; font-weight: 700; font-size: clamp(.84rem, 3.4vw, 1.02rem); color: var(--board-text); cursor: pointer; transition: color .2s; }
+.aud-track:has(#aud-decision-makers:checked) .aud-thumb { transform: translateX(200%); }
+.aud-track label { position: relative; display: grid; place-items: center; text-align: center; line-height: 1.15; min-height: 46px; padding: 6px 4px; border-radius: 999px; font-weight: 700; font-size: clamp(.84rem, 3.4vw, 1.02rem); color: var(--board-text); cursor: pointer; transition: color .2s; }
 .aud-track label:has(input:checked) { color: #001450; }
 .aud-track label:has(input:focus-visible) { outline: 3px solid #ffffff; outline-offset: 3px; }
 .aud-track input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 /* what belongs to one group is shown only while that group is chosen */
 html:has(#aud-educators:checked) [data-aud]:not([data-aud="educators"]),
 html:has(#aud-scientists:checked) [data-aud]:not([data-aud="scientists"]),
-html:has(#aud-practitioners:checked) [data-aud]:not([data-aud="practitioners"]),
+html:has(#aud-decision-makers:checked) [data-aud]:not([data-aud="decision-makers"]),
 /* the same from the script (html[data-aud]), for browsers without :has() */
 html[data-aud="educators"] [data-aud]:not([data-aud="educators"]),
 html[data-aud="scientists"] [data-aud]:not([data-aud="scientists"]),
-html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { display: none; }
+html[data-aud="decision-makers"] [data-aud]:not([data-aud="decision-makers"]) { display: none; }
 
 /* ---------------------------------------------------------------- the page of one group */
 .pitch { background: var(--surface); border-bottom: 1px solid var(--line); padding-block: 64px 72px; scroll-margin-top: 64px; overflow: hidden; }
@@ -199,7 +199,7 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
           <span class="aud-thumb" aria-hidden="true"></span>
           <label><input type="radio" name="aud" id="aud-educators" value="educators" checked><span>Educators</span></label>
           <label><input type="radio" name="aud" id="aud-scientists" value="scientists"><span>Scientists</span></label>
-          <label><input type="radio" name="aud" id="aud-practitioners" value="practitioners"><span>Practitioners</span></label>
+          <label><input type="radio" name="aud" id="aud-decision-makers" value="decision-makers"><span>Decision-makers</span></label>
         </div>
       </fieldset>
     </div>
@@ -275,35 +275,35 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
     </div>
   </section>
 
-  <!-- practitioners -->
-  <section class="pitch" id="practitioners" data-aud="practitioners" aria-labelledby="q-practitioners">
+  <!-- decision-makers: they bring a situation to decide or a measure, and ask "is that a good idea?" or "what could we do?" -->
+  <section class="pitch" id="decision-makers" data-aud="decision-makers" aria-labelledby="q-decision-makers">
     <div class="wrap">
-      <p class="eyebrow">For practitioners</p>
-      <h2 class="provoke" id="q-practitioners">A disruption never stays in one department. <em>Does your training?</em></h2>
-      <p class="lead">Signal box, control centre, workshop, customer information: everyone knows their own desk. ARail shows the whole railway on a bad day, and lets people sit at the desk next door.</p>
+      <p class="eyebrow">For decision-makers</p>
+      <h2 class="provoke" id="q-decision-makers">A measure is on your desk. <em>Is that a good idea?</em></h2>
+      <p class="lead">A new stop, one spare unit less, a closure in the summer, a tighter timetable: put the measure on a railway and see what it does to passengers, operations and money. No measure yet, only a situation? Then the question is: what could we do?</p>
       <ol class="ways">
-        <li><span class="where">Rehearse</span><h3>Replay the bad day</h3><p>An incident as a scenario: run it, change one decision, run it again.</p></li>
-        <li><span class="where">Onboard</span><h3>Sit at the desk next door</h3><p>Role games for new colleagues and old hands: a signaller's half hour, an operations controller's morning, an asset manager's budget year.</p></li>
-        <li><span class="where">Explain</span><h3>Show it, don't slide it</h3><p>For clients, authorities and the public: what a closure, a spare unit or a budget cut does to passengers.</p></li>
+        <li><span class="where">A measure</span><h3>Is that a good idea?</h3><p>Run it on the whole railway, on a good day and on a bad one, and see who gains and who pays.</p></li>
+        <li><span class="where">A situation</span><h3>What could we do?</h3><p>The options side by side: the same morning, another decision each time, and what comes of each.</p></li>
+        <li><span class="where">A round table</span><h3>Decide it together</h3><p>Operator, infrastructure manager, transport authority: each takes a role and sees what the decision does to the others.</p></li>
       </ol>
-      <p class="benefit">A shared picture of the system, before the next disruption draws it for you.</p>
+      <p class="benefit">See what a decision does to everyone else, before it is taken.</p>
       <div class="route">
         <div>
-          <h3>From your case to a scenario</h3>
+          <h3>From your decision to a case that runs</h3>
           <ol class="path">
-            <li><span class="psign" aria-hidden="true">1</span><b>File it</b><span>Open an issue labelled <i>practice case</i>: the situation, the roles, what people should take away. Issues are public: nothing confidential.</span></li>
-            <li><span class="psign" aria-hidden="true">2</span><b>We build it</b><span>As a scenario or a role game, on the lab's layout or on yours.</span></li>
+            <li><span class="psign" aria-hidden="true">1</span><b>File it</b><span>Open an issue labelled <i>practice case</i>: the situation to decide or the measure, who it affects, what it is judged by. Issues are public: nothing confidential.</span></li>
+            <li><span class="psign" aria-hidden="true">2</span><b>We build it</b><span>As a scenario or a role game in which the options can be tried and compared, on the lab's layout or on yours.</span></li>
             <li><span class="psign" aria-hidden="true">3</span><b>It is on the board</b><span>Listed here with its status and a link.</span></li>
           </ol>
           <div class="ctas">
-            <a class="btn primary big" href="https://github.com/joernmht/ARail-EBL/issues/new?template=practice_case.yml">Bring a case from practice</a>
-            <a class="btn big" href="game/signaller/">Play the signaller</a>
+            <a class="btn primary big" href="https://github.com/joernmht/ARail-EBL/issues/new?template=practice_case.yml">Bring a decision or a measure</a>
+            <a class="btn big" href="game/?layout=../layouts/ebl-lab.json&amp;layers=infrastructure#infra">Decide a budget year</a>
           </div>
         </div>
         <div class="refs">
-          <div class="refs-head"><h3 id="refs-practice">Cases from practice</h3><a href="https://github.com/joernmht/ARail-EBL/issues?q=label%3Apractice-case">All on GitHub</a></div>
+          <div class="refs-head"><h3 id="refs-practice">Decisions and measures</h3><a href="https://github.com/joernmht/ARail-EBL/issues?q=label%3Apractice-case">All on GitHub</a></div>
           <ol class="refs-rows" data-refs="practice" aria-labelledby="refs-practice">
-            <li class="none"><b>The board is empty.</b>The first case on it could be yours.</li>
+            <li class="none"><b>The board is empty.</b>The first decision on it could be yours.</li>
           </ol>
         </div>
       </div>
@@ -326,7 +326,7 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
             <p>Residents walk, take the bus and board trains through the doors, on a fast clock through day and night. Their colour shows their mood.</p>
             <p class="teach" data-aud="educators"><b>Teach:</b> station and public transport planning, intermodal trips, demand over the day.</p>
             <p class="teach" data-aud="scientists"><b>Research:</b> demand models, transfer behaviour, crowding on platforms.</p>
-            <p class="teach" data-aud="practitioners"><b>Practice:</b> what a new stop or a changed timetable does to a town.</p>
+            <p class="teach" data-aud="decision-makers"><b>Decide:</b> a new stop, a changed timetable: is that a good idea for the town?</p>
             <div class="acts">
               <a class="btn primary" href="app/?layout=../layouts/ebl-lab.json#simulate">Open this example</a>
               <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/day-and-night.md">Day and night</a>
@@ -341,7 +341,7 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
             <p>Trains, trucks and barges, a gantry crane and a reach stacker. Pick a container and its new place, and the crane moves it. Real wagons carry virtual containers.</p>
             <p class="teach" data-aud="educators"><b>Teach:</b> freight transport, terminal operation, the hand-over between modes.</p>
             <p class="teach" data-aud="scientists"><b>Research:</b> stacking and crane strategies, loading plans for a train.</p>
-            <p class="teach" data-aud="practitioners"><b>Practice:</b> the terminal explained to new staff, customers and visitors.</p>
+            <p class="teach" data-aud="decision-makers"><b>Decide:</b> a longer train, another crane, another order of work: what could the terminal do?</p>
             <div class="acts">
               <a class="btn primary" href="app/?example=crane-terminal">Open this example</a>
               <a href="app/?example=container-train">Hybrid train</a>
@@ -357,7 +357,7 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
             <p>RB 31 reports a fault at the platform. A spare unit comes from the depot, the passengers change trains, the broken unit runs to the workshop: what it costs. Or plan a normal morning and run it.</p>
             <p class="teach" data-aud="educators"><b>Teach:</b> disruption management, spare units, maintenance (ECM), penalties; vehicle and crew scheduling.</p>
             <p class="teach" data-aud="scientists"><b>Research:</b> rescheduling and dispatching rules, vehicle and crew plans under disruption.</p>
-            <p class="teach" data-aud="practitioners"><b>Practice:</b> a disruption drill for the control centre; what a spare unit is worth.</p>
+            <p class="teach" data-aud="decision-makers"><b>Decide:</b> is a spare unit worth its money? What could be done when a train breaks down?</p>
             <div class="acts">
               <a class="btn primary" href="app/?layout=../layouts/ebl-neustadt.json&amp;layers=operations#evu-disruption">Open this example</a>
               <a href="app/?layout=../layouts/ebl-neustadt.json&amp;layers=plan#evu-operations">Plan a morning</a>
@@ -373,7 +373,7 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
             <p>Exit signal N2 fails: the signaller closes its track, the repair team drives out and exchanges it. Then worn track G3 is closed and renewed with a construction train.</p>
             <p class="teach" data-aud="educators"><b>Teach:</b> maintenance and renewal, track closures, the condition of assets and their age.</p>
             <p class="teach" data-aud="scientists"><b>Research:</b> maintenance strategies, planning of closures, models of wear.</p>
-            <p class="teach" data-aud="practitioners"><b>Practice:</b> a closure explained to operators and clients; budget choices made visible.</p>
+            <p class="teach" data-aud="decision-makers"><b>Decide:</b> repair or renew, close now or later: where does the budget do most?</p>
             <div class="acts">
               <a class="btn primary" href="app/?layout=../layouts/ebl-neustadt.json&amp;layers=infrastructure#infra-disruption">Open this example</a>
               <a href="game/?layout=../layouts/ebl-lab.json&amp;layers=infrastructure#infra">The game</a>
@@ -388,7 +388,7 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
             <p>Ada's train is 20 minutes late and her connection is gone. Her travel app finds a bus; she takes it while the late train comes in without her. Then her journey in numbers, and her rights.</p>
             <p class="teach" data-aud="educators"><b>Teach:</b> passenger information, connections and how they break, passenger rights.</p>
             <p class="teach" data-aud="scientists"><b>Research:</b> passenger information, holding connections, route choice.</p>
-            <p class="teach" data-aud="practitioners"><b>Practice:</b> a delay as the customer lives it, for customer information training.</p>
+            <p class="teach" data-aud="decision-makers"><b>Decide:</b> hold the connection or let it go: what does it do to the passenger?</p>
             <div class="acts">
               <a class="btn primary" href="app/?layout=../layouts/ebl-neustadt.json&amp;layers=journeys#journeys">Open this example</a>
               <a href="game/?layout=../layouts/ebl-lab.json&amp;layers=journeys#journeys">The game</a>
@@ -403,7 +403,7 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
             <p>Delays, cancellations, closures, signal failures, crowds and replacement buses, started by hand or scripted: rush hour with a signal failure, the crowd after the match.</p>
             <p class="teach" data-aud="educators"><b>Teach:</b> dispatching, passenger information, exercises that can be repeated.</p>
             <p class="teach" data-aud="scientists"><b>Research:</b> scripted scenarios as a test bench: the same disruption, another strategy.</p>
-            <p class="teach" data-aud="practitioners"><b>Practice:</b> incident reviews and drills, scripted and repeatable.</p>
+            <p class="teach" data-aud="decision-makers"><b>Decide:</b> the same disruption, another answer each time: what could be done?</p>
             <div class="acts">
               <a class="btn primary" href="app/?layout=../layouts/ebl-lab.json#disrupt">Open this example</a>
               <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/disruptions-and-scenarios.md">Guide</a>
@@ -440,7 +440,7 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
     <div class="wrap">
       <div class="coop">
         <div>
-          <h2 id="coop-title">Bring your layout, your course, your case</h2>
+          <h2 id="coop-title">Bring your layout, your course, your decision</h2>
           <p>Railway labs, universities, model railway clubs and industry are welcome. ARail-EBL is open source under the Apache License 2.0.</p>
           <p class="contact">Contact: Jörn Maurischat, <a href="mailto:joern.maurischat@tu-dresden.de">joern.maurischat@tu-dresden.de</a></p>
         </div>
@@ -466,7 +466,9 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
 <script>
   // who the page is for: the switch's choice, also from the address (?for=scientists), and kept in it for a link to share
   const audiences = [...document.querySelectorAll('input[name="aud"]')];
-  const asked = audiences.find((a) => a.value === new URLSearchParams(location.search).get("for"));
+  // (the decision-makers' page was the practitioners' before: links to it still open it)
+  const wanted = new URLSearchParams(location.search).get("for");
+  const asked = audiences.find((a) => a.value === (wanted === "practitioners" ? "decision-makers" : wanted));
   if (asked) asked.checked = true;
   // the choice also on the page itself, for the browsers without :has() (the CSS reads either)
   const show = () => (document.documentElement.dataset.aud = audiences.find((a) => a.checked)?.value ?? "educators");

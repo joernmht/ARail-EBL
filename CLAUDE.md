@@ -40,9 +40,9 @@ When asked to develop the game (a mission to find, fix or make up), this is the 
 - **Check it by playing**: the computer on many seeds with fixed ways of playing (nobody at the desk fails, by the book passes, judgment beats the book on some mornings and not on others), then the mission in the browser on the table, start to end.
 - **When it is done**: open the pull request, watch it (its checks and reviews, until it is green), and show the maintainer a walk-through of the mission played, with pictures of what is asked, what was answered and what came of it.
 
-## Teaching concepts, papers and cases from practice
+## Teaching concepts, papers, decisions and measures
 
-The project page has a board for each (`web/references.json`; see "The boards of the project page" in CONTRIBUTING.md). When you work on an issue labelled `teaching-concept`, `paper` or `practice-case`:
+The project page has a board for each (`web/references.json`; see "The boards of the project page" in CONTRIBUTING.md). When you work on an issue labelled `teaching-concept`, `paper` or `practice-case` (a decision-maker's situation or measure: build it so that the options can be tried and compared):
 
 - Add its entry to `web/references.json` (`in-progress`), and set it to `implemented` with a link to what runs when it is done. Leave it out if the issue says "do not list".
 - A `paper` issue allows you to read the paper and implement it only once it also has the label `accepted`: a maintainer has confirmed that its filer is an author (the form's ticks alone are not checked). Without it, don't start and don't list it. Never copy the paper's text into code, docs or the page: implement the method, name the paper.

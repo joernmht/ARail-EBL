@@ -1,31 +1,40 @@
-name: Case from practice
-description: For practitioners. An incident, a decision or a routine from the working railway that should become a scenario or a role game.
-title: "Practice case: "
+name: Decision or measure
+description: For decision-makers. A situation to decide or a measure on the working railway. Is that a good idea? What could we do?
+title: "Decision: "
 labels: ["practice-case"]
 body:
   - type: markdown
     attributes:
       value: |
-        Describe a situation worth rehearsing or explaining. We turn it into a scenario or a role game and list it on the [project page](https://joernmht.github.io/ARail-EBL/?for=practitioners) with its status and a link. **Issues are public:** leave out anything confidential, and names of people; for the rest, write to joern.maurischat@tu-dresden.de.
+        Describe a situation in which something has to be decided, or a measure you think of. We turn it into a scenario or a role game in which the options can be tried and compared, and list it on the [project page](https://joernmht.github.io/ARail-EBL/?for=decision-makers) with its status and a link. **Issues are public:** leave out anything confidential, and names of people; for the rest, write to joern.maurischat@tu-dresden.de.
+  - type: dropdown
+    id: question
+    attributes:
+      label: Your question
+      options:
+        - "Is that a good idea? (I have a measure)"
+        - "What could we do? (I have a situation)"
+    validations:
+      required: true
   - type: textarea
     id: situation
     attributes:
-      label: The situation
-      description: What happens, where (kind of station or line), and in which order.
+      label: The situation or the measure
+      description: What has to be decided, or what is to be done, where (kind of station or line) and when. If there are options already, list them.
     validations:
       required: true
   - type: textarea
     id: roles
     attributes:
-      label: Who is involved?
-      description: The roles and departments (signaller, operations control, workshop, customer information, infrastructure manager, transport authority…) and what each decides.
+      label: Who decides, and who is affected?
+      description: The roles and departments (signaller, operations control, workshop, customer information, infrastructure manager, transport authority…), what each decides and what each has to live with.
     validations:
       required: true
   - type: textarea
     id: takeaway
     attributes:
-      label: What should people take away?
-      description: Who is it for (new colleagues, a control centre, clients, the public), and what should they see or be able to do afterwards?
+      label: What is it judged by?
+      description: What makes a decision good here (punctuality, passengers, cost, staff, safety margins…), and who should see the result (a board, a control centre, clients, the public)?
     validations:
       required: true
   - type: input
